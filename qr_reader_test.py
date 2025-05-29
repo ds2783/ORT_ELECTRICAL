@@ -17,10 +17,10 @@ while True:
     cam.capture_file(data, format='png')
 
     img = Image.open(data)
-    pix = np.array(data)
+    rgb_im = img.convert('RGB')
+
+    pix = np.array(rgb_im)
 
     qreader_out = qreader.detect_and_decode(image=pix)
     print(qreader_out)
-
-# pix = np.array(img)
 
