@@ -4,6 +4,7 @@ import io
 
 from qreader import QReader
 import numpy as np
+from PIL import Image
 
 cam = Picamera2()
 cam.start()
@@ -15,11 +16,11 @@ while True:
     data = io.BytesIO()
     cam.capture_file(data, format='png')
 
-    img = np.array(data)
+    img = Image.open(data)
+    pix = np.array(data)
 
-    qreader_out = qreader.detect_and_decode(image=img)
+    qreader_out = qreader.detect_and_decode(image=pix)
     print(qreader_out)
 
-# img = Image.open(data)
 # pix = np.array(img)
 
