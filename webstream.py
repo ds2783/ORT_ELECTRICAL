@@ -1,11 +1,12 @@
 import io
-import picamera
 import logging
 import socketserver
 from threading import Condition
 from http import server
+from picamera2 import Picamera2
+import time
 
-PAGE="""\
+PAGE = """\
 <html>
 <head>
 <title>TBRO Rover</title>
@@ -25,8 +26,6 @@ class StreamingOutput(object):
 
     def write(self, buf):
         if buf.startswith(b'\xff\xd8'):
-            # New frame, copy the existing buffer's content and notify all
-            # clients it's available
             self.buffer.truncate()
             with self.condition:
                 self.frame = self.buffer.getvalue()
@@ -66,9 +65,7 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
                     self.wfile.write(frame)
                     self.wfile.write(b'\r\n')
             except Exception as e:
-                logging.warning(
-                    'Removed streaming client %s: %s',
-                    self.client_address, str(e))
+                logging.warning('Removed streaming client %s: %s', self.client_address, str(e))
         else:
             self.send_error(404)
             self.end_headers()
@@ -77,14 +74,18 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     allow_reuse_address = True
     daemon_threads = True
 
-with picamera.PiCamera(resolution='1920x1080', framerate=24) as camera:
-    output = StreamingOutput()
-    #Uncomment the next line to change your Pi's Camera rotation (in degrees)
-    #camera.rotation = 90
-    camera.start_recording(output, format='mjpeg')
-    try:
-        address = ('', 8000)
-        server = StreamingServer(address, StreamingHandler)
-        server.serve_forever()
-    finally:
-        camera.stop_recording()
+picam2 = Picamera2()
+video_config = picam2.create_video_configuration(main={"size": (1920, 1080), "format": "RGB888"})
+picam2.configure(video_config)
+picam2.start()
+
+output = StreamingOutput()
+
+picam2.start_recording(output, format='mjpeg')
+
+try:
+    address = ('', 8000)
+    server = StreamingServer(address, StreamingHandler)
+    server.serve_forever()
+finally:
+    picam2.stop_recording()
