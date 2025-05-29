@@ -11,10 +11,12 @@ cam.start()
 
 qreader = QReader()
 
+cam.switch_mode(capture_config)    
+
 while True:
     time.sleep(1)
     
-    cam.switch_mode_and_capture_file(capture_config, "temp.png")    
+    cam.capture_file("temp.png")
     
     image = cv2.cvtColor(cv2.imread("temp.png"), cv2.COLOR_BGR2RGB)
 
