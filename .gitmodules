@@ -1,0 +1,3 @@
+[submodule "Streaming"]
+	path = Streaming
+	url = https://github.com/Team-Bath-Roving/Streaming.git
