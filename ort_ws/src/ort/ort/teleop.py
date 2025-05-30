@@ -56,11 +56,11 @@ class TelepresenceOperations(Node):
     def runMotors(self, forward, backward, turn_right, turn_left):
         if (forward + backward + turn_right + turn_left) == 1:
             if forward == True:
-                right_side = 1
-                left_side = -1
-            elif backward == True:
                 right_side = -1
                 left_side = 1
+            elif backward == True:
+                right_side = 1
+                left_side = -1
             elif turn_right == True:
                 right_side = 1
                 left_side = 1
