@@ -78,11 +78,13 @@ class TelepresenceOperations(Node):
             right_side = 1
         if right_side < -1:
             right_side = -1
- 
+
+        self.get_logger().info(str(right_side) + " " + str(left_side))
+
         for i in range(0, 3):
-            self.kit.continuous_servo[i].throttle = left_side
-        for i in range(3, 6):
             self.kit.continuous_servo[i].throttle = right_side
+        for i in range(3, 6):
+            self.kit.continuous_servo[i].throttle = left_side
 
 
 
