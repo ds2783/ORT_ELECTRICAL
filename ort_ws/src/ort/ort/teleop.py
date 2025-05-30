@@ -56,6 +56,9 @@ class TelepresenceOperations(Node):
     def teleopCB(self, msg: Joy):
         self.target.linear = msg.axes[AXES["TRIGGERRIGHT"]]
         self.target.linear -= msg.axes[AXES["TRIGGERLEFT"]]
+        # goes from 1 to -1, therefore difference between the two
+        # should be halved.
+        self.target.linear /= 2
         self.target.rotation = msg.axes[AXES["LEFTX"]]
 
         self.runMotors()
@@ -70,7 +73,7 @@ class TelepresenceOperations(Node):
             left_side = -1
         
         # UGLY MUST FIX
-        right_side = self.target.linear - 0.5 * self.target.rotation
+        right_side = - self.target.linear + 0.5 * self.target.rotation
         if right_side > 1:
             right_side = 1
         if right_side < -1:
