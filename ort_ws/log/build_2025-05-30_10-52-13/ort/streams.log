@@ -1,0 +1,38 @@
+[1.152s] Invoking command in '/home/william/ORT_ELECTRICAL/ort_ws/src/ort': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/william/ORT_ELECTRICAL/ort_ws/build/ort/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/william/ORT_ELECTRICAL/ort_ws/install/ort/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/ort build --build-base /home/william/ORT_ELECTRICAL/ort_ws/build/ort/build install --record /home/william/ORT_ELECTRICAL/ort_ws/build/ort/install.log --single-version-externally-managed install_data
+[1.430s] running egg_info
+[1.430s] creating ../../build/ort/ort.egg-info
+[1.448s] writing ../../build/ort/ort.egg-info/PKG-INFO
+[1.448s] writing dependency_links to ../../build/ort/ort.egg-info/dependency_links.txt
+[1.448s] writing entry points to ../../build/ort/ort.egg-info/entry_points.txt
+[1.448s] writing requirements to ../../build/ort/ort.egg-info/requires.txt
+[1.448s] writing top-level names to ../../build/ort/ort.egg-info/top_level.txt
+[1.448s] writing manifest file '../../build/ort/ort.egg-info/SOURCES.txt'
+[1.484s] reading manifest file '../../build/ort/ort.egg-info/SOURCES.txt'
+[1.484s] adding license file 'LICENSE'
+[1.485s] writing manifest file '../../build/ort/ort.egg-info/SOURCES.txt'
+[1.485s] running build
+[1.485s] running build_py
+[1.485s] creating /home/william/ORT_ELECTRICAL/ort_ws/build/ort/build
+[1.485s] creating /home/william/ORT_ELECTRICAL/ort_ws/build/ort/build/lib
+[1.485s] creating /home/william/ORT_ELECTRICAL/ort_ws/build/ort/build/lib/ort
+[1.485s] copying ort/qr_node.py -> /home/william/ORT_ELECTRICAL/ort_ws/build/ort/build/lib/ort
+[1.485s] copying ort/__init__.py -> /home/william/ORT_ELECTRICAL/ort_ws/build/ort/build/lib/ort
+[1.485s] running install
+[1.491s] running install_lib
+[1.509s] creating /home/william/ORT_ELECTRICAL/ort_ws/install/ort/lib/python3.12/site-packages/ort
+[1.509s] copying /home/william/ORT_ELECTRICAL/ort_ws/build/ort/build/lib/ort/qr_node.py -> /home/william/ORT_ELECTRICAL/ort_ws/install/ort/lib/python3.12/site-packages/ort
+[1.509s] copying /home/william/ORT_ELECTRICAL/ort_ws/build/ort/build/lib/ort/__init__.py -> /home/william/ORT_ELECTRICAL/ort_ws/install/ort/lib/python3.12/site-packages/ort
+[1.510s] byte-compiling /home/william/ORT_ELECTRICAL/ort_ws/install/ort/lib/python3.12/site-packages/ort/qr_node.py to qr_node.cpython-312.pyc
+[1.510s] byte-compiling /home/william/ORT_ELECTRICAL/ort_ws/install/ort/lib/python3.12/site-packages/ort/__init__.py to __init__.cpython-312.pyc
+[1.510s] running install_data
+[1.511s] creating /home/william/ORT_ELECTRICAL/ort_ws/install/ort/share/ament_index
+[1.511s] creating /home/william/ORT_ELECTRICAL/ort_ws/install/ort/share/ament_index/resource_index
+[1.511s] creating /home/william/ORT_ELECTRICAL/ort_ws/install/ort/share/ament_index/resource_index/packages
+[1.511s] copying resource/ort -> /home/william/ORT_ELECTRICAL/ort_ws/install/ort/share/ament_index/resource_index/packages
+[1.511s] copying package.xml -> /home/william/ORT_ELECTRICAL/ort_ws/install/ort/share/ort
+[1.511s] running install_egg_info
+[1.533s] Copying ../../build/ort/ort.egg-info to /home/william/ORT_ELECTRICAL/ort_ws/install/ort/lib/python3.12/site-packages/ort-0.0.0-py3.12.egg-info
+[1.533s] running install_scripts
+[1.672s] Installing qr_node script to /home/william/ORT_ELECTRICAL/ort_ws/install/ort/lib/ort
+[1.672s] writing list of installed files to '/home/william/ORT_ELECTRICAL/ort_ws/build/ort/install.log'
+[1.697s] Invoked command in '/home/william/ORT_ELECTRICAL/ort_ws/src/ort' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/william/ORT_ELECTRICAL/ort_ws/build/ort/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/william/ORT_ELECTRICAL/ort_ws/install/ort/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/ort build --build-base /home/william/ORT_ELECTRICAL/ort_ws/build/ort/build install --record /home/william/ORT_ELECTRICAL/ort_ws/build/ort/install.log --single-version-externally-managed install_data

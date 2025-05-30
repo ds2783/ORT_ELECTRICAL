@@ -1,0 +1,3 @@
+[console_scripts]
+qr_node = ort.qr_node:main
+teleop = ort.teleop:main
