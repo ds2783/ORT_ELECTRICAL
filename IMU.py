@@ -12,7 +12,7 @@ while not bmx.begin():
 
 # --- Calibrate Sensor ---
 print("Calibrating... keep sensor still.")
-samples = 200
+samples = 1000
 gyro_samples, accel_samples, mag_samples = [], [], []
 
 for _ in range(samples):
@@ -33,6 +33,12 @@ ekf = EKF()
 q = np.array([1.0, 0.0, 0.0, 0.0])  # Initial quaternion
 dt = 0.01  # 100 Hz
 
+# --- Low-pass filter parameters ---
+alpha = 0.5  # smoothing factor
+gyro_filtered = np.zeros(3)
+accel_filtered = np.zeros(3)
+mag_filtered = np.zeros(3)
+
 # --- Cube Vertices (Local Coordinates) ---
 cube_vertices = np.array([
     [-0.5, -0.5, -0.5],
@@ -45,7 +51,7 @@ cube_vertices = np.array([
     [-0.5,  0.5,  0.5]
 ])
 
-# --- Cube Edges (pairs of vertex indices) ---
+# --- Cube Edges ---
 cube_edges = [
     (0,1), (1,2), (2,3), (3,0),  # Bottom
     (4,5), (5,6), (6,7), (7,4),  # Top
@@ -74,34 +80,39 @@ ax.set_zlim([-1, 1])
 
 # --- Update Function ---
 def update(frame):
-    global q
+    global q, gyro_filtered, accel_filtered, mag_filtered
 
-    # Get and calibrate sensor data
+    # --- Read and bias-correct sensor data ---
     data = bmx.get_all_data()
-    gyro = (np.array(data[3:6]) - gyro_bias) * 3.0
-    accel = np.array(data[6:9]) - accel_bias
-    mag = np.array(data[0:3]) - mag_bias
+    raw_gyro = np.array(data[3:6]) - gyro_bias
+    raw_accel = np.array(data[6:9]) - accel_bias
+    raw_mag = np.array(data[0:3]) - mag_bias
+
+    # --- Apply axis remapping: Sensor → World Frame ---
+    # Sensor X (right), Y (forward), Z (up) → World X (forward), Y (left), Z (up)
+    raw_gyro = np.array([raw_gyro[1], -raw_gyro[0], raw_gyro[2]])
+    raw_accel = np.array([raw_accel[1], -raw_accel[0], raw_accel[2]])
+    raw_mag = np.array([raw_mag[1], -raw_mag[0], raw_mag[2]])
+
+    # --- Apply Low-pass Filter ---
+    gyro_filtered = alpha * raw_gyro + (1 - alpha) * gyro_filtered
+    accel_filtered = alpha * raw_accel + (1 - alpha) * accel_filtered
+    mag_filtered = alpha * raw_mag + (1 - alpha) * mag_filtered
 
     # Normalize accel and mag
-    if np.linalg.norm(accel) > 0:
-        accel /= np.linalg.norm(accel)
-    if np.linalg.norm(mag) > 0:
-        mag /= np.linalg.norm(mag)
+    if np.linalg.norm(accel_filtered) > 0:
+        accel_filtered /= np.linalg.norm(accel_filtered)
+    if np.linalg.norm(mag_filtered) > 0:
+        mag_filtered /= np.linalg.norm(mag_filtered)
 
-    # Update EKF and get quaternion
-    q = ekf.update(q, gyr=gyro, acc=accel, mag=mag)
+    # --- Update EKF orientation ---
+    q = ekf.update(q, gyr=gyro_filtered * 3.0, acc=accel_filtered, mag=mag_filtered)
     R = quaternion_to_rotation_matrix(q)
-    
 
-    # Flip only pitch (Y) and yaw (Z), keep roll (X) as is
-    R[:, 1] *= -1  # Invert Y axis for pitch correction
-    R[:, 2] *= -1  # Invert Z axis for yaw correction
-
-
-    # Rotate cube vertices
+    # --- Rotate Cube Vertices ---
     rotated = cube_vertices @ R.T
 
-    # Clear and redraw
+    # --- Clear and Redraw ---
     ax.cla()
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
@@ -111,16 +122,14 @@ def update(frame):
     ax.set_zlabel('Z')
     ax.set_title('3D Cube Orientation via Quaternion')
 
-    # Draw cube edges
+    # --- Draw Cube Edges ---
     for edge in cube_edges:
         points = rotated[list(edge)]
         ax.plot(points[:, 0], points[:, 1], points[:, 2], 'k')
 
-    # Optional: Draw rotated axes
-    origin = np.array([0, 0, 0])
-    ax.quiver(*origin, *R[:, 0], color='r', length=0.6, normalize=True)  # X axis
-    ax.quiver(*origin, *R[:, 1], color='g', length=0.6, normalize=True)  # Y axis
-    ax.quiver(*origin, *R[:, 2], color='b', length=0.6, normalize=True)  # Z axis
+    # --- Highlight Front Face in Red ---
+    front_face = rotated[[0, 1, 2, 3, 0]]  # Close the loop
+    ax.plot(front_face[:, 0], front_face[:, 1], front_face[:, 2], color='red', linewidth=3)
 
 # --- Animate ---
 ani = FuncAnimation(fig, update, interval=dt * 1000)
