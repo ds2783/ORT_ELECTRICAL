@@ -19,7 +19,7 @@ class QRCam(Node):
         super().__init__("qr_cam")
         # STREAM ---------------------
         # Initialise stream
-        self.client = StreamClient("IRCam", "192.168.0.101", 'udp', 5008, 1920, 1080, stereo=True) 
+        self.client = StreamClient("IRCam", "192.168.0.103", 'udp', 5009, 1920, 1080, stereo=True) 
 
         # ----------------------------
 
@@ -46,7 +46,7 @@ class QRCam(Node):
                 qreader_out = self.qreader_.detect_and_decode(image=image)
                 # create Ros2 message 
                 message = String()
-                message.data = qreader_out
+                message.data = str(qreader_out)
                 self.qr_pub_.publish(message)
         elif not trigger_pressed and self.qr_button_:
             # Ensure only one capture even per press

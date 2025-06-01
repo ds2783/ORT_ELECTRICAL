@@ -84,7 +84,7 @@ class StreamServer:
                 self.cam.camera_ctrl_info["FrameDurationLimits"]=[durationlimit(),durationlimit()]
             self.cam.start_recording(self.encoder, FileOutput(self.stream))
             self.output.write("INFO",f"Started UDP stream \"{self.name}\" from camera {self.model} to {ip}:{port}",True)
-    def start_two(self, ip1, ip2, port1, port2):
+    def start_two(self, ip1, port1, ip2, port2):
         if not self.cam is None:
             if not self.usb:
                 self.encoder=H264Encoder(100000,repeat=True,iperiod=5)
@@ -102,8 +102,9 @@ class StreamServer:
             self.stream2 = self.sock2.makefile('wb')
 
             self.encoder.output = [FileOutput(self.stream1), FileOutput(self.stream2)]
-
+            
             self.cam.start_encoder(self.encoder)
+            self.cam.start()
 
     def stop(self):
         self.output.write("INFO", f"Stopping camera {self.model}")

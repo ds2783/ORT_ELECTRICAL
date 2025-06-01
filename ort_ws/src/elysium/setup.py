@@ -21,7 +21,8 @@ setup(
     entry_points={
         'console_scripts': [
             'qr_cam = elysium.qr_cam:main',
-            'teleop = elysium.teleop:main'
+            'teleop = elysium.teleop:main',
+            'teleop2 = elysium.teleop2:main'
         ],
     },
 )

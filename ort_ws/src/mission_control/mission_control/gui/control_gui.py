@@ -5,6 +5,7 @@ from imgui.integrations.glfw import GlfwRenderer
 
 from mission_control.gui.dashboard import Dashboard
 
+
 def impl_glfw_init(window_name="Project Gorgon", width=1200, height=1200):
     if not glfw.init():
         print("Could not initialize OpenGL context")
@@ -43,14 +44,14 @@ class GUI(object):
         # alternative place all shader code with string in a python file
         self.dashboard = Dashboard(self.base_node.main_cam)
 
-
     def run(self):
         glfw.poll_events()
         self.impl.process_inputs()
         gl.glClearColor(*self.backgroundColor)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
         
-        
+        imgui.get_io().font_global_scale = 1.2
+
         self.dashboard.draw()
         imgui.new_frame()
         # Set Gorgon Control-Mode Panel
@@ -68,11 +69,17 @@ class GUI(object):
         elif imgui.button("BUTTON"):
             self.base_node.gui_set_mode("BUTTON")
 
+        imgui.end()
+
+        imgui.begin("QR-Display", True)
+        imgui.set_window_size(180, 80)
+        imgui.text(self.base_node.last_qr)
+        imgui.end()
+
         # Display Testing Window
         imgui.show_test_window()
 
-        imgui.end()
         imgui.render()
-       
+
         self.impl.render(imgui.get_draw_data())
         glfw.swap_buffers(self.window)
