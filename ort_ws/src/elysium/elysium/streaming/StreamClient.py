@@ -98,6 +98,14 @@ class StreamClient:
                 cv2.imshow(self.name, frame)
             except Exception as e:
                 print(e)
+    def fetch_img(self):
+        if not self.frame is None:
+            try:
+                frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
+                return frame
+            except Exception as e:
+                print(e)
+
     def stop(self):
         self.end=True
         self.process.stdout.close()  # Closing stdout terminates FFmpeg sub-process.

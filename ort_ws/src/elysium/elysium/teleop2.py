@@ -36,8 +36,6 @@ class TelepresenceOperations(Node):
 
         self.runMotors()
 
-        self.get_logger().info(str(self.target.linear) + " " + str(self.target.rotation))
-
     def runMotors(self):
         left_side = self.target.linear + 0.5 * self.target.rotation
         if left_side > 1:
@@ -52,8 +50,6 @@ class TelepresenceOperations(Node):
         if right_side < -1:
             right_side = -1
 
-        self.get_logger().info(str(right_side) + " " + str(left_side))
-        
         left_side = 90.0 + 90 * left_side
         right_side = 90.0 + 90 * right_side
 
@@ -62,6 +58,7 @@ class TelepresenceOperations(Node):
         for i in range(3, 6):
             self.kit.servo[i].angle = left_side
 
+        self.get_logger().info("left_side: " + str(left_side) + " right_side: " + str(right_side))
 
 
 def main(args=None):
