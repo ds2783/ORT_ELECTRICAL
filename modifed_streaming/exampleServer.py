@@ -1,22 +1,25 @@
-
-import time
 import sys
 
 from StreamServer import StreamServer
 from Comms.Output import Output
 
-from libcamera import controls
-
 from signal import signal, SIGINT
+
+from relay import relay_udp_data
 
 # config
 MULTICAST=False
-IP = '192.168.124.110' # UDP multicast IP
+IP = '192.168.0.101' # UDP multicast IP
 PORT=5008
-MODEL="ov5647" # camera model name (find using libcamera-vid --list-cameras)
+MODEL="img708_noir" # camera model name (find using libcamera-vid --list-cameras)
 WIDTH=1296
 HEIGHT=972
 NAME="camera" # stream name for display in console
+
+ip1 = '192.168.0.103'
+port1 = 5007
+ip2 = '192.168.0.101'
+port2 = 5006
 
 out=Output("None") # console output, with optional TCP forwarding
 
@@ -35,10 +38,4 @@ def handler(signal_received,frame):
 
 signal(SIGINT, handler)
 
-# Example of script to change settings of camera
-i=10
-while(True): # stream ends once this thread ends
-    time.sleep(0.01)
-    i+=10
-    stream.set_exposure(i)
-
+relay_udp_data(IP, PORT, ip1, port1, ip2, port2)

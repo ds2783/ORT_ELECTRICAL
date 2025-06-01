@@ -84,29 +84,29 @@ class StreamServer:
                 self.cam.camera_ctrl_info["FrameDurationLimits"]=[durationlimit(),durationlimit()]
             self.cam.start_recording(self.encoder, FileOutput(self.stream))
             self.output.write("INFO",f"Started UDP stream \"{self.name}\" from camera {self.model} to {ip}:{port}",True)
-    def start_two(self, ip1, ip2, port1, port2):
-        if not self.cam is None:
-            if not self.usb:
-                self.encoder=H264Encoder(100000,repeat=True,iperiod=5)
-            else:
-                self.encoder=Encoder()
-            
-            self.sock1=socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.sock2=socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            
-            self.sock1.connect((ip1, port1))
-            self.sock2.connect((ip2, port2))
-
-            self.stream1 = self.sock1.makefile('wb')
-            self.stream2 = self.sock2.makefile('wb')
-
-            buffer = io.BytesIO()
-            self.cam.start_recording(self.encoder, FileOutput(buffer))
-            
-            self.stream1.write(buffer.read())
-            self.stream2.write(buffer.read())
-
-            
+    # def start_two(self, ip1, ip2, port1, port2):
+    #     if not self.cam is None:
+    #         if not self.usb:
+    #             self.encoder=H264Encoder(100000,repeat=True,iperiod=5)
+    #         else:
+    #             self.encoder=Encoder()
+    #
+    #         self.sock1=socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    #         self.sock2=socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    #
+    #         self.sock1.connect((ip1, port1))
+    #         self.sock2.connect((ip2, port2))
+    #
+    #         self.stream1 = self.sock1.makefile('wb')
+    #         self.stream2 = self.sock2.makefile('wb')
+    #
+    #         self.buffer = io.BytesIO()
+    #         self.cam.start_recording(self.encoder, FileOutput(self.buffer))
+    #
+    # def run_two(self):
+    #         self.stream1.write(self.buffer.read())
+    #         self.stream2.write(self.buffer.read())
+   
     def stop(self):
         self.output.write("INFO", f"Stopping camera {self.model}")
         StreamServer.active_cams[self.idx]=False # set active flag false to unclaim camera
