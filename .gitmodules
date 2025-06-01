@@ -1,3 +1,6 @@
 [submodule "Streaming"]
 	path = Streaming
 	url = https://github.com/Team-Bath-Roving/Streaming.git
+[submodule "ort_ws/src/elysium/elysium/Comms"]
+	path = ort_ws/src/elysium/elysium/Comms
+	url = git@github.com:Team-Bath-Roving/Comms.git

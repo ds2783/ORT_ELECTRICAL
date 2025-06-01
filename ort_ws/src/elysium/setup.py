@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'qr_node = elysium.qr_node:main',
+            'qr_cam = elysium.qr_cam:main',
             'teleop = elysium.teleop:main'
         ],
     },
