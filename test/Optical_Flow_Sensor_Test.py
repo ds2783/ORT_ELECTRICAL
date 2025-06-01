@@ -1,5 +1,5 @@
 from pmw3901 import PMW3901
-sensor = PMW3901(spi_bus=0, cs_pin=7)
+sensor = PMW3901(spi_port=0, spi_cs_gpio=8)  # BCM pin number
 sensor.begin()
 while True:
     if sensor.motion_ready():
