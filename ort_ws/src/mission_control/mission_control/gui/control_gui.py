@@ -6,7 +6,7 @@ from imgui.integrations.glfw import GlfwRenderer
 from mission_control.gui.dashboard import Dashboard
 
 
-def impl_glfw_init(window_name="Project Gorgon", width=1200, height=1200):
+def impl_glfw_init(window_name="Project Gorgon", width=1920, height=1080):
     if not glfw.init():
         print("Could not initialize OpenGL context")
         exit(1)
@@ -31,20 +31,19 @@ def impl_glfw_init(window_name="Project Gorgon", width=1200, height=1200):
 
 
 class GUI(object):
-    def __init__(self, base_node):
+    def __init__(self, cams):
         super().__init__()
         self.backgroundColor = (0, 0, 0, 1)
         self.window = impl_glfw_init()
         gl.glClearColor(*self.backgroundColor)
         imgui.create_context()
         self.impl = GlfwRenderer(self.window)
-        self.base_node = base_node
 
         # REPLACE THESE PATHS WITH ABSOLUTE PATH OF SHADERS ON INSTALL
         # alternative place all shader code with string in a python file
-        self.dashboard = Dashboard(self.base_node.main_cam)
+        self.dashboard = Dashboard(cams)
 
-    def run(self):
+    def run(self, last_qr):
         glfw.poll_events()
         self.impl.process_inputs()
         gl.glClearColor(*self.backgroundColor)
@@ -54,26 +53,10 @@ class GUI(object):
 
         self.dashboard.draw()
         imgui.new_frame()
-        # Set Gorgon Control-Mode Panel
-        imgui.begin("Set Gorgon Control-Mode", True)
-        imgui.text("Select From Different Operation Modes")
-
-        if imgui.button("INERT"):
-            self.base_node.gui_set_mode("INERT")
-        elif imgui.button("MANUAL"):
-            self.base_node.gui_set_mode("MANUAL")
-        elif imgui.button("AUTOMATIC_MODE_ONE"):
-            self.base_node.gui_set_mode("AUTOMATIC_MODE_ONE")
-        elif imgui.button("AUTOMATIC_MODE_TWO"):
-            self.base_node.gui_set_mode("AUTOMATIC_MODE_TWO")
-        elif imgui.button("BUTTON"):
-            self.base_node.gui_set_mode("BUTTON")
-
-        imgui.end()
 
         imgui.begin("QR-Display", True)
         imgui.set_window_size(180, 80)
-        imgui.text(self.base_node.last_qr)
+        imgui.text(last_qr)
         imgui.end()
 
         # Display Testing Window
@@ -83,3 +66,4 @@ class GUI(object):
 
         self.impl.render(imgui.get_draw_data())
         glfw.swap_buffers(self.window)
+

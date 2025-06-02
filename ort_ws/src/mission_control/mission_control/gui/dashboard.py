@@ -6,7 +6,6 @@ import OpenGL.GL as gl
 from ctypes import c_void_p
 
 from mission_control.gui.data_structures import shaders, EBO, VBO, VAO
-from mission_control.streaming.stream_client import StreamClient
 
 
 vertexSource = """
@@ -33,7 +32,7 @@ void main()
 }
 """
 
-fragmentSource ="""
+fragmentSource = """
 #version 330 core
 
 // Outputs colors in RGBA
@@ -53,82 +52,100 @@ void main()
 }
 """
 
-class Dashboard:
-    def __init__(self, main_cam):
-        # defined from centre to corner
-        self.texWidth = 800
-        self.texHeight = 800
-    
-        # self.main_cam = main_cam
-        self.main_cam_texID = gl.glGenTextures(1)
 
-        self.main_cam = main_cam
+class Dashboard:
+    def __init__(self, cams):
+        self.cam_texID = gl.glGenTextures(2)
+
+        self.cams = cams
         self.shaderProgram = shaders.rawShaderProgram(vertexSource, fragmentSource)
 
-        self.generateVAO()
+        main_coords = [
+            -0.5, 0, 0, 0.0, 0.0,  # lower left corner
+            -0.5, 0.5, 1.0, 0.0,  # upper left corner
+             0.1, 0.5, 1.0, 1.0,  # upper right corner
+             0.1, 0.0, 0.0, 1.0,  # lower right corner
+        ]
+
+        secondary_coords = [
+            -0.5, -0.5, 0.0, 0.0,  # lower left corner
+            -0.5, 0.0, 1.0, 0.0,  # upper left corner
+             0.1, 0.0, 1.0, 1.0,  # upper right corner
+             0.1,-0.5, 0.0, 1.0,  # lower right corner
+        ]
+        self.VAOs = [self.generateVAO(main_coords), self.generateVAO(secondary_coords)]
+        if len(cams) != self.VAOs:
+            # fix to use the ROS2 logger
+            print("ERROR, incorrect dimesions of Cams passed.")
         self.generateEBO()
 
-    def generateVAO(self):
-        coords = [
-	            -0.5, -0.5, 0.0, 1.0, # Lower left corner
-	            -0.5,  0.5, 0.0, 0.0, # Upper left corner
-	             0.5,  0.5, 1.0, 0.0, # Upper right corner
-	             0.5, -0.5, 1.0, 1.0  # Lower right corner
-                ]
+    def generateVAO(self, coords):
         formatted_coords = np.array(coords, dtype=np.float32)
-        coordsVBO = VBO.staticArrayVBO(formatted_coords)
-        self.VAO = VAO.VAO()
-        self.VAO.LinkAttrib(coordsVBO, 0, 2, gl.GL_FLOAT, 4 * formatted_coords.dtype.itemsize, c_void_p())
-        self.VAO.LinkAttrib(coordsVBO, 1, 2, gl.GL_FLOAT, 4 * formatted_coords.dtype.itemsize, 
-                            c_void_p(2 * formatted_coords.dtype.itemsize))
-        coordsVBO.Unbind()
-        self.VAO.Unbind()
+        vbo = VBO.staticArrayVBO(formatted_coords)
+        vao = VAO.VAO()
+        vao.LinkAttrib(
+            vbo, 0, 2, gl.GL_FLOAT, 4 * formatted_coords.dtype.itemsize, c_void_p()
+        )
+        vao.LinkAttrib(
+            vbo,
+            1,
+            2,
+            gl.GL_FLOAT,
+            4 * formatted_coords.dtype.itemsize,
+            c_void_p(2 * formatted_coords.dtype.itemsize),
+        )
+        vbo.Unbind()
+        vao.Unbind()
+
+        return vao
 
     def generateEBO(self):
-        indices = [
-                	0, 2, 1, # Upper triangle
-	                0, 3, 2 # Lower triangle
-                ]
+        indices = [0, 1, 3, 1, 2, 3]  # Upper triangle  # Lower triangle
         formatted_indices = np.array(indices, dtype=np.uint32)
         self.EBO = EBO.EBO(formatted_indices)
         self.indices = formatted_indices
 
-    def draw_main(self, image):
-        gl.glBindTexture(gl.GL_TEXTURE_2D, self.main_cam_texID)
-        
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_NEAREST);
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR);
+    def draw_main(self):
+        for index, cam in enumerate(self.cams):
+            image = cam.fetch_frame()
+            if image is not None:
+                gl.glBindTexture(gl.GL_TEXTURE_2D, self.cam_texID[index])
 
-        # Set texture clamping method
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_REPEAT);
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_REPEAT);
-   
+                gl.glTexParameteri(
+                    gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_NEAREST
+                )
+                gl.glTexParameteri(
+                    gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR
+                )
 
-        gl.glTexImage2D(gl.GL_TEXTURE_2D,
-                        0,
-                        gl.GL_RGB,
-                        image.shape[1],
-                        image.shape[0],
-                        0,     
-                        gl.GL_BGR,
-                        gl.GL_UNSIGNED_BYTE,  
-                        image)
-        
-        self.VAO.Bind()
-        self.EBO.Bind()
+                # Set texture clamping method
+                gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_REPEAT)
+                gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_REPEAT)
 
-        texUni = gl.glGetUniformLocation(self.shaderProgram.ID, "tex0")
-        self.shaderProgram.Activate()
-        
-        gl.glUniform1i(texUni, 0)
-        
-        gl.glDrawElements(gl.GL_TRIANGLES, len(self.indices), gl.GL_UNSIGNED_INT, None)
+                gl.glTexImage2D(
+                    gl.GL_TEXTURE_2D,
+                    0,
+                    gl.GL_RGB,
+                    image.shape[1],
+                    image.shape[0],
+                    0,
+                    gl.GL_BGR,
+                    gl.GL_UNSIGNED_BYTE,
+                    image,
+                )
 
-        
+                self.VAOs[index].Bind()
+                self.EBO.Bind()
+
+                texUni = gl.glGetUniformLocation(self.shaderProgram.ID, "tex0")
+                self.shaderProgram.Activate()
+
+                gl.glUniform1i(texUni, 0)
+
+                gl.glDrawElements(
+                    gl.GL_TRIANGLES, len(self.indices), gl.GL_UNSIGNED_INT, None
+                )
+
     def draw(self):
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-        
-        image = self.main_cam.fetch_frame()
-        if image is not None:
-            self.draw_main(image)
-
+        self.draw_main()
