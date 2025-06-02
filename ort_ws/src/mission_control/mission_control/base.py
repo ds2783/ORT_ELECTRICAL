@@ -4,6 +4,7 @@ import rclpy.executors
 from rclpy.node import Node
 
 from sensor_msgs.msg import Joy
+from std_msgs.msg import Bool
 # from std_msgs.msg import String
 
 
@@ -23,26 +24,23 @@ class BaseNode(Node):
         # CONSTANTS -- DO NOT REASSIGN
         # --- 
 
-        # STATE VARIABLES
-        # ---
-        
         # STATE OBJECTS
         self.main_cam = StreamClient("Stereo","192.168.0.101","udp",5008, 640, 480, stereo=False)
+        self.qreader_ = QReader()
         # ---
             
-        # TESTS
-        # ---
+        # TIMERS
+        self.ping_timer_ = self.create_timer(0.2, self.pingCB_)
+        # ----
 
         # Could possibly intercept the joy-commands and process what gets sent onto the Gorgon but leave for now
         self.get_logger().info("The Base Station has been initialised.")
-
-        # OBJECTS --------------------
-        self.qreader_ = QReader()
         # ----------------------------
 
         # Topics ---------------------
+        self.connection_pub_ = self.create_publisher(Bool, "ping", 10)
         # self.qr_pub_ = self.create_publisher(String, "qr", 10)
-        self.controller_sub_ = self.create_subscription(Joy, "joy", self.controlCB, 10)
+        self.controller_sub_ = self.create_subscription(Joy, "joy", self.controlCB_, 10)
         # ----------------------------
 
         # Variables ------------------
@@ -50,7 +48,7 @@ class BaseNode(Node):
         self.last_qr = "None"
         # ----------------------------
 
-    def controlCB(self, msg: Joy):
+    def controlCB_(self, msg: Joy):
         trigger_pressed = msg.buttons[BUTTONS["CIRCLE"]]
         if trigger_pressed and not self.qr_button_:
             # CAPTURE QR-CODE
@@ -67,6 +65,11 @@ class BaseNode(Node):
         elif not trigger_pressed and self.qr_button_:
             # Ensure only one capture even per press
             self.qr_button_ = False
+
+    def pingCB_(self, msg: Bool):
+        msg = Bool()
+        msg.data = 1
+        self.connection_pub_.publish(msg)
 
     def handler(self, signal_received, frame):
         self.main_cam.stop()

@@ -1,15 +1,18 @@
 import rclpy
 from rclpy.node import Node
+
+from std_msgs.msg import Bool
 from sensor_msgs.msg import Joy
 
 from elysium.config.mappings import AXES, BUTTONS
 
+import time
 from dataclasses import dataclass
-
 from adafruit_servokit import ServoKit
 
 CAMERA_SERVO_Z = 6
 CAMERA_SERVO_X = 7
+
 
 @dataclass
 class twist:
@@ -27,7 +30,10 @@ class TelepresenceOperations(Node):
     def __init__(self):
         super().__init__("teleop")
         self.controller_commands_sub_ = self.create_subscription(
-            Joy, "joy", self.teleopCB, 10
+            Joy, "joy", self.teleopCB_, 10
+        )
+        self.base_poing_sub_ = self.create_subscription(
+            Bool, "ping", self.confirmConnectionCB_, 10
         )
 
         # State -
@@ -36,9 +42,26 @@ class TelepresenceOperations(Node):
 
         self.cam_angles = rotation2D(0, 0)
 
+        self.last_connection_ = time.time_ns()
+        self.connection_timer_ = self.create_timer(0.2, self.shutdownCB_)
+
         self.kit = ServoKit(channels=16)
 
-    def teleopCB(self, msg: Joy):
+    def confirmConnectionCB_(self, msg: Bool):
+        self.last_connection_ = time.time_ns()
+
+    def shutdownCB_(self):
+        if time.time_ns() > self.last_connection_ + 5e8:
+            self.target.linear = 0
+            self.target.rotation = 0
+            
+            self.cam_angles.x_axis = 0
+
+            self.drive()
+            self.camera_rotate()
+            
+
+    def teleopCB_(self, msg: Joy):
         # DRIVE -----------------
         self.target.linear = msg.axes[AXES["TRIGGERRIGHT"]]
         self.target.linear -= msg.axes[AXES["TRIGGERLEFT"]]
@@ -82,7 +105,9 @@ class TelepresenceOperations(Node):
         )
 
     def camera_rotate(self):
+        # POSITIONAL
         self.kit.servo[CAMERA_SERVO_Z].angle = self.cam_angles.z_axis
+        # CONTIOUS
         self.kit.servo[CAMERA_SERVO_X].angle = self.cam_angles.x_axis
 
 
