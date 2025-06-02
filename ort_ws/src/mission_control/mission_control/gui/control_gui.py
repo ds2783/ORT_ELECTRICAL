@@ -4,7 +4,7 @@ import OpenGL.GL as gl
 from imgui.integrations.glfw import GlfwRenderer
 
 from mission_control.gui.dashboard import Dashboard
-
+from threading import Thread
 
 def impl_glfw_init(window_name="Project Gorgon", width=1920, height=1080):
     if not glfw.init():
@@ -31,7 +31,7 @@ def impl_glfw_init(window_name="Project Gorgon", width=1920, height=1080):
 
 
 class GUI(object):
-    def __init__(self, cams):
+    def __init__(self, cams, socket):
         super().__init__()
         self.backgroundColor = (0, 0, 0, 1)
         self.window = impl_glfw_init()
@@ -43,7 +43,19 @@ class GUI(object):
         # alternative place all shader code with string in a python file
         self.dashboard = Dashboard(cams)
 
-    def run(self, last_qr):
+        self.comms = socket
+        self.last_qr_ = "None"
+        
+        node_thread = Thread(target=self.recieveComms)
+        node_thread.start()
+
+    def recieveComms(self):
+        recieved_qr = self.comms.recv(1024)
+        if recieved_qr is not None:
+            self.last_qr_ = str(recieved_qr)
+
+
+    def run(self):
         glfw.poll_events()
         self.impl.process_inputs()
         gl.glClearColor(*self.backgroundColor)
@@ -56,11 +68,11 @@ class GUI(object):
 
         imgui.begin("QR-Display", True)
         imgui.set_window_size(180, 80)
-        imgui.text(last_qr)
+        imgui.text(self.last_qr_)
         imgui.end()
 
         # Display Testing Window
-        imgui.show_test_window()
+        # imgui.show_test_window()
 
         imgui.render()
 

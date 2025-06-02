@@ -16,10 +16,11 @@ import glfw
 from threading import Thread
 from functools import partial
 from qreader import QReader
+import socket
 
 
 class BaseNode(Node):
-    def __init__(self):
+    def __init__(self, comms):
         super().__init__("base")
         # CONSTANTS -- DO NOT REASSIGN
         # --- 
@@ -27,6 +28,7 @@ class BaseNode(Node):
         # STATE OBJECTS
         self.main_cam = StreamClient("Stereo","192.168.0.101","udp",5008, 640, 480, stereo=False)
         self.qreader_ = QReader()
+        self.comms_ = comms
         # ---
             
         # TIMERS
@@ -62,13 +64,15 @@ class BaseNode(Node):
                 # message.data = str(qreader_out)
                 # self.qr_pub_.publish(message)
                 self.last_qr = str(qreader_out)
+                self.sendComms(self.last_qr)
+
         elif not trigger_pressed and self.qr_button_:
             # Ensure only one capture even per press
             self.qr_button_ = False
 
-    def pingCB_(self, msg: Bool):
+    def pingCB_(self):
         msg = Bool()
-        msg.data = 1
+        msg.data = True
         self.connection_pub_.publish(msg)
 
     def handler(self, signal_received, frame):
@@ -80,17 +84,27 @@ class BaseNode(Node):
             + str(frame)
         )
 
+    def sendComms(self, msg):
+        self.comms_.send(msg.encode())
+
 def main(args=None):
     rclpy.init(args=args)
-    base = BaseNode()
+    comms = socket.socketpair(socket.AF_UNIX)
+    base = BaseNode(comms[0])
+
     cams = [StreamClient("Stereo","192.168.0.101","udp",5009,640,480,stereo=False),
             StreamClient("Stereo","192.168.0.101","udp",5010,640,480,stereo=False)]
-    gui = control_gui.GUI(cams)
+    gui = control_gui.GUI(cams, comms[1])
+
+    executor = rclpy.executors.MultiThreadedExecutor()
+    executor.add_node(base)
+
+    node_thread = Thread(target=executor.spin)
+    node_thread.start()
 
     # Run GUI
     while not glfw.window_should_close(gui.window):
-        gui.run(base.last_qr)
-        rclpy.spin_once(base)
+        gui.run()
 
     # Cleanup After Shutdown
     gui.impl.shutdown()
