@@ -98,8 +98,9 @@ class VL53L4CD:
         self.i2c_address = i2c_address
         self.i2c_bus = i2c_bus
         model_id, module_type = self.model_info
-        
-        logger.info(f"model data {str(self.model_info)}, type {type(self.model_info)}")
+
+        self.logger = logger
+        self.logger.info(f"model data {str(self.model_info)}, type {type(self.model_info)}")
 
         if model_id != 0xEB or module_type != 0xAA:
             raise RuntimeError("Wrong sensor ID or type!")
@@ -466,6 +467,8 @@ class VL53L4CD:
 
     def _read_register(self, register, length=1):
         data = self.i2c_bus.read_i2c_block_data(self.i2c_address, register, length=length)
+        self.logger.info(f"DATA READ: {data}")
+
         tmp = bytes()
 
         for b in data:
