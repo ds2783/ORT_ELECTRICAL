@@ -459,12 +459,10 @@ class VL53L4CD:
     def _read_register(self, register, length=1):
         data = self.i2c_bus.read_i2c_block_data(self.i2c_address, register, length=length)
         
-        match length:
-            case 1: fmt = "B"
-            case 2: fmt = "H"
-            case 4: fmt = "I"
-
-        data = struct.pack(f">{fmt*length}", *data)
+        tmp = bytes()
+        for b in data:
+            tmp += b
+            
         return data
 
     def set_address(self, new_address):
