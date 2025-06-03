@@ -66,17 +66,17 @@ class TelepresenceOperations(Node):
 
     def teleopCB_(self, msg: Joy):
         # DRIVE -----------------
-        self.target.linear = msg.axes[AXES["TRIGGERRIGHT"]] + self.offset_
-        self.target.linear -= msg.axes[AXES["TRIGGERLEFT"]] + self.offset_
+        self.target.linear = msg.axes[AXES["TRIGGERRIGHT"]]
+        self.target.linear -= msg.axes[AXES["TRIGGERLEFT"]]
         # goes from 1 to -1, therefore difference between the two
         # should be halved.
         self.target.linear /= 2
-        self.target.rotation = msg.axes[AXES["LEFTX"]] + self.offset_
+        self.target.rotation = msg.axes[AXES["LEFTX"]]
 
         self.drive()
         # ------------------------
-        self.cam_angles.z_axis = 90 + msg.axes[AXES["RIGHTX"]] * 90 + self.offset_
-        self.cam_angles.x_axis = 90 + msg.axes[AXES["LEFTX"]] * 90 + self.offset_
+        self.cam_angles.z_axis = self.bound_180(90 + msg.axes[AXES["RIGHTX"]] * 90 + self.offset_)
+        self.cam_angles.x_axis = self.bound_180(90 + msg.axes[AXES["LEFTX"]] * 90 + self.offset_)
 
         self.camera_rotate()
 
@@ -87,13 +87,20 @@ class TelepresenceOperations(Node):
             value = -1
         return value
 
+    def bound_180(self, value):
+        if value > 180:
+            value = 180
+        elif value < 0:
+            value = 0
+        return value
+
     def drive(self):
         left_side = self.bound_range(self.target.linear + 0.5 * self.target.rotation)
         right_side = self.bound_range(-self.target.linear + 0.5 * self.target.rotation)
 
         # TESTING TO MAKE WHEELS MORE SENSITIVE
-        left_side = 90.0 + 60 * left_side
-        right_side = 90.0 + 60 * right_side
+        left_side = self.bound_180(90.0 + 60 * left_side + self.offset_)
+        right_side = self.bound_180(90.0 + 60 * right_side + self.offset_)
 
         for i in range(0, 3):
             self.kit.servo[i].angle = right_side
