@@ -19,10 +19,7 @@ Implementation Notes
 * `Adafruit VL53L4CD Time of Flight Distance Sensor <https://www.adafruit.com/product/5396>`_
 
 **Software and Dependencies:**
-
-* Adafruit CircuitPython firmware for the supported boards:
-  https://circuitpython.org/downloads
-* Adafruit's Bus Device library: https://github.com/adafruit/Adafruit_CircuitPython_BusDevice
+- smbus3
 """
 
 import struct
