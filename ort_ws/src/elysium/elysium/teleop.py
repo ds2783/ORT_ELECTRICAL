@@ -13,6 +13,8 @@ from adafruit_servokit import ServoKit
 CAMERA_SERVO_Z = 6
 CAMERA_SERVO_X = 7
 
+OFFSET = 10.
+
 
 @dataclass
 class twist:
@@ -45,6 +47,8 @@ class TelepresenceOperations(Node):
         self.last_connection_ = time.time_ns()
         self.connection_timer_ = self.create_timer(0.2, self.shutdownCB_)
 
+        self.offset_ = OFFSET
+
         self.kit = ServoKit(channels=16)
 
     def confirmConnectionCB_(self, msg: Bool):
@@ -62,17 +66,17 @@ class TelepresenceOperations(Node):
 
     def teleopCB_(self, msg: Joy):
         # DRIVE -----------------
-        self.target.linear = msg.axes[AXES["TRIGGERRIGHT"]]
-        self.target.linear -= msg.axes[AXES["TRIGGERLEFT"]]
+        self.target.linear = msg.axes[AXES["TRIGGERRIGHT"]] + self.offset_
+        self.target.linear -= msg.axes[AXES["TRIGGERLEFT"]] + self.offset_
         # goes from 1 to -1, therefore difference between the two
         # should be halved.
         self.target.linear /= 2
-        self.target.rotation = msg.axes[AXES["LEFTX"]]
+        self.target.rotation = msg.axes[AXES["LEFTX"]] + self.offset_
 
         self.drive()
         # ------------------------
-        self.cam_angles.z_axis = msg.axes[AXES["RIGHTX"]] * 90
-        self.cam_angles.x_axis = msg.axes[AXES["LEFTX"]] * 90
+        self.cam_angles.z_axis = 90 + msg.axes[AXES["RIGHTX"]] * 90 + self.offset_
+        self.cam_angles.x_axis = 90 + msg.axes[AXES["LEFTX"]] * 90 + self.offset_
 
         self.camera_rotate()
 
