@@ -458,9 +458,11 @@ class VL53L4CD:
     
     def _read_register(self, register, length=1):
         data = self.i2c_bus.read_i2c_block_data(self.i2c_address, register, length=length)
-        
+
         tmp = bytes()
         for b in data:
+            if isinstance(b, int):
+                b = int.to_bytes(b)
             tmp += b
 
         return tmp
