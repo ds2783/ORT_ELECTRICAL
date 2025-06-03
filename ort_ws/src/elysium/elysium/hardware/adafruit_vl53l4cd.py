@@ -482,4 +482,4 @@ class VL53L4CD:
         `example <examples.html#id2>`_ for proper usage.
         """
         self._write_register(_VL53L4CD_I2C_SLAVE_DEVICE_ADDRESS, struct.pack(">B", new_address))
-        self.i2c_device = i2c_device.I2CDevice(self._i2c, new_address)
+        self.i2c_address = new_address
