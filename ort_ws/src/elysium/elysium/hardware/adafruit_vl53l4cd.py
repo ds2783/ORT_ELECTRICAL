@@ -19,88 +19,81 @@ Implementation Notes
 * `Adafruit VL53L4CD Time of Flight Distance Sensor <https://www.adafruit.com/product/5396>`_
 
 **Software and Dependencies:**
-- smbus3
+
+* Adafruit CircuitPython firmware for the supported boards:
+  https://circuitpython.org/downloads
+* Adafruit's Bus Device library: https://github.com/adafruit/Adafruit_CircuitPython_BusDevice
 """
 
 import struct
 import time
 
-import smbus3 as smbus
+from adafruit_bus_device import i2c_device
+from micropython import const
 
-#__version__ = "0.0.0+auto.0"
-#__repo__ = "https://github.com/adafruit/Adafruit_CircuitPython_VL53L4CD.git"
+__version__ = "0.0.0+auto.0"
+__repo__ = "https://github.com/adafruit/Adafruit_CircuitPython_VL53L4CD.git"
 
-_VL53L4CD_SOFT_RESET = 0x0000
-_VL53L4CD_I2C_SLAVE_DEVICE_ADDRESS = 0x0001
-_VL53L4CD_VHV_CONFIG_TIMEOUT_MACROP_LOOP_BOUND = 0x0008
-_VL53L4CD_XTALK_PLANE_OFFSET_KCPS = 0x0016
-_VL53L4CD_XTALK_X_PLANE_GRADIENT_KCPS = 0x0018
-_VL53L4CD_XTALK_Y_PLANE_GRADIENT_KCPS = 0x001A
-_VL53L4CD_RANGE_OFFSET_MM = 0x001E
-_VL53L4CD_INNER_OFFSET_MM = 0x0020
-_VL53L4CD_OUTER_OFFSET_MM = 0x0022
-_VL53L4CD_I2C_FAST_MODE_PLUS = 0x002D
-_VL53L4CD_GPIO_HV_MUX_CTRL = 0x0030
-_VL53L4CD_GPIO_TIO_HV_STATUS = 0x0031
-_VL53L4CD_SYSTEM_INTERRUPT = 0x0046
-_VL53L4CD_RANGE_CONFIG_A = 0x005E
-_VL53L4CD_RANGE_CONFIG_B = 0x0061
-_VL53L4CD_RANGE_CONFIG_SIGMA_THRESH = 0x0064
-_VL53L4CD_MIN_COUNT_RATE_RTN_LIMIT_MCPS = 0x0066
-_VL53L4CD_INTERMEASUREMENT_MS = 0x006C
-_VL53L4CD_THRESH_HIGH = 0x0072
-_VL53L4CD_THRESH_LOW = 0x0074
-_VL53L4CD_SYSTEM_INTERRUPT_CLEAR = 0x0086
-_VL53L4CD_SYSTEM_START = 0x0087
-_VL53L4CD_RESULT_RANGE_STATUS = 0x0089
-_VL53L4CD_RESULT_SPAD_NB = 0x008C
-_VL53L4CD_RESULT_SIGNAL_RATE = 0x008E
-_VL53L4CD_RESULT_AMBIENT_RATE = 0x0090
-_VL53L4CD_RESULT_SIGMA = 0x0092
-_VL53L4CD_RESULT_DISTANCE = 0x0096
+_VL53L4CD_SOFT_RESET = const(0x0000)
+_VL53L4CD_I2C_SLAVE_DEVICE_ADDRESS = const(0x0001)
+_VL53L4CD_VHV_CONFIG_TIMEOUT_MACROP_LOOP_BOUND = const(0x0008)
+_VL53L4CD_XTALK_PLANE_OFFSET_KCPS = const(0x0016)
+_VL53L4CD_XTALK_X_PLANE_GRADIENT_KCPS = const(0x0018)
+_VL53L4CD_XTALK_Y_PLANE_GRADIENT_KCPS = const(0x001A)
+_VL53L4CD_RANGE_OFFSET_MM = const(0x001E)
+_VL53L4CD_INNER_OFFSET_MM = const(0x0020)
+_VL53L4CD_OUTER_OFFSET_MM = const(0x0022)
+_VL53L4CD_I2C_FAST_MODE_PLUS = const(0x002D)
+_VL53L4CD_GPIO_HV_MUX_CTRL = const(0x0030)
+_VL53L4CD_GPIO_TIO_HV_STATUS = const(0x0031)
+_VL53L4CD_SYSTEM_INTERRUPT = const(0x0046)
+_VL53L4CD_RANGE_CONFIG_A = const(0x005E)
+_VL53L4CD_RANGE_CONFIG_B = const(0x0061)
+_VL53L4CD_RANGE_CONFIG_SIGMA_THRESH = const(0x0064)
+_VL53L4CD_MIN_COUNT_RATE_RTN_LIMIT_MCPS = const(0x0066)
+_VL53L4CD_INTERMEASUREMENT_MS = const(0x006C)
+_VL53L4CD_THRESH_HIGH = const(0x0072)
+_VL53L4CD_THRESH_LOW = const(0x0074)
+_VL53L4CD_SYSTEM_INTERRUPT_CLEAR = const(0x0086)
+_VL53L4CD_SYSTEM_START = const(0x0087)
+_VL53L4CD_RESULT_RANGE_STATUS = const(0x0089)
+_VL53L4CD_RESULT_SPAD_NB = const(0x008C)
+_VL53L4CD_RESULT_SIGNAL_RATE = const(0x008E)
+_VL53L4CD_RESULT_AMBIENT_RATE = const(0x0090)
+_VL53L4CD_RESULT_SIGMA = const(0x0092)
+_VL53L4CD_RESULT_DISTANCE = const(0x0096)
 
-_VL53L4CD_RESULT_OSC_CALIBRATE_VAL = 0x00DE
-_VL53L4CD_FIRMWARE_SYSTEM_STATUS = 0x00E5
-_VL53L4CD_IDENTIFICATION_MODEL_ID = 0x010F
+_VL53L4CD_RESULT_OSC_CALIBRATE_VAL = const(0x00DE)
+_VL53L4CD_FIRMWARE_SYSTEM_STATUS = const(0x00E5)
+_VL53L4CD_IDENTIFICATION_MODEL_ID = const(0x010F)
 
-RANGE_VALID = 0x00
-RANGE_WARN_SIGMA_ABOVE = 0x01
-RANGE_WARN_SIGMA_BELOW = 0x02
-RANGE_ERROR_DISTANCE_BELOW_DETECTION_THRESHOLD = 0x03
-RANGE_ERROR_INVALID_PHASE = 0x04
-RANGE_ERROR_HW_FAIL = 0x05
-RANGE_WARN_NO_WRAP_AROUND_CHECK = 0x06
-RANGE_ERROR_WRAPPED_TARGET_PHASE_MISMATCH = 0x07
-RANGE_ERROR_PROCESSING_FAIL = 0x08
-RANGE_ERROR_CROSSTALK_FAIL = 0x09
-RANGE_ERROR_INTERRUPT = 0x0A
-RANGE_ERROR_MERGED_TARGET = 0x0B
-RANGE_ERROR_SIGNAL_TOO_WEAK = 0x0C
-RANGE_ERROR_OTHER = 0xFF
+RANGE_VALID = const(0x00)
+RANGE_WARN_SIGMA_ABOVE = const(0x01)
+RANGE_WARN_SIGMA_BELOW = const(0x02)
+RANGE_ERROR_DISTANCE_BELOW_DETECTION_THRESHOLD = const(0x03)
+RANGE_ERROR_INVALID_PHASE = const(0x04)
+RANGE_ERROR_HW_FAIL = const(0x05)
+RANGE_WARN_NO_WRAP_AROUND_CHECK = const(0x06)
+RANGE_ERROR_WRAPPED_TARGET_PHASE_MISMATCH = const(0x07)
+RANGE_ERROR_PROCESSING_FAIL = const(0x08)
+RANGE_ERROR_CROSSTALK_FAIL = const(0x09)
+RANGE_ERROR_INTERRUPT = const(0x0A)
+RANGE_ERROR_MERGED_TARGET = const(0x0B)
+RANGE_ERROR_SIGNAL_TOO_WEAK = const(0x0C)
+RANGE_ERROR_OTHER = const(0xFF)
 
 
 class VL53L4CD:
     """Driver for the VL53L4CD distance sensor."""
 
-    def __init__(self, i2c_bus, i2c_address=0x29):
-        
-        if i2c_address != 0x29:
-            tmp_addr = i2c_address
-            i2c_address = 0x29
-        else:
-            tmp_addr = None
-
-        self.i2c_address = i2c_address
-        self.i2c_bus = i2c_bus
-
+    def __init__(self, i2c, address=41):
+        self._i2c = i2c
+        self.i2c_device = i2c_device.I2CDevice(i2c, address)
         model_id, module_type = self.model_info
         if model_id != 0xEB or module_type != 0xAA:
             raise RuntimeError("Wrong sensor ID or type!")
         self._ranging = False
         self._sensor_init()
-
-        if tmp_addr:
-            self.set_address(tmp_addr)
 
     def _sensor_init(self):
         init_seq = (
@@ -439,39 +432,24 @@ class VL53L4CD:
             time.sleep(0.001)
         raise TimeoutError("Time out starting VHV.")
 
-    def __write_register(self, address, data, length=None):  # old read/write method as reference
+    def _write_register(self, address, data, length=None):
         if length is None:
             length = len(data)
         with self.i2c_device as i2c:
             i2c.write(struct.pack(">H", address) + data[:length])
 
-    def __read_register(self, address, length=1):
+    def _read_register(self, address, length=1):
         data = bytearray(length)
         with self.i2c_device as i2c:
             i2c.write(struct.pack(">H", address))
             i2c.readinto(data)
         return data
 
-    def _write_register(self, register, data, length=None):
-        if not length: length = len(data)
-        self.i2c_bus.write_i2c_block_data(self.i2c_address, register, list(data)[:length])
-    
-    def _read_register(self, register, length=1):
-        data = self.i2c_bus.read_i2c_block_data(self.i2c_address, register, length=length)
-
-        tmp = bytes()
-        for b in data:
-            if isinstance(b, int):
-                b = int.to_bytes(b)
-            tmp += b
-
-        return tmp
-
     def set_address(self, new_address):
         """
-        Set a new I2C address to the instantiated object. This is only called when using
+        Set a new I2C address to the instantaited object. This is only called when using
         multiple VL53L4CD sensors on the same I2C bus (SDA & SCL pins). See also the
         `example <examples.html#id2>`_ for proper usage.
         """
         self._write_register(_VL53L4CD_I2C_SLAVE_DEVICE_ADDRESS, struct.pack(">B", new_address))
-        self.i2c_address = new_address
+        self.i2c_device = i2c_device.I2CDevice(self._i2c, new_address)
