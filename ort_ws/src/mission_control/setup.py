@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'base =  mission_control.base:main',
+            'control_gui = mission_control.control_gui:main',
         ],
     },
 )

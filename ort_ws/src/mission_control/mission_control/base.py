@@ -5,32 +5,35 @@ from rclpy.node import Node
 
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Bool
-# from std_msgs.msg import String
 
 
-from mission_control.gui import control_gui
-from mission_control.streaming.stream_client import StreamClient 
+from mission_control.streaming.stream_client import StreamClient
 from mission_control.config.mappings import AXES, BUTTONS
+from mission_control.config.ports import PORT1
 
 import glfw
-from threading import Thread
-from functools import partial
+from multiprocessing import Process
 from qreader import QReader
-import socket
+from multiprocessing.connection import Client
+
 
 
 class BaseNode(Node):
-    def __init__(self, comms):
+    def __init__(self, port):
         super().__init__("base")
         # CONSTANTS -- DO NOT REASSIGN
-        # --- 
+        # ---
 
         # STATE OBJECTS
-        self.main_cam = StreamClient("Stereo","192.168.0.101","udp",5008, 640, 480, stereo=False)
+        self.main_cam = StreamClient(
+            "Stereo", "192.168.0.101", "udp", 5008, 640, 480, stereo=False
+        )
         self.qreader_ = QReader()
-        self.comms_ = comms
+
+        address = ('localhost', port)
+        self.comms_ = Client(address, authkey=b'123')
         # ---
-            
+
         # TIMERS
         self.ping_timer_ = self.create_timer(0.2, self.pingCB_)
         # ----
@@ -41,7 +44,6 @@ class BaseNode(Node):
 
         # Topics ---------------------
         self.connection_pub_ = self.create_publisher(Bool, "ping", 10)
-        # self.qr_pub_ = self.create_publisher(String, "qr", 10)
         self.controller_sub_ = self.create_subscription(Joy, "joy", self.controlCB_, 10)
         # ----------------------------
 
@@ -55,14 +57,9 @@ class BaseNode(Node):
         if trigger_pressed and not self.qr_button_:
             # CAPTURE QR-CODE
             self.qr_button_ = True
-
             image = self.main_cam.fetch_frame()
             if image is not None:
                 qreader_out = self.qreader_.detect_and_decode(image=image)
-                # create Ros2 message 
-                # message = String()
-                # message.data = str(qreader_out)
-                # self.qr_pub_.publish(message)
                 self.last_qr = str(qreader_out)
                 self.sendComms(self.last_qr)
 
@@ -85,29 +82,18 @@ class BaseNode(Node):
         )
 
     def sendComms(self, msg):
-        self.comms_.send(msg.encode())
+        self.comms_.send(msg)
 
 def main(args=None):
     rclpy.init(args=args)
-    comms = socket.socketpair(socket.AF_UNIX)
-    base = BaseNode(comms[0])
 
-    cams = [StreamClient("Stereo","192.168.0.101","udp",5009,640,480,stereo=False),
-            StreamClient("Stereo","192.168.0.101","udp",5010,640,480,stereo=False)]
-    gui = control_gui.GUI(cams, comms[1])
+    # has to be initialised this way round!
+    base = BaseNode(PORT1)
 
-    executor = rclpy.executors.MultiThreadedExecutor()
-    executor.add_node(base)
-
-    node_thread = Thread(target=executor.spin)
-    node_thread.start()
-
-    # Run GUI
-    while not glfw.window_should_close(gui.window):
-        gui.run()
-
+    # executor = rclpy.executors.MultiThreadedExecutor()
+    # executor.add_node(base)
+    
+    rclpy.spin(base)
+    # executor.spin()
     # Cleanup After Shutdown
-    gui.impl.shutdown()
-    glfw.terminate()
     rclpy.shutdown()
-

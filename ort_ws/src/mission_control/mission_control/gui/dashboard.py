@@ -1,5 +1,4 @@
 # MapSize is 100x100meters
-from uuid import main
 import numpy as np
 import OpenGL.GL as gl
 
@@ -61,22 +60,23 @@ class Dashboard:
         self.shaderProgram = shaders.rawShaderProgram(vertexSource, fragmentSource)
 
         main_coords = [
-            -0.5, 0, 0, 0.0, 0.0,  # lower left corner
+            -0.5, 0.0, 0.0, 0.0,  # lower left corner
             -0.5, 0.5, 1.0, 0.0,  # upper left corner
-             0.1, 0.5, 1.0, 1.0,  # upper right corner
-             0.1, 0.0, 0.0, 1.0,  # lower right corner
+             0.0, 0.5, 1.0, 1.0,  # upper right corner
+             0.0, 0.0, 0.0, 1.0,  # lower right corner
         ]
 
         secondary_coords = [
-            -0.5, -0.5, 0.0, 0.0,  # lower left corner
-            -0.5, 0.0, 1.0, 0.0,  # upper left corner
-             0.1, 0.0, 1.0, 1.0,  # upper right corner
-             0.1,-0.5, 0.0, 1.0,  # lower right corner
+            -0.5,-0.5, 0.0, 1.0,  # lower left corner
+            -0.5, 0.0, 0.0, 0.0,  # upper left corner
+             0.0, 0.0, 1.0, 0.0,  # upper right corner
+             0.0,-0.5, 1.0, 1.0,  # lower right corner
         ]
+
         self.VAOs = [self.generateVAO(main_coords), self.generateVAO(secondary_coords)]
         if len(cams) != self.VAOs:
             # fix to use the ROS2 logger
-            print("ERROR, incorrect dimesions of Cams passed.")
+            print("ERROR, incorrect dimensions of Cams passed.")
         self.generateEBO()
 
     def generateVAO(self, coords):
@@ -149,3 +149,4 @@ class Dashboard:
     def draw(self):
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
         self.draw_main()
+

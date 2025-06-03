@@ -54,12 +54,11 @@ class TelepresenceOperations(Node):
         if time.time_ns() > self.last_connection_ + 5e8:
             self.target.linear = 0
             self.target.rotation = 0
-            
+
             self.cam_angles.x_axis = 0
 
             self.drive()
             self.camera_rotate()
-            
 
     def teleopCB_(self, msg: Joy):
         # DRIVE -----------------
@@ -77,19 +76,16 @@ class TelepresenceOperations(Node):
 
         self.camera_rotate()
 
-    def drive(self):
-        left_side = self.target.linear + 0.5 * self.target.rotation
-        if left_side > 1:
-            left_side = 1
-        if left_side < -1:
-            left_side = -1
+    def bound_range(self, value):
+        if value > 1:
+            value = 1
+        elif value < -1:
+            value = -1
+        return value
 
-        # UGLY MUST FIX
-        right_side = -self.target.linear + 0.5 * self.target.rotation
-        if right_side > 1:
-            right_side = 1
-        if right_side < -1:
-            right_side = -1
+    def drive(self):
+        left_side = self.bound_range(self.target.linear + 0.5 * self.target.rotation)
+        right_side = self.bound_range(-self.target.linear + 0.5 * self.target.rotation)
 
         # TESTING TO MAKE WHEELS MORE SENSITIVE
         left_side = 90.0 + 60 * left_side

@@ -1,15 +1,22 @@
-from multiprocessing import connection
+import rclpy
+from rclpy.node import Node
+
 import imgui.core as imgui
 import glfw
 import OpenGL.GL as gl
 from imgui.integrations.glfw import GlfwRenderer
 
 from mission_control.gui.dashboard import Dashboard
+from mission_control.streaming.stream_client import StreamClient
+from mission_control.config.ports import PORT1, PORT_MAIN, PORT_SECONDARY
+
 from threading import Thread
 from multiprocessing.connection import Listener
-import time
 
-def impl_glfw_init(window_name="Project Gorgon", width=1920, height=1080):
+# DON'T BOTH WITH EXECUTORS
+# ONLY USING ROS NODE WRAPPER FOR LAUNCH FILE
+
+def impl_glfw_init(window_name="Project Gorgon", width=2200, height=1300):
     if not glfw.init():
         print("Could not initialize OpenGL context")
         exit(1)
@@ -33,9 +40,9 @@ def impl_glfw_init(window_name="Project Gorgon", width=1920, height=1080):
     return window
 
 
-class GUI(object):
+class GUI(Node):
     def __init__(self, cams, port):
-        super().__init__()
+        super().__init__("control_gui")
         self.backgroundColor = (0, 0, 0, 1)
         self.window = impl_glfw_init()
         gl.glClearColor(*self.backgroundColor)
@@ -50,13 +57,13 @@ class GUI(object):
         self.listener = Listener(self.address, authkey=b'123')
         self.last_qr_ = "None"
         
+        self.conn = self.listener.accept()
         comms_thread = Thread(target=self.recieveComms)
         comms_thread.start()
 
     def recieveComms(self):
         while True:
-            conn = self.listener.accept()
-            recieved_qr = conn.recv()
+            recieved_qr = self.conn.recv()
             if recieved_qr is not None:
                 self.last_qr_ = str(recieved_qr)
 
@@ -90,3 +97,23 @@ class GUI(object):
         self.impl.render(imgui.get_draw_data())
         glfw.swap_buffers(self.window)
 
+def main(args=None):
+    rclpy.init(args=args)
+    
+    cams = [
+        StreamClient("Stereo", "192.168.0.101", "udp", PORT_MAIN, 640, 480, stereo=False),
+        StreamClient("Stereo", "192.168.0.101", "udp", PORT_SECONDARY, 640, 480, stereo=False),
+    ]
+    gui = GUI(cams, PORT1)
+
+    # DON'T BOTH WITH EXECUTORS
+    # ONLY USING ROS NODE WRAPPER FOR LAUNCH FILE
+
+    # Run GUI
+    while not glfw.window_should_close(gui.window):
+        gui.run()
+
+    # Cleanup After Shutdown
+    gui.impl.shutdown()
+    glfw.terminate()
+    rclpy.shutdown()

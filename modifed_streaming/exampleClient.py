@@ -30,7 +30,7 @@ def stop():
 clients=[
         # StreamClient("Stereo","stereocam","tcp",8081,720,640,stereo=True),
         # StreamClient("Stereo","224.0.0.1","udp",5008, 640, 480, stereo=False),
-        StreamClient("Stereo","192.168.0.101","udp",5008, 640, 480, stereo=False),
+        StreamClient("Stereo","192.168.0.101","udp",5030, 640, 480, stereo=False),
         # StreamClient("USB","stereocam","tcp",8082,640,480),
         # StreamClient("USB","127.0.0.1","udp",8082,640,480),
         # StreamClient("Stereo","stereocam","rtsp","8554/stream1",640,480,stereo=True),
