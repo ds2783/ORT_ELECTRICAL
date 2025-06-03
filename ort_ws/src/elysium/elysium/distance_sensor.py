@@ -5,7 +5,7 @@ import smbus3 as smbus
 
 from std_msgs.msg import Float32
 import threading
-import elysium.adafruit_vl53l4cd as tof
+import elysium.hardware.adafruit_vl53l4cd as tof
 
 
 QoS = QoSProfile(
