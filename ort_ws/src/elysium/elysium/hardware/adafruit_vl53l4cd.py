@@ -88,7 +88,7 @@ RANGE_ERROR_OTHER = 0xFF
 class VL53L4CD:
     """Driver for the VL53L4CD distance sensor."""
 
-    def __init__(self, i2c_bus, i2c_address=0x29):
+    def __init__(self, i2c_bus, i2c_address=0x29, logger=None):
         if i2c_address != 0x29:
             tmp_addr = i2c_address
             i2c_address = 0x29
@@ -99,7 +99,7 @@ class VL53L4CD:
         self.i2c_bus = i2c_bus
         model_id, module_type = self.model_info
         
-        self.get_logger().info(f"model data {str(self.model_info)}, type {type(self.model_info)}")
+        logger.info(f"model data {str(self.model_info)}, type {type(self.model_info)}")
 
         if model_id != 0xEB or module_type != 0xAA:
             raise RuntimeError("Wrong sensor ID or type!")
