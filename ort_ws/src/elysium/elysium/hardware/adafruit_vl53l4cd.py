@@ -82,11 +82,11 @@ RANGE_ERROR_OTHER = 0xFF
 class VL53L4CD:
     """Driver for the VL53L4CD distance sensor."""
 
-    def __init__(self, i2c_address=0x52):
+    def __init__(self, i2c_address=0x29):
         
-        if i2c_address != 0x52:
+        if i2c_address != 0x29:
             tmp_addr = i2c_address
-            i2c_address = 0x52
+            i2c_address = 0x29
         else:
             tmp_addr = None
 
