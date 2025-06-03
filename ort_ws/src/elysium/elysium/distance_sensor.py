@@ -28,7 +28,7 @@ class DistanceNode(Node):
     def __init__(self, topic_name):
         
         msg_type = Float32
-        self.distance_publisher = self.create_publisher(msg_type=msg_type, topic=topic_name, QoS=QoS)
+        self.distance_publisher = self.create_publisher(msg_type=msg_type, topic=topic_name, qos_profile=QoS)
         
         refresh_period = 200e-3  # 200ms data retrieval rate
         self.poll_data = self.create_timer(refresh_period, self.get_data, autostart=False)
