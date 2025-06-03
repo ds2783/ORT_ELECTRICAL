@@ -10,18 +10,18 @@ from signal import signal, SIGINT
 MULTICAST=False
 IP1 = '192.168.0.103' # UDP multicast IP
 PORT1=5008
-IP2 = '192.168.0.101'
-PORT2 = 5009
+IP2 = '192.168.0.103'
+PORT2 = 5020
 
 MODEL="imx708_noir" # camera model name (find using libcamera-vid --list-cameras)
 WIDTH=1296
 HEIGHT=972
 NAME="camera" # stream name for display in console
 
-ip1 = '192.168.0.103'
-port1 = 5007
-ip2 = '192.168.0.101'
-port2 = 5006
+MODEL2="imx219"
+IP_SECONDARY = '192.168.0.103'
+PORT_SECONDARY = 5030
+NAME2="secondary"
 
 out=Output("None") # console output, with optional TCP forwarding
 
@@ -30,6 +30,11 @@ stream=StreamServer(out,MODEL,NAME) # system finds the camera based upon the mod
 stream.configure(WIDTH,HEIGHT)
 stream.start_two(IP1, PORT1, IP2, PORT2) # using a multicast address 224.1.1.1:5008
 stream.set_bitrate(5000000)
+
+stream2=StreamServer(out,MODEL2,NAME2)
+stream2.configure(WIDTH, HEIGHT)
+stream2.start(IP_SECONDARY, PORT_SECONDARY)
+stream2.set_bitrate(5000000)
 
 #stream.set_controls({"AfMode": controls.AfModeEnum.Continuous}) # set a libcamera control
 
