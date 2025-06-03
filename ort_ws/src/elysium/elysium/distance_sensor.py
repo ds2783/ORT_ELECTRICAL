@@ -35,7 +35,15 @@ class DistanceNode(Node):
         refresh_period = 200e-3  # 200ms data retrieval rate
         self.poll_data = self.create_timer(refresh_period, self.get_data, autostart=False)
 
-        self.sensor = tof.VL53L4CD(i2c_address=i2c_addr)
+        self.bus = smbus.SMBus("/dev/i2c-1")
+        self.i2c_addr = i2c_addr
+        self.sensor = tof.VL53L4CD(i2c_bus=self.bus, i2c_address=self.i2c_addr)
+
+    def test_i2c(self):
+        try:
+            tmp = self._read_register(0x010F, 2)
+        except Exception:
+            self.get_logger().error(f"Node {self.get_name()} I2C address is not accessible.")
 
     def get_data(self):
         data = self.sensor.distance
