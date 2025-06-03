@@ -9,7 +9,7 @@ from std_msgs.msg import Bool
 
 from mission_control.streaming.stream_client import StreamClient
 from mission_control.config.mappings import AXES, BUTTONS
-from mission_control.config.ports import PORT1
+from mission_control.config.ports import COMM_PORT, PORT_MAIN_BASE
 
 import glfw
 from multiprocessing import Process
@@ -26,7 +26,7 @@ class BaseNode(Node):
 
         # STATE OBJECTS
         self.main_cam = StreamClient(
-            "Stereo", "192.168.0.101", "udp", 5008, 640, 480, stereo=False
+            "Stereo", "192.168.0.101", "udp", PORT_MAIN_BASE, 640, 480, stereo=False
         )
         self.qreader_ = QReader()
 
@@ -88,7 +88,7 @@ def main(args=None):
     rclpy.init(args=args)
 
     # has to be initialised this way round!
-    base = BaseNode(PORT1)
+    base = BaseNode(COMM_PORT)
 
     # executor = rclpy.executors.MultiThreadedExecutor()
     # executor.add_node(base)

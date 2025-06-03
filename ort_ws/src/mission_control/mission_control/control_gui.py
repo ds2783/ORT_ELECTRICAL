@@ -8,7 +8,7 @@ from imgui.integrations.glfw import GlfwRenderer
 
 from mission_control.gui.dashboard import Dashboard
 from mission_control.streaming.stream_client import StreamClient
-from mission_control.config.ports import PORT1, PORT_MAIN, PORT_SECONDARY
+from mission_control.config.ports import COMM_PORT, PORT_MAIN, PORT_SECONDARY
 
 from threading import Thread
 from multiprocessing.connection import Listener
@@ -104,7 +104,7 @@ def main(args=None):
         StreamClient("Stereo", "192.168.0.101", "udp", PORT_MAIN, 640, 480, stereo=False),
         StreamClient("Stereo", "192.168.0.101", "udp", PORT_SECONDARY, 640, 480, stereo=False),
     ]
-    gui = GUI(cams, PORT1)
+    gui = GUI(cams, COMM_PORT)
 
     # DON'T BOTH WITH EXECUTORS
     # ONLY USING ROS NODE WRAPPER FOR LAUNCH FILE
