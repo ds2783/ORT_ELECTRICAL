@@ -4,7 +4,7 @@ import time
 __version__ = '1.0.0'
 
 CHIP_ID = 0xEA
-I2C_ADDR = 0x68
+I2C_ADDR = 0x70
 I2C_ADDR_ALT = 0x69
 ICM20948_BANK_SEL = 0x7f
 
@@ -284,7 +284,7 @@ class ICM20948:
 
         # Reset the magnetometer
         self.mag_write(AK09916_CNTL3, 0x01)
-        while self.mag_read(AK09916_CNTL3) == 0x01:
+        while self.mag_read(AK09916_CNTL3) == 0x01:  # BAD! NOT ROS2 COMPLIANT!
             time.sleep(0.0001)
 
 

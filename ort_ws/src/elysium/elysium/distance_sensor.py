@@ -1,4 +1,5 @@
 import rclpy
+import rclpy.logging
 from rclpy.node import Node 
 from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
 import smbus3 as smbus
@@ -25,8 +26,9 @@ QoS = QoSProfile(
 
 
 class DistanceNode(Node):
-    def __init__(self, topic_name, i2c_addr):
-        
+    def __init__(self, node_name, topic_name, i2c_addr):
+        super().__init__(node_name)
+
         msg_type = Float32
         self.distance_publisher = self.create_publisher(msg_type=msg_type, topic=topic_name, qos_profile=QoS)
         
@@ -44,9 +46,11 @@ def main(args=None):
     rclpy.init(args=args)
 
     topic_name_1 = "/distance_sensor/qr_code"
+    node_name_1 = "distance_node_qr"
     topic_name_2 = "/distance_sensor/optical_flow"
+    node_name_2 = "distance_node_optical_flow"
 
-    _distance_sensor_1 = DistanceNode(topic_name_1, i2c_addr=0x29)
+    _distance_sensor_1 = DistanceNode(node_name_1, topic_name_1, i2c_addr=0x29)
     #_distance_sensor_2 = DistanceNode(topic_name_2)
     
     executor = rclpy.executors.MultiThreadedExecutor()
