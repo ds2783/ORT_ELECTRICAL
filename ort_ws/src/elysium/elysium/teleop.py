@@ -75,8 +75,8 @@ class TelepresenceOperations(Node):
 
         self.drive()
         # ------------------------
-        self.cam_angles.z_axis = self.bound_180(90 + msg.axes[AXES["RIGHTX"]] * 90 + self.offset_)
-        self.cam_angles.x_axis = self.bound_180(90 + msg.axes[AXES["LEFTX"]] * 90 + self.offset_)
+        self.cam_angles.z_axis = self.bound_180(90 + msg.axes[AXES["RIGHTX"]] * 90)
+        self.cam_angles.x_axis = self.bound_180(90 + msg.axes[AXES["RIGHTY"]] * 90 + self.offset_)
 
         self.camera_rotate()
 
