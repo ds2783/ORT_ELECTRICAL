@@ -462,8 +462,8 @@ class VL53L4CD:
         tmp = bytes()
         for b in data:
             tmp += b
-            
-        return data
+
+        return tmp
 
     def set_address(self, new_address):
         """
