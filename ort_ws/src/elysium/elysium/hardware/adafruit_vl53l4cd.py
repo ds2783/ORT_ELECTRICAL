@@ -439,7 +439,7 @@ class VL53L4CD:
             time.sleep(0.001)
         raise TimeoutError("Time out starting VHV.")
 
-    def __write_register(self, address, data, length=None):
+    def __write_register(self, address, data, length=None):  # old read/write method as reference
         if length is None:
             length = len(data)
         with self.i2c_device as i2c:
@@ -453,11 +453,13 @@ class VL53L4CD:
         return data
 
     def _write_register(self, register, data, length=None):
-        self.i2c_bus.i2c_wr(self.i2c_address, list(data))
+        if not length: length = len(data)
+        self.i2c_bus.write_i2c_block_data(self.i2c_address, register, list(data)[:length])
     
     def _read_register(self, register, length=1):
-        data = self.i2c_bus.i2c_rd(self.i2c_address, length=length)
-        return data.buf
+        data = self.i2c_bus.read_i2c_block_data(self.i2c_address, register, length=length)
+        data = struct.pack(">I", data)
+        return data
 
     def set_address(self, new_address):
         """
