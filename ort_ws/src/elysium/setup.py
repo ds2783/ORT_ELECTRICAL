@@ -22,6 +22,7 @@ setup(
         'console_scripts': [
             'teleop = elysium.teleop:main',
             'imu_sensor = elysium.imu_sensor:main',
+            'distance_sensor = elysium.distance_sensor:main'
         ],
     },
 )
