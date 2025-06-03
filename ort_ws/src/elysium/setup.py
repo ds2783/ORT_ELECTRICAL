@@ -20,9 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'qr_cam = elysium.qr_cam:main',
             'teleop = elysium.teleop:main',
-            'teleop2 = elysium.teleop2:main'
+            'imu_sensor = elysium.imu_sensor:main',
         ],
     },
 )

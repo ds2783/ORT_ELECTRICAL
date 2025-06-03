@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import rclpy
-import rclpy.executors
 from rclpy.node import Node
 
 from sensor_msgs.msg import Joy
@@ -60,6 +59,7 @@ class BaseNode(Node):
             image = self.main_cam.fetch_frame()
             if image is not None:
                 qreader_out = self.qreader_.detect_and_decode(image=image)
+                # record position +
                 self.last_qr = str(qreader_out)
                 self.sendComms(self.last_qr)
 
@@ -90,10 +90,6 @@ def main(args=None):
     # has to be initialised this way round!
     base = BaseNode(COMM_PORT)
 
-    # executor = rclpy.executors.MultiThreadedExecutor()
-    # executor.add_node(base)
-    
     rclpy.spin(base)
-    # executor.spin()
     # Cleanup After Shutdown
     rclpy.shutdown()
