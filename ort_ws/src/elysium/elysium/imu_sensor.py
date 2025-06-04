@@ -113,10 +113,10 @@ class imu_sensor(Node):
 
         # Create message
         quat = Quaternion()
-        quat.x = q.x
-        quat.y = q.y
-        quat.z = q.z
-        quat.w = q.w
+        quat.x = q[0]
+        quat.y = q[1]
+        quat.z = q[2]
+        quat.w = q[3]
         self.quaternion_pub_.publish(quat)
 
         # Convert quaternion to Euler angles (ZYX order = yaw, pitch, roll)
