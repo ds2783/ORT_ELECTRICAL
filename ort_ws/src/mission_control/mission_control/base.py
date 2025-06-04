@@ -8,7 +8,7 @@ from std_msgs.msg import Bool
 
 from mission_control.streaming.stream_client import StreamClient
 from mission_control.config.mappings import AXES, BUTTONS
-from mission_control.config.ports import COMM_PORT, PORT_MAIN_BASE, PI_IP
+from mission_control.config.network import COMM_PORT, PORT_MAIN_BASE, PI_IP
 
 import glfw
 from multiprocessing import Process

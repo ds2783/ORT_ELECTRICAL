@@ -8,7 +8,7 @@ from imgui.integrations.glfw import GlfwRenderer
 
 from mission_control.gui.dashboard import Dashboard
 from mission_control.streaming.stream_client import StreamClient
-from mission_control.config.ports import COMM_PORT, PORT_MAIN, PORT_SECONDARY, PI_IP
+from mission_control.config.network import COMM_PORT, PORT_MAIN, PORT_SECONDARY, PI_IP
 
 from threading import Thread
 from multiprocessing.connection import Listener

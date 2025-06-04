@@ -15,7 +15,7 @@ from elysium.hardware.icm20948 import ICM20948
 class imu_sensor(Node):
     def __init__(self):
         super().__init__("imu_sensor")
-        self.imu = ICM20948()
+        self.imu = ICM20948(0x68)
 
         self.ekf = EKF()
 
