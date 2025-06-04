@@ -30,6 +30,9 @@ class imu_sensor(Node):
         self.imu_data_timer_ = self.create_timer(0.2, self.sendDataCB_)
         # -----------------
 
+        # Variables ---------
+        self.mag_offset = self.gyro_offset = self.accel_offset = 0
+
     def calibrate_accel_gyro(self, samples=100, delay=0.01):
         self.get_logger().info(
             "Calibrating accelerometer and gyroscope... Keep IMU still."
