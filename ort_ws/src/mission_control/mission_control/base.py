@@ -8,7 +8,7 @@ from std_msgs.msg import Bool
 
 from mission_control.streaming.stream_client import StreamClient
 from mission_control.config.mappings import AXES, BUTTONS
-from mission_control.config.ports import COMM_PORT, PORT_MAIN_BASE
+from mission_control.config.ports import COMM_PORT, PORT_MAIN_BASE, PI_IP
 
 import glfw
 from multiprocessing import Process
@@ -25,7 +25,7 @@ class BaseNode(Node):
 
         # STATE OBJECTS
         self.main_cam = StreamClient(
-            "Stereo", "192.168.0.101", "udp", PORT_MAIN_BASE, 640, 480, stereo=False
+            "Stereo", "PI_IP", "udp", PORT_MAIN_BASE, 640, 480, stereo=False
         )
         self.qreader_ = QReader()
 
