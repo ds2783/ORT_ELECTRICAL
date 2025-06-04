@@ -90,9 +90,10 @@ class imu_sensor(Node):
         return mag_offset
 
     def calibrateCB_(self, msg: Bool):
-        self.accel_offset, self.gyro_offset = self.calibrate_accel_gyro()
-        self.mag_offset = self.calibrate_magnetometer()
-        self.get_logger().info("Calibration complte. Streaming calibration data...")
+        if msg.data == 1:
+            self.accel_offset, self.gyro_offset = self.calibrate_accel_gyro()
+            self.mag_offset = self.calibrate_magnetometer()
+            self.get_logger().info("Calibration complte. Streaming calibration data...")
 
     def sendDataCB_(self):
         mx, my, mz = self.imu.read_magnetometer_data()

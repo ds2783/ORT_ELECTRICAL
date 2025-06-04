@@ -12,6 +12,7 @@ from mission_control.config.network import COMM_PORT, PORT_MAIN, PORT_SECONDARY,
 
 from threading import Thread
 from multiprocessing.connection import Listener
+import time
 
 # DON'T BOTH WITH EXECUTORS
 # ONLY USING ROS NODE WRAPPER FOR LAUNCH FILE
@@ -69,6 +70,7 @@ class GUI(Node):
 
 
     def run(self):
+        time.sleep(0.1)
         glfw.poll_events()
         self.impl.process_inputs()
         gl.glClearColor(*self.backgroundColor)
