@@ -13,16 +13,22 @@ from elysium.hardware.icm20948 import ICM20948
 
 
 class imu_sensor(Node):
-    def __init__(self):
+    def __init__(self, i2c_addr=0x68):
         super().__init__("imu_sensor")
-        self.imu = ICM20948(0x68)
+        self.imu = ICM20948(i2c_addr)
 
         self.ekf = EKF()
 
+        # Topics -------------
         self.configure_sub_ = self.create_subscription(
             Bool, "/calibrate_imu", self.calibrateCB_, 10
         )
         self.quaternion_pub_ = self.create_publisher(Quaternion, "/imu_quat", 10)
+        # -------------------
+        
+        # Timer -----------
+        self.imu_data_timer_ = self.create_timer(0.2, self.sendDataCB_)
+        # -----------------
 
     def calibrate_accel_gyro(self, samples=100, delay=0.01):
         self.get_logger().info(
