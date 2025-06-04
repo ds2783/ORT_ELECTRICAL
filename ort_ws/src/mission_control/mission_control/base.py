@@ -6,7 +6,7 @@ from sensor_msgs.msg import Joy
 from std_msgs.msg import Bool
 
 
-from mission_control.streaming.stream_client import StreamClient
+from mission_control.stream.stream_client import StreamClient
 from mission_control.config.mappings import AXES, BUTTONS
 from mission_control.config.network import COMM_PORT, PORT_MAIN_BASE, PI_IP
 
