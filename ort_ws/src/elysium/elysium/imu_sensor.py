@@ -96,16 +96,15 @@ class imu_sensor(Node):
 
     def sendDataCB_(self):
         mx, my, mz = self.imu.read_magnetometer_data()
-        mag_temp = (mx, my, mz)
+        mag_temp = np.array([mx, my, mz])
         ax, ay, az, gx, gy, gz = self.imu.read_accelerometer_gyro_data()
-        accel_temp = (ax, ay, az)
-        gyro_temp = (gx, gy, gz)
-
-        mag, accel, gyro = (
-            mag_temp - self.mag_offset,
-            accel_temp - self.accel_offset,
-            gyro_temp - self.gyro_offset,
-        )
+        accel_temp = np.array([ax, ay, az])
+        gyro_temp = np.array([gx, gy, gz])
+        
+        mag = mag_temp - self.mag_offset
+        accel = accel_temp - self.accel_offset
+        gyro = gyro_temp - self.gyro_offset
+        
         gyro_rad = np.deg2rad(gyro)
 
         q = np.array([1.0, 0.0, 0.0, 0.0])  # Initial quaternion
