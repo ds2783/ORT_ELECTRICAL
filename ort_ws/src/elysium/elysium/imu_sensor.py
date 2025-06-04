@@ -13,16 +13,25 @@ from elysium.hardware.icm20948 import ICM20948
 
 
 class imu_sensor(Node):
-    def __init__(self):
+    def __init__(self, i2c_addr=0x68):
         super().__init__("imu_sensor")
-        self.imu = ICM20948()
+        self.imu = ICM20948(i2c_addr)
 
         self.ekf = EKF()
 
+        # Topics -------------
         self.configure_sub_ = self.create_subscription(
             Bool, "/calibrate_imu", self.calibrateCB_, 10
         )
         self.quaternion_pub_ = self.create_publisher(Quaternion, "/imu_quat", 10)
+        # -------------------
+        
+        # Timer -----------
+        self.imu_data_timer_ = self.create_timer(0.2, self.sendDataCB_)
+        # -----------------
+
+        # Variables ---------
+        self.mag_offset = self.gyro_offset = self.accel_offset = 0
 
     def calibrate_accel_gyro(self, samples=100, delay=0.01):
         self.get_logger().info(
@@ -81,22 +90,22 @@ class imu_sensor(Node):
         return mag_offset
 
     def calibrateCB_(self, msg: Bool):
-        self.accel_offset, self.gyro_offset = self.calibrate_accel_gyro()
-        self.mag_offset = self.calibrate_magnetometer()
-        self.get_logger().info("Calibration complte. Streaming calibration data...")
+        if msg.data == 1:
+            self.accel_offset, self.gyro_offset = self.calibrate_accel_gyro()
+            self.mag_offset = self.calibrate_magnetometer()
+            self.get_logger().info("Calibration complte. Streaming calibration data...")
 
     def sendDataCB_(self):
         mx, my, mz = self.imu.read_magnetometer_data()
-        mag_temp = (mx, my, mz)
+        mag_temp = np.array([mx, my, mz])
         ax, ay, az, gx, gy, gz = self.imu.read_accelerometer_gyro_data()
-        accel_temp = (ax, ay, az)
-        gyro_temp = (gx, gy, gz)
-
-        mag, accel, gyro = (
-            mag_temp - self.mag_offset,
-            accel_temp - self.accel_offset,
-            gyro_temp - self.gyro_offset,
-        )
+        accel_temp = np.array([ax, ay, az])
+        gyro_temp = np.array([gx, gy, gz])
+        
+        mag = mag_temp - self.mag_offset
+        accel = accel_temp - self.accel_offset
+        gyro = gyro_temp - self.gyro_offset
+        
         gyro_rad = np.deg2rad(gyro)
 
         q = np.array([1.0, 0.0, 0.0, 0.0])  # Initial quaternion
@@ -105,10 +114,10 @@ class imu_sensor(Node):
 
         # Create message
         quat = Quaternion()
-        quat.x = q.x
-        quat.y = q.y
-        quat.z = q.z
-        quat.w = q.w
+        quat.x = q[0]
+        quat.y = q[1]
+        quat.z = q[2]
+        quat.w = q[3]
         self.quaternion_pub_.publish(quat)
 
         # Convert quaternion to Euler angles (ZYX order = yaw, pitch, roll)

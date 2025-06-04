@@ -7,11 +7,12 @@ import OpenGL.GL as gl
 from imgui.integrations.glfw import GlfwRenderer
 
 from mission_control.gui.dashboard import Dashboard
-from mission_control.streaming.stream_client import StreamClient
-from mission_control.config.ports import COMM_PORT, PORT_MAIN, PORT_SECONDARY
+from mission_control.stream.stream_client import StreamClient
+from mission_control.config.network import COMM_PORT, PORT_MAIN, PORT_SECONDARY, PI_IP
 
 from threading import Thread
 from multiprocessing.connection import Listener
+import time
 
 # DON'T BOTH WITH EXECUTORS
 # ONLY USING ROS NODE WRAPPER FOR LAUNCH FILE
@@ -69,6 +70,7 @@ class GUI(Node):
 
 
     def run(self):
+        time.sleep(0.1)
         glfw.poll_events()
         self.impl.process_inputs()
         gl.glClearColor(*self.backgroundColor)
@@ -101,8 +103,8 @@ def main(args=None):
     rclpy.init(args=args)
     
     cams = [
-        StreamClient("Stereo", "192.168.0.101", "udp", PORT_MAIN, 640, 480, stereo=False),
-        StreamClient("Stereo", "192.168.0.101", "udp", PORT_SECONDARY, 640, 480, stereo=False),
+        StreamClient("Stereo", PI_IP, "udp", PORT_MAIN, 640, 480, stereo=False),
+        StreamClient("Stereo", PI_IP, "udp", PORT_SECONDARY, 640, 480, stereo=False),
     ]
     gui = GUI(cams, COMM_PORT)
 

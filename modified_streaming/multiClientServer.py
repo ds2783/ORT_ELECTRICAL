@@ -6,11 +6,10 @@ from Comms.Output import Output
 
 from signal import signal, SIGINT
 
+BASE_IP = '192.168.119.110'
 # config
 MULTICAST=False
-IP1 = '192.168.0.103' # UDP multicast IP
 PORT1=5008
-IP2 = '192.168.0.103'
 PORT2 = 5020
 
 MODEL="imx708_noir" # camera model name (find using libcamera-vid --list-cameras)
@@ -19,7 +18,7 @@ HEIGHT=972
 NAME="camera" # stream name for display in console
 
 MODEL2="imx219"
-IP_SECONDARY = '192.168.0.103'
+IP1 = IP2 = IP_SECONDARY = BASE_IP
 PORT_SECONDARY = 5030
 NAME2="secondary"
 
