@@ -488,6 +488,7 @@ class VL53L4CD:
         return tmp
 
     def _write_register(self, register, data, length=None):
+        print(f"DATA WRITE: {data}")
         if not length:
             length = len(data)
 
@@ -495,6 +496,7 @@ class VL53L4CD:
             self.i2c_bus.write_byte(self.i2c_address, int.from_bytes(b))
 
     def _read_register(self, register, length=1):
+        print(f"DATA READ: {data}")
         data = bytearray(length)
         self.i2c_bus.write_byte(self.i2c_address, int.from_bytes(struct.pack(">H", register)))
         for b in range(length):
