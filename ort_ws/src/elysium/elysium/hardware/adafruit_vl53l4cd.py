@@ -500,19 +500,20 @@ class VL53L4CD:
         data = bytearray(length)
         print(f"DATA WRITE TO REG: {register}")
 
-        if register > 255:
-            self.i2c_bus.write_byte(self.i2c_address, 0x01)  # prepend 0x0100 for the singular register that uses this lol
-            self.i2c_bus.write_byte(self.i2c_address, 0x0F)
-        else:
-            self.i2c_bus.write_byte(self.i2c_address, 0)  # prepend 0x00
-            self.i2c_bus.write_byte(self.i2c_address, register)
+        reg = [register, 0x00] if register < 256 else [0x0F, 0x01]
 
-        for b in range(length):
-            data[b] = self.i2c_bus.read_byte(self.i2c_address)
+        write_msg = smbus.i2c_msg.write(self.i2c_address, reg)
+        read_msg = smbus.i2c_msg.read(self.i2c_address, length)
+   
+        self.i2c_bus.i2c_rdwr([write_msg, read_msg]) 
 
-        print(f"DATA READ: {data}")
+        # for b in range(length):
+        #     data[b] = x = self.i2c_bus.read_byte(self.i2c_address)
+        #     print(f"DATA BYTE: {data}")
+            
+        print(f"DATA READ: {read_msg.buf}")
 
-        return data
+        return read_msg.buf
 
     def set_address(self, new_address):
         """
