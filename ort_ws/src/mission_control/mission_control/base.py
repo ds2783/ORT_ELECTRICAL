@@ -25,7 +25,7 @@ class BaseNode(Node):
 
         # STATE OBJECTS
         self.main_cam = StreamClient(
-            "Stereo", "PI_IP", "udp", PORT_MAIN_BASE, 640, 480, stereo=False
+            "Stereo", PI_IP, "udp", PORT_MAIN_BASE, 640, 480, stereo=False
         )
         self.qreader_ = QReader()
 

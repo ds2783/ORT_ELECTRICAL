@@ -13,6 +13,7 @@ setup(
     ],
     install_requires=['setuptools', 'pyglet', 'imgui[FULL]'],
     zip_safe=True,
+    include_package_data=True,
     maintainer='william',
     maintainer_email='williamwarrenmeeks@gmail.com',
     description='TODO: Package description',

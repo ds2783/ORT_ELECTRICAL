@@ -1,0 +1,19 @@
+# Define All Modes and Flags
+# byte data type does not work in the python conversion stick to uint8
+uint8 INERT=0
+uint8 MANUAL=1
+uint8 AONE=2
+uint8 ATWO=3
+#etc...
+
+# Sets the Mode
+uint8 mode
+---
+# Define return codes
+uint8 SUCCESS=0
+uint8 FAIL=1
+uint8 FAIL_UNRECOGNISED_OP_CODE=2
+
+# Returns diagnostic information about change of state.
+uint8 diagnostic
+

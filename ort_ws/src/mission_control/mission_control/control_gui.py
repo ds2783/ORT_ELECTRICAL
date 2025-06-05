@@ -1,5 +1,7 @@
 import rclpy
+from rclpy import executors
 from rclpy.node import Node
+from rclpy.action.client import ActionClient
 
 import imgui.core as imgui
 import glfw
@@ -12,10 +14,12 @@ from mission_control.config.network import COMM_PORT, PORT_MAIN, PORT_SECONDARY,
 
 from threading import Thread
 from multiprocessing.connection import Listener
-import time
 
-# DON'T BOTH WITH EXECUTORS
-# ONLY USING ROS NODE WRAPPER FOR LAUNCH FILE
+# Messages ---
+from ort_interfaces.action import CalibrateImu 
+
+ACCEL_GRYO=0
+MAG=1
 
 def impl_glfw_init(window_name="Project Gorgon", width=2200, height=1300):
     if not glfw.init():
@@ -41,6 +45,43 @@ def impl_glfw_init(window_name="Project Gorgon", width=2200, height=1300):
     return window
 
 
+class CalibrationClient(Node):
+    def __init__(self):
+        super().__init__("calibration_client")
+        self.calibration_client_ = ActionClient(self, CalibrateImu, '/calibrate_imu')
+        self.current_step = None
+
+    def send_goal(self, code): 
+        goal_msg = CalibrateImu.Goal()
+        goal_msg.code = code
+
+        # self.calibration_client_.wait_for_server()
+
+        self._send_goal_future = self.calibration_client_.send_goal_async(goal_msg, feedback_callback=self.feedback_callback)
+
+        self._send_goal_future.add_done_callback(self.goal_response_callback)
+
+    def goal_response_callback(self, future):
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.get_logger().info('Goal rejected :(')
+            return
+
+        self.get_logger().info('Goal accepted :)')
+
+        self._get_result_future = goal_handle.get_result_async()
+        self._get_result_future.add_done_callback(self.get_result_callback)
+
+    def get_result_callback(self, future):
+        result = future.result().result
+        self.get_logger().info('Result: {0}'.format(result.sequence))
+
+    def feedback_callback(self, feedback_msg):
+        feedback = feedback_msg.feedback
+        self.current_step = feedback
+        self.get_logger().info('Received feedback: {0}'.format(feedback.partial_sequence))
+
+
 class GUI(Node):
     def __init__(self, cams, port):
         super().__init__("control_gui")
@@ -58,19 +99,28 @@ class GUI(Node):
         self.listener = Listener(self.address, authkey=b'123')
         self.last_qr_ = "None"
         
-        self.conn = self.listener.accept()
-        comms_thread = Thread(target=self.recieveComms)
+        self.qr_conn = self.listener.accept()
+        comms_thread = Thread(target=self.qrComms)
         comms_thread.start()
 
-    def recieveComms(self):
+
+        
+        self.action_server_ = CalibrationClient()
+        # self.action_server_executor_ = Executor() 
+        # self.action_server_executor_.add_node(self.action_server_)
+
+    def qrComms(self):
         while True:
-            recieved_qr = self.conn.recv()
+            recieved_qr = self.qr_conn.recv()
             if recieved_qr is not None:
                 self.last_qr_ = str(recieved_qr)
 
+    # def qrAction(self):
+    #     while True:
+            
+
 
     def run(self):
-        time.sleep(0.1)
         glfw.poll_events()
         self.impl.process_inputs()
         gl.glClearColor(*self.backgroundColor)
@@ -91,6 +141,18 @@ class GUI(Node):
         imgui.text(f"FPS: {io.framerate:.2f}")
         imgui.end()
 
+        imgui.begin("CalibrateImu")
+        imgui.text(str(self.action_server_.current_step))
+        imgui.set_window_size(180, 80)
+
+        if imgui.button("Calibrate Accelerometer & Gyro"):
+            self.action_server_.send_goal(ACCEL_GRYO)
+            
+        elif imgui.button("Calibrate Magnometer"):
+            self.action_server_.send_goal(MAG)
+
+        imgui.end()
+
         # Display Testing Window
         # imgui.show_test_window()
 
@@ -98,10 +160,12 @@ class GUI(Node):
 
         self.impl.render(imgui.get_draw_data())
         glfw.swap_buffers(self.window)
+        
+
 
 def main(args=None):
     rclpy.init(args=args)
-    
+
     cams = [
         StreamClient("Stereo", PI_IP, "udp", PORT_MAIN, 640, 480, stereo=False),
         StreamClient("Stereo", PI_IP, "udp", PORT_SECONDARY, 640, 480, stereo=False),
@@ -110,10 +174,15 @@ def main(args=None):
 
     # DON'T BOTH WITH EXECUTORS
     # ONLY USING ROS NODE WRAPPER FOR LAUNCH FILE
+    executor = executors.MultiThreadedExecutor()
+    executor.add_node(gui.action_server_)
+
+    node_thread = Thread(target=executor.spin)
+    node_thread.start()
 
     # Run GUI
     while not glfw.window_should_close(gui.window):
-        gui.run()
+       gui.run()
 
     # Cleanup After Shutdown
     gui.impl.shutdown()

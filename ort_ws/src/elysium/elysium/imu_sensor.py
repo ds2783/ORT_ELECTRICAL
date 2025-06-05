@@ -1,5 +1,6 @@
 import rclpy
 from rclpy.node import Node
+from rclpy.action.server import ActionServer
 
 from std_msgs.msg import Bool
 from geometry_msgs.msg import Quaternion
@@ -10,6 +11,7 @@ from ahrs.filters import EKF
 from scipy.spatial.transform import Rotation as R
 
 from elysium.hardware.icm20948 import ICM20948
+from ort_interfaces.action import CalibrateImu
 
 
 class imu_sensor(Node):
@@ -25,6 +27,10 @@ class imu_sensor(Node):
         )
         self.quaternion_pub_ = self.create_publisher(Quaternion, "/imu_quat", 10)
         # -------------------
+
+        # Action Server ------
+        self.calibrate_action_server_ = ActionServer(self, CalibrateImu, "/calibrate_imu", self.action_serverCB_) 
+        # --------------------
         
         # Timer -----------
         self.imu_data_timer_ = self.create_timer(0.2, self.sendDataCB_)
@@ -40,6 +46,8 @@ class imu_sensor(Node):
         accel_offset = [0.0, 0.0, 0.0]
         gyro_offset = [0.0, 0.0, 0.0]
 
+        rate = self.create_rate(1/delay)
+        
         for _ in range(samples):
             ax, ay, az, gx, gy, gz = self.imu.read_accelerometer_gyro_data()
             accel_offset[0] += ax
@@ -48,7 +56,7 @@ class imu_sensor(Node):
             gyro_offset[0] += gx
             gyro_offset[1] += gy
             gyro_offset[2] += gz
-            time.sleep(delay)
+            rate.sleep()
 
         accel_offset = np.array([x / samples for x in accel_offset])
         gyro_offset = np.array([x / samples for x in gyro_offset])
@@ -59,7 +67,7 @@ class imu_sensor(Node):
         self.get_logger().info("Accel/Gyro calibration done.")
         return accel_offset, gyro_offset
 
-    def calibrate_magnetometer(self, duration=20, delay=0.05):
+    def calibrate_magnetometer(self, goal_handle, feedback_msg, duration=20, delay=0.05):
         self.get_logger().info(
             "Calibrating magnetometer. Slowly rotate the IMU in all directions..."
         )
@@ -67,6 +75,8 @@ class imu_sensor(Node):
 
         mag_min = [float("inf")] * 3
         mag_max = [float("-inf")] * 3
+
+        rate = self.create_rate(1/delay)
 
         start_time = time.time()
         while time.time() - start_time < duration:
@@ -77,7 +87,10 @@ class imu_sensor(Node):
             mag_max[0] = max(mag_max[0], x)
             mag_max[1] = max(mag_max[1], y)
             mag_max[2] = max(mag_max[2], z)
-            time.sleep(delay)
+            current_duration = duration - (time.time() - start_time)
+            feedback_msg.seconds = int(current_duration)
+            goal_handle.publish_feedback(feedback_msg)
+            rate.sleep()
 
         mag_offset = np.array(
             [(max_ + min_) / 2 for max_, min_ in zip(mag_max, mag_min)]
@@ -89,11 +102,28 @@ class imu_sensor(Node):
         )
         return mag_offset
 
-    def calibrateCB_(self, msg: Bool):
-        if msg.data == 1:
+
+    def action_serverCB_(self, goal_handle):
+        self.get_logger().info("Executing goal.")
+        
+        feedback_msg = CalibrateImu.Feedback()
+        # Accelerometer + Gyrometer calibration.
+        if goal_handle.code == 0:
             self.accel_offset, self.gyro_offset = self.calibrate_accel_gyro()
-            self.mag_offset = self.calibrate_magnetometer()
-            self.get_logger().info("Calibration complte. Streaming calibration data...")
+        if goal_handle.code == 1:
+            self.mag_offset = self.calibrate_magnetometer(goal_handle, feedback_msg)
+        if goal_handle.code != 0 and goal_handle.code != 1:
+            goal_handle.succeed()
+            result = CalibrateImu.Result()
+            result.result = 0
+            return result
+
+        goal_handle.fail()
+        result = CalibrateImu.Result()
+        result.result = 2 
+        return result
+
+
 
     def sendDataCB_(self):
         mx, my, mz = self.imu.read_magnetometer_data()

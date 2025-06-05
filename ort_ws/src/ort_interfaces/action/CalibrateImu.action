@@ -1,0 +1,21 @@
+# Define All Modes and Flags
+# byte data type does not work in the python conversion stick to uint8
+uint8 ACCEL_GRYO=0
+uint8 MAG=1
+#etc...
+
+# request code
+uint8 code
+
+---
+uint8 SUCCESS=0
+uint8 FAIL=1
+uint8 FAIL_UNRECOGNISED_OP_CODE=2
+
+# return code
+uint8 result 
+
+---
+
+# seconds until completion
+uint32 seconds
