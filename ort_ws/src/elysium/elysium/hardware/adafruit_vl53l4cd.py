@@ -499,7 +499,13 @@ class VL53L4CD:
         
         data = bytearray(length)
         print(f"DATA WRITE TO REG: {register}")
-        self.i2c_bus.write_byte(self.i2c_address, int.from_bytes(struct.pack(">H", register)))
+
+        if register > 255:
+            self.i2c_bus.write_byte(self.i2c_address, 0x01)  # prepend 0x0100 for the singular register that uses this lol
+            self.i2c_bus.write_byte(self.i2c_address, 0x0F)
+        else:
+            self.i2c_bus.write_byte(self.i2c_address, 0)  # prepend 0x00
+            self.i2c_bus.write_byte(self.i2c_address, register)
 
         for b in range(length):
             data[b] = self.i2c_bus.read_byte(self.i2c_address)
