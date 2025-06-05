@@ -455,26 +455,26 @@ class VL53L4CD:
             time.sleep(0.001)
         raise TimeoutError("Time out starting VHV.")
 
-    def __write_register(self, address, data, length=None):
+    def __old_write_register(self, address, data, length=None):
         if length is None:
             length = len(data)
         with self.i2c_device as i2c:
             i2c.write(struct.pack(">H", address) + data[:length])
 
-    def __read_register(self, address, length=1):
+    def __old_read_register(self, address, length=1):
         data = bytearray(length)
         with self.i2c_device as i2c:
             i2c.write(struct.pack(">H", address))
             i2c.readinto(data)
         return data
         
-    def _write_register(self, register, data, length=None):
+    def __write_register(self, register, data, length=None):
             print(f"DATA WRITE: {data}")
             if not length: length = len(data)
             self.i2c_bus.write_i2c_block_data(self.i2c_address, register, list(data)[:length])
 
 
-    def _read_register(self, register, length=1):
+    def __read_register(self, register, length=1):
         data = self.i2c_bus.read_i2c_block_data(self.i2c_address, register, length=length)
         print(f"DATA READ: {data}")
 
@@ -486,7 +486,21 @@ class VL53L4CD:
             tmp += b
 
         return tmp
-    
+
+    def _write_register(self, register, data, length=None):
+        if not length:
+            length = len(data)
+
+        for b in struct.pack(">H", register) + data[:length]:
+            self.i2c_bus.write_byte(self.i2c_address, b)
+
+    def _read_register(self, register, length=1):
+        data = bytearray(length)
+        self.i2c_address.write_byte(struct.pack(">H", register))
+        for b in range(length):
+            data[b] = self.i2c_address.read_byte(self.i2c_address)
+        return data
+
     def set_address(self, new_address):
         """
         Set a new I2C address to the instantiated object. This is only called when using
