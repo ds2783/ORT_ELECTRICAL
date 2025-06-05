@@ -469,14 +469,14 @@ class VL53L4CD:
         return data
         
     def _write_register(self, register, data, length=None):
-            self.logger.info(f"DATA WRITE: {data}")
+            print(f"DATA WRITE: {data}")
             if not length: length = len(data)
             self.i2c_bus.write_i2c_block_data(self.i2c_address, register, list(data)[:length])
 
 
     def _read_register(self, register, length=1):
         data = self.i2c_bus.read_i2c_block_data(self.i2c_address, register, length=length)
-        self.logger.info(f"DATA READ: {data}")
+        print(f"DATA READ: {data}")
 
         tmp = bytes()
 
