@@ -38,6 +38,7 @@ class Imu(Node):
         # Variables ---------
         self.mag_offset = self.gyro_offset = self.accel_offset = 0
         self.sleep_node = sleep_node
+        self.rate = self.sleep_node.create_rate(1)
 
     def calibrate_accel_gyro(self, samples=100, delay=0.01):
         self.get_logger().info(
@@ -46,7 +47,7 @@ class Imu(Node):
         accel_offset = [0.0, 0.0, 0.0]
         gyro_offset = [0.0, 0.0, 0.0]
 
-        rate = self.create_rate(1/delay)
+        self.rate = self.sleep_node.create_rate(1/delay)
         
         for _ in range(samples):
             ax, ay, az, gx, gy, gz = self.imu.read_accelerometer_gyro_data()
@@ -56,7 +57,7 @@ class Imu(Node):
             gyro_offset[0] += gx
             gyro_offset[1] += gy
             gyro_offset[2] += gz
-            rate.sleep()
+            self.rate.sleep()
 
         accel_offset = np.array([x / samples for x in accel_offset])
         gyro_offset = np.array([x / samples for x in gyro_offset])
@@ -76,7 +77,7 @@ class Imu(Node):
         mag_min = [float("inf")] * 3
         mag_max = [float("-inf")] * 3
 
-        self.sleep_node.rate = self.create_rate(1/delay)
+        self.rate= self.sleep_node.create_rate(1/delay)
 
         start_time = time.time()
         while time.time() - start_time < duration:
@@ -90,7 +91,7 @@ class Imu(Node):
             current_duration = duration - (time.time() - start_time)
             feedback_msg.seconds = int(current_duration)
             goal_handle.publish_feedback(feedback_msg)
-            self.sleep_node.rate.sleep()
+            self.rate.sleep()
 
         mag_offset = np.array(
             [(max_ + min_) / 2 for max_, min_ in zip(mag_max, mag_min)]
