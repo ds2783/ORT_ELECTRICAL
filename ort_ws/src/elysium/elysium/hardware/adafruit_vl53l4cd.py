@@ -496,15 +496,15 @@ class VL53L4CD:
             self.i2c_bus.write_byte(self.i2c_address, int.from_bytes(b))
 
     def _read_register(self, register, length=1):
-        
-        data = bytearray(length)
+    
         print(f"DATA WRITE TO REG: {register}")
 
         reg = [register, 0x00] if register < 256 else [0x0F, 0x01]
 
         write_msg = smbus.i2c_msg.write(self.i2c_address, reg)
         read_msg = smbus.i2c_msg.read(self.i2c_address, length)
-   
+        print(type(write_msg), type(read_msg))
+
         self.i2c_bus.i2c_rdwr([write_msg, read_msg]) 
 
         # for b in range(length):
