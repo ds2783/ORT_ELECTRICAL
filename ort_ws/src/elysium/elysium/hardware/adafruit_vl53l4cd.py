@@ -496,7 +496,7 @@ class VL53L4CD:
 
     def _read_register(self, register, length=1):
         data = bytearray(length)
-        self.i2c_bus.write_byte(struct.pack(">H", register))
+        self.i2c_bus.write_byte(self.i2c_address, struct.pack(">H", register))
         for b in range(length):
             data[b] = self.i2c_bus.read_byte(self.i2c_address)
         return data
