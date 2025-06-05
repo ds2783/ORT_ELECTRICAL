@@ -100,7 +100,17 @@ class VL53L4CD:
         model_id, module_type = self.model_info
 
         self.logger = logger
-        self.logger.info(f"model data {str(self.model_info)}, type {type(self.model_info)}")
+
+        tests = [
+            self._read_register(_VL53L4CD_IDENTIFICATION_MODEL_ID, 2),
+            self._read_register(_VL53L4CD_FIRMWARE_SYSTEM_STATUS),
+            self._read_register(_VL53L4CD_I2C_SLAVE_DEVICE_ADDRESS, 2)
+        ]
+
+        for test in tests:
+            self.logger.info(f"{test}")
+            
+        self.logger.info(f"model data {self.model_info}, type {type(self.model_info)}")
 
         if model_id != 0xEB or module_type != 0xAA:
             raise RuntimeError("Wrong sensor ID or type!")
