@@ -76,7 +76,7 @@ class Imu(Node):
         mag_min = [float("inf")] * 3
         mag_max = [float("-inf")] * 3
 
-        rate = self.create_rate(1/delay)
+        self.sleep_node.rate = self.create_rate(1/delay)
 
         start_time = time.time()
         while time.time() - start_time < duration:
@@ -112,7 +112,7 @@ class Imu(Node):
             self.accel_offset, self.gyro_offset = self.calibrate_accel_gyro()
         if goal_handle.request.code == 1:
             self.mag_offset = self.calibrate_magnetometer(goal_handle, feedback_msg)
-        if goal_handle.request.code != 0 and goal_handle.request.code != 1:
+        if goal_handle.request.code == 0 or goal_handle.request.code == 1:
             goal_handle.succeed()
             result = CalibrateImu.Result()
             result.result = 0
