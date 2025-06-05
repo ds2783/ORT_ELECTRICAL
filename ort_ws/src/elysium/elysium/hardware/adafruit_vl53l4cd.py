@@ -492,11 +492,11 @@ class VL53L4CD:
             length = len(data)
 
         for b in struct.pack(">H", register) + data[:length]:
-            self.i2c_bus.write_byte(self.i2c_address, b)
+            self.i2c_bus.write_byte(self.i2c_address, int.from_bytes(b))
 
     def _read_register(self, register, length=1):
         data = bytearray(length)
-        self.i2c_bus.write_byte(self.i2c_address, struct.pack(">H", register))
+        self.i2c_bus.write_byte(self.i2c_address, int.from_bytes(struct.pack(">H", register)))
         for b in range(length):
             data[b] = self.i2c_bus.read_byte(self.i2c_address)
         return data
