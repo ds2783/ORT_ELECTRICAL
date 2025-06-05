@@ -37,7 +37,7 @@ class DistanceNode(Node):
 
         self.bus = smbus.SMBus("/dev/i2c-1")
         self.i2c_addr = i2c_addr
-        self.sensor = tof.VL53L4CD(self.bus, self.i2c_addr, self.get_logger())
+        self.sensor = tof.VL53L4CD(self.bus, self.i2c_addr)
 
     def test_i2c(self):
         try:
