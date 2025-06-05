@@ -1,4 +1,5 @@
 import rclpy
+import rclpy.executors
 from rclpy.node import Node
 from rclpy.action.server import ActionServer
 
@@ -7,6 +8,7 @@ from geometry_msgs.msg import Quaternion
 
 import time
 import numpy as np
+from threading import Thread
 from ahrs.filters import EKF
 from scipy.spatial.transform import Rotation as R
 
@@ -14,8 +16,8 @@ from elysium.hardware.icm20948 import ICM20948
 from ort_interfaces.action import CalibrateImu
 
 
-class imu_sensor(Node):
-    def __init__(self, i2c_addr=0x68):
+class Imu(Node):
+    def __init__(self, sleep_node, i2c_addr=0x68):
         super().__init__("imu_sensor")
         self.imu = ICM20948(i2c_addr)
 
@@ -35,6 +37,7 @@ class imu_sensor(Node):
 
         # Variables ---------
         self.mag_offset = self.gyro_offset = self.accel_offset = 0
+        self.sleep_node = sleep_node
 
     def calibrate_accel_gyro(self, samples=100, delay=0.01):
         self.get_logger().info(
@@ -87,7 +90,7 @@ class imu_sensor(Node):
             current_duration = duration - (time.time() - start_time)
             feedback_msg.seconds = int(current_duration)
             goal_handle.publish_feedback(feedback_msg)
-            rate.sleep()
+            self.sleep_node.rate.sleep()
 
         mag_offset = np.array(
             [(max_ + min_) / 2 for max_, min_ in zip(mag_max, mag_min)]
@@ -154,8 +157,15 @@ class imu_sensor(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    # has to be initialised this way round!
-    imu = imu_sensor()
+    sleep_node = rclpy.create_node("control_sleep_node")  
+    imu = Imu(sleep_node=sleep_node)
+
+    executor = rclpy.executors.MultiThreadedExecutor()
+    executor.add_node(imu)
+    executor.add_node(sleep_node)
+
+    executor_thread = Thread(target=executor.spin, daemon=True)
+    executor_thread.start()
 
     rclpy.spin(imu)
     # Cleanup After Shutdown
