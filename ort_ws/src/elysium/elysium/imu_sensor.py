@@ -105,11 +105,11 @@ class imu_sensor(Node):
         
         feedback_msg = CalibrateImu.Feedback()
         # Accelerometer + Gyrometer calibration.
-        if goal_handle.code == 0:
+        if goal_handle.request.code == 0:
             self.accel_offset, self.gyro_offset = self.calibrate_accel_gyro()
-        if goal_handle.code == 1:
+        if goal_handle.request.code == 1:
             self.mag_offset = self.calibrate_magnetometer(goal_handle, feedback_msg)
-        if goal_handle.code != 0 and goal_handle.code != 1:
+        if goal_handle.request.code != 0 and goal_handle.request.code != 1:
             goal_handle.succeed()
             result = CalibrateImu.Result()
             result.result = 0

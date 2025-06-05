@@ -74,12 +74,12 @@ class CalibrationClient(Node):
 
     def get_result_callback(self, future):
         result = future.result().result
-        self.get_logger().info('Result: {0}'.format(result.sequence))
+        self.get_logger().info('Result: {0}'.format(result.result))
 
     def feedback_callback(self, feedback_msg):
         feedback = feedback_msg.feedback
         self.current_step = feedback
-        self.get_logger().info('Received feedback: {0}'.format(feedback.partial_sequence))
+        self.get_logger().info('Received feedback: {0}'.format(feedback.seconds))
 
 
 class GUI(Node):
