@@ -22,9 +22,6 @@ class imu_sensor(Node):
         self.ekf = EKF()
 
         # Topics -------------
-        self.configure_sub_ = self.create_subscription(
-            Bool, "/calibrate_imu", self.calibrateCB_, 10
-        )
         self.quaternion_pub_ = self.create_publisher(Quaternion, "/imu_quat", 10)
         # -------------------
 
