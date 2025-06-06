@@ -33,7 +33,9 @@ def generate_launch_description():
             ),
             Node(
                 package="elysium",
-                executable="location"
+                executable="geo_locator",
+                namespace="",
+                name="geo_locator",
                 )
         ]
     )
