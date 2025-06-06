@@ -31,6 +31,10 @@ def generate_launch_description():
                 namespace="",
                 name="distance_sensor",
             ),
+            Node(
+                package="elysium",
+                executable="location"
+                )
         ]
     )
     optical_flow_params_path = PathJoinSubstitution(

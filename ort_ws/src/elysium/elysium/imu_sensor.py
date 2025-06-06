@@ -3,14 +3,12 @@ import rclpy.executors
 from rclpy.node import Node
 from rclpy.action.server import ActionServer
 
-from std_msgs.msg import Bool
 from geometry_msgs.msg import Quaternion
 
 import time
 import numpy as np
 from threading import Thread
 from ahrs.filters import EKF
-from scipy.spatial.transform import Rotation as R
 
 from elysium.hardware.icm20948 import ICM20948
 from ort_interfaces.action import CalibrateImu
@@ -28,7 +26,7 @@ class Imu(Node):
         # -------------------
 
         # Action Server ------
-        self.calibrate_action_server_ = ActionServer(self, CalibrateImu, "/calibrate_imu", self.action_serverCB_) 
+        self.calibrate_action_server_ = ActionServer(self, CalibrateImu, "/calibrate_imu", self.actionServerCB_) 
         # --------------------
         
         # Timer -----------
@@ -77,7 +75,7 @@ class Imu(Node):
         mag_min = [float("inf")] * 3
         mag_max = [float("-inf")] * 3
 
-        self.rate= self.sleep_node.create_rate(1/delay)
+        self.rate = self.sleep_node.create_rate(1/delay)
 
         start_time = time.time()
         while time.time() - start_time < duration:
@@ -104,7 +102,7 @@ class Imu(Node):
         return mag_offset
 
 
-    def action_serverCB_(self, goal_handle):
+    def actionServerCB_(self, goal_handle):
         self.get_logger().info("Executing goal.")
         
         feedback_msg = CalibrateImu.Feedback()
@@ -125,7 +123,6 @@ class Imu(Node):
         return result
 
 
-
     def sendDataCB_(self):
         mx, my, mz = self.imu.read_magnetometer_data()
         mag_temp = np.array([mx, my, mz])
@@ -141,14 +138,15 @@ class Imu(Node):
 
         q = np.array([1.0, 0.0, 0.0, 0.0])  # Initial quaternion
         # Update EKF and get updated quaternion
+        # w,x,y,z
         q = self.ekf.update(q, gyr=gyro_rad, acc=accel, mag=mag)
 
         # Create message
         quat = Quaternion()
-        quat.x = q[0]
-        quat.y = q[1]
-        quat.z = q[2]
-        quat.w = q[3]
+        quat.x = q[1]
+        quat.y = q[2]
+        quat.z = q[3]
+        quat.w = q[0]
         self.quaternion_pub_.publish(quat)
 
         # Convert quaternion to Euler angles (ZYX order = yaw, pitch, roll)

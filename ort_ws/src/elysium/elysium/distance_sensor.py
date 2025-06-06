@@ -7,6 +7,7 @@ import smbus3 as smbus
 from std_msgs.msg import Float32
 import threading
 import elysium.hardware.adafruit_vl53l4cd as tof
+from elysium.config.sensors import DISTANCE_SENSOR_REFRESH_PERIOD, DISTANCE_SENSOR_REFRESH_RATE
 
 
 QoS = QoSProfile(
@@ -32,7 +33,7 @@ class DistanceNode(Node):
         msg_type = Float32
         self.distance_publisher = self.create_publisher(msg_type=msg_type, topic=topic_name, qos_profile=QoS)
         
-        refresh_period = 200e-3  # 200ms data retrieval rate
+        refresh_period = DISTANCE_SENSOR_REFRESH_PERIOD  # 200ms data retrieval rate
         self.poll_data = self.create_timer(refresh_period, self.get_data, autostart=False)
 
         self.bus = smbus.SMBus("/dev/i2c-1")

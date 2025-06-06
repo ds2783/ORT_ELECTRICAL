@@ -76,7 +76,7 @@ class OpticalFlowPublisher(Node):
         self._sensor = None
 
         # Create fixed rotation to align frames with right-hand coordinate system
-        self._rhs_coord_rot = euler2mat(pi, pi, 0, "sxyz")  # 180° around x and y axes
+        # self._rhs_coord_rot = euler2mat(pi, pi, 0, "sxyz")  # 180° around x and y axes
 
         self.get_logger().info("Initialized")
 
@@ -106,8 +106,6 @@ class OpticalFlowPublisher(Node):
 
             optical_msg = OpticalFlow(dx=dist_x, dy=dist_y, dt=self._dt)
             self._optical_pub.publish(optical_msg)
-
-
 
             # odom_msg = Odometry(
             #     header=Header(
