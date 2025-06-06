@@ -29,6 +29,7 @@ find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/SetMode.srv"
   "msg/Time.msg"
+  "msg/OpticalFlow.msg"
   "action/CalibrateImu.action"
 )
 

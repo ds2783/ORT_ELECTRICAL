@@ -35,22 +35,6 @@ from transforms3d.euler import euler2mat
 FOV_DEG = 42.0
 RES_PIX = 35
 
-qos_optical = QoSProfile(
-    history=HistoryPolicy.KEEP_LAST, # Keep only up to the last 10 samples
-    depth=20,  # Queue size of 10
-    reliability=ReliabilityPolicy.BEST_EFFORT,  # attempt to deliver samples, 
-    # but lose them if the network isn't robust
-    durability=DurabilityPolicy.TRANSIENT_LOCAL, # no attempt to persist samples. 
-    # deadline=
-    # lifespan=
-    # liveliness=
-    # liveliness_lease_duration=
-
-    # refer to QoS ros documentation and 
-    # QoSProfile source code for kwargs and what they do
-)
-
-
 class OpticalFlowPublisher(Node):
     def __init__(self, node_name="optical_flow"):
         super().__init__(node_name)
@@ -194,7 +178,7 @@ class OpticalFlowPublisher(Node):
 
             if self._sensor is not None:
                 self._optical_pub = self.create_lifecycle_publisher(
-                    OpticalFlow, "/optical_flow/increment", qos_profile=qos_optical
+                    OpticalFlow, "/optical_flow/increment", qos_profile=qos_profile_sensor_data
                 )
                 self._diagnostics_pub = self.create_lifecycle_publisher(
                     DiagnosticArray, "diagnostics", qos_profile=qos_profile_sensor_data
