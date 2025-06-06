@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Edited by TBRo - William Warren-Meeks
+
 import sys
 import rclpy
 import numpy as np
@@ -24,6 +26,7 @@ from rclpy.qos import qos_profile_sensor_data
 from tf2_ros import TransformBroadcaster
 from std_msgs.msg import Header, Float32
 from nav_msgs.msg import Odometry
+from ort_interfaces.msg import OpticalFlow
 from geometry_msgs.msg import (
     PoseWithCovariance,
     TwistWithCovariance,
@@ -50,8 +53,8 @@ RES_PIX = 35
 class OpticalFlowPublisher(Node):
     def __init__(self, node_name="optical_flow"):
         super().__init__(node_name)
-        self._odom_pub: Optional[Publisher] = None
-        self._tf_broadcaster: Optional[TransformBroadcaster] = None
+        # self._odom_pub: Optional[Publisher] = None
+        # self._tf_broadcaster: Optional[TransformBroadcaster] = None
         self._timer: Optional[Timer] = None
         self._diagnostics_pub = None
         self._tof_sub = self.create_subscription(
@@ -78,8 +81,8 @@ class OpticalFlowPublisher(Node):
             ],
         )
 
-        self._pos_x = self.get_parameter("x_init").value
-        self._pos_y = self.get_parameter("y_init").value
+        # self._pos_x = self.get_parameter("x_init").value
+        # self._pos_y = self.get_parameter("y_init").value
         self._pos_z = self.get_parameter("z_height").value
         self._prev_x = self.get_parameter("x_init").value
         self._prev_y = self.get_parameter("y_init").value
@@ -92,8 +95,8 @@ class OpticalFlowPublisher(Node):
 
         self.get_logger().info("Initialized")
 
-    def publish_odom(self):
-        if self._odom_pub is not None and self._odom_pub.is_activated:
+    def publish_step_(self):
+        if self._optical_pub is not None and self._optical_pub.is_activated:
             try:
                 dx, dy = self._sensor.get_motion(
                     timeout=self.get_parameter("sensor_timeout").value
@@ -116,43 +119,45 @@ class OpticalFlowPublisher(Node):
                 dist_x = cf * dx
                 dist_y = cf * dy
 
-            self._pos_x += dist_x
-            self._pos_y += dist_y
+            optical_msg = OpticalFlow(dx=dist_x, dy=dist_y, dt=self._dt)
+            self._optical_pub.publish(optical_msg)
 
-            odom_msg = Odometry(
-                header=Header(
-                    stamp=self.get_clock().now().to_msg(),
-                    frame_id=self.get_parameter("parent_frame").value,
-                ),
-                child_frame_id=self.get_parameter("child_frame").value,
-                pose=PoseWithCovariance(
-                    pose=Pose(
-                        position=Point(x=self._pos_x, y=self._pos_y, z=self._pos_z)
-                    )
-                ),
-                twist=TwistWithCovariance(
-                    twist=Twist(
-                        linear=Vector3(x=dist_x / self._dt, y=dist_y / self._dt, z=0.0)
-                    )
-                ),
-            )
 
-            self._odom_pub.publish(odom_msg)
+
+            # odom_msg = Odometry(
+            #     header=Header(
+            #         stamp=self.get_clock().now().to_msg(),
+            #         frame_id=self.get_parameter("parent_frame").value,
+            #     ),
+            #     child_frame_id=self.get_parameter("child_frame").value,
+            #     pose=PoseWithCovariance(
+            #         pose=Pose(
+            #             position=Point(x=self._pos_x, y=self._pos_y, z=self._pos_z)
+            #         )
+            #     ),
+            #     twist=TwistWithCovariance(
+            #         twist=Twist(
+            #             linear=Vector3(x=dist_x / self._dt, y=dist_y / self._dt, z=0.0)
+            #         )
+            #     ),
+            # )
+
+            # self._odom_pub.publish(odom_msg)
             self.publish_diagnostics(DiagnosticStatus.OK)
 
-            if self.get_parameter("publish_tf").value is True:
-                tf_msg = TransformStamped(
-                    header=odom_msg.header,
-                    child_frame_id=odom_msg.child_frame_id,
-                    transform=Transform(
-                        translation=Vector3(
-                            x=odom_msg.pose.pose.position.x,
-                            y=odom_msg.pose.pose.position.y,
-                            z=odom_msg.pose.pose.position.z,
-                        ),
-                    ),
-                )
-                self._tf_broadcaster.sendTransform(tf_msg)
+            # if self.get_parameter("publish_tf").value is True:
+            #     tf_msg = TransformStamped(
+            #         header=odom_msg.header,
+            #         child_frame_id=odom_msg.child_frame_id,
+            #         transform=Transform(
+            #             translation=Vector3(
+            #                 x=odom_msg.pose.pose.position.x,
+            #                 y=odom_msg.pose.pose.position.y,
+            #                 z=odom_msg.pose.pose.position.z,
+            #             ),
+            #         ),
+            #     )
+            #     self._tf_broadcaster.sendTransform(tf_msg)
 
     def publish_diagnostics(self, status):
         if self._diagnostics_pub is not None and self._diagnostics_pub.is_activated:
@@ -187,14 +192,14 @@ class OpticalFlowPublisher(Node):
             self._sensor.set_rotation(self.get_parameter("rotation").value)
 
             if self._sensor is not None:
-                self._odom_pub = self.create_lifecycle_publisher(
-                    Odometry, "odom", qos_profile=qos_profile_sensor_data
+                self._optical_pub = self.create_lifecycle_publisher(
+                    OpticalFlow, "/optical_flow", qos_profile=qos_profile_sensor_data
                 )
                 self._diagnostics_pub = self.create_lifecycle_publisher(
                     DiagnosticArray, "diagnostics", qos_profile=qos_profile_sensor_data
                 )
                 self._tf_broadcaster = TransformBroadcaster(self)
-                self._timer = self.create_timer(self._dt, self.publish_odom)
+                self._timer = self.create_timer(self._dt, self.publish_step_)
 
                 self.get_logger().info("Configured")
                 return TransitionCallbackReturn.SUCCESS
@@ -227,8 +232,8 @@ class OpticalFlowPublisher(Node):
         if self._timer is not None:
             self._timer.cancel()
             self.destroy_timer(self._timer)
-        if self._odom_pub is not None:
-            self.destroy_publisher(self._odom_pub)
+        if self._optical_pub is not None:
+            self.destroy_publisher(self._optical_pub)
         if self._tf_broadcaster is not None:
             del self._tf_broadcaster
 

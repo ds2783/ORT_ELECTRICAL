@@ -103,21 +103,13 @@ class GUI(Node):
         comms_thread = Thread(target=self.qrComms)
         comms_thread.start()
 
-
-        
         self.action_server_ = CalibrationClient()
-        # self.action_server_executor_ = Executor() 
-        # self.action_server_executor_.add_node(self.action_server_)
 
     def qrComms(self):
         while True:
             recieved_qr = self.qr_conn.recv()
             if recieved_qr is not None:
                 self.last_qr_ = str(recieved_qr)
-
-    # def qrAction(self):
-    #     while True:
-            
 
 
     def run(self):
