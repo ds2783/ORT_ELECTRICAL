@@ -40,18 +40,22 @@ class DistanceNode(Node):
 
         self.bus = smbus.SMBus("/dev/i2c-1")
         self.i2c_addr = i2c_addr
+
+        self.get_logger().info(f"TOF INIT")
         self.sensor = tof.VL53L4CD(self.bus, self.i2c_addr, sleep_node=sleep_node)
 
     def test_i2c(self):
         try:
-            tmp = self._read_register(0x010F, 2)
+            tmp = self.sensor._read_register(0x010F, 2)
         except Exception:
             self.get_logger().error(f"Node {self.get_name()} I2C address is not accessible.")
 
     def get_data(self):
+        self.get_logger().info(f"GET DATA")
+
         if not self.sensor.ros_start:
             self.sensor.start_sensor()
-            
+
         data = self.sensor.distance
         self.distance_publisher.publish(data)
         self.get_logger().info(f"Distance published: {data} cm")
