@@ -15,6 +15,8 @@ from mission_control.config.network import COMM_PORT, PORT_MAIN, PORT_SECONDARY,
 from threading import Thread
 from multiprocessing.connection import Listener
 
+import numpy as np
+
 # Messages ---
 from ort_interfaces.action import CalibrateImu
 from nav_msgs.msg import Odometry
@@ -101,6 +103,7 @@ class GuiClient(Node):
         self.get_logger().info("Received feedback: {0}".format(feedback.seconds))
 
     def eulerCB_(self, msg: Vector3):
+        self.get_logger().info("New angle incoming.")
         self.eulerAngles = msg
 
     def odomCB_(self, msg: Odometry):
@@ -171,20 +174,24 @@ class GUI(Node):
 
         imgui.begin("Telemetry")
         imgui.text(
-            f"""Pitch: {self.client_.eulerAngles.x}
-            Yaw: {self.client_.eulerAngles.y} 
-            Roll: {self.client_.eulerAngles.z}"""
+            f"""
+            Pitch: {rad_degrees(self.client_.eulerAngles.x):.2f}
+            Yaw: {rad_degrees(self.client_.eulerAngles.y):.2f} 
+            Roll: {rad_degrees(self.client_.eulerAngles.z):.2f}
+            """
         )
         imgui.text(
-            f""" x: {self.client_.odom.pose.pose.position.x} 
-            y: {self.client_.odom.pose.pose.position.y}
-            z: {self.client_.odom.pose.pose.position.z}"""
+            f""" 
+            x: {self.client_.odom.pose.pose.position.x:.2f} 
+            y: {self.client_.odom.pose.pose.position.y:.2f}
+            z: {self.client_.odom.pose.pose.position.z:.2f}
+            """
         )
         imgui.text(
             f"""
-            x_vel: {self.client_.odom.twist.twist.linear.x}
-            y_vel: {self.client_.odom.twist.twist.linear.y}
-            z_vel: {self.client_.odom.twist.twist.linear.z}
+            x_vel: {self.client_.odom.twist.twist.linear.x:.2f}
+            y_vel: {self.client_.odom.twist.twist.linear.y:.2f}
+            z_vel: {self.client_.odom.twist.twist.linear.z:.2f}
             """
         )
         imgui.end()
@@ -197,6 +204,9 @@ class GUI(Node):
         self.impl.render(imgui.get_draw_data())
         glfw.swap_buffers(self.window)
 
+
+def rad_degrees(num):
+    return (180 / np.pi) * num
 
 def main(args=None):
     rclpy.init(args=args)

@@ -125,8 +125,11 @@ class Imu(Node):
 
     def sendDataCB_(self):
         mx, my, mz = self.imu.read_magnetometer_data()
+        self.get_logger().info("magnometer: " + str(mx) + " " + str(my) + " " + str(mz))
         mag_temp = np.array([mx, my, mz])
         ax, ay, az, gx, gy, gz = self.imu.read_accelerometer_gyro_data()
+        self.get_logger().info("accelerometer: " + str(ax) + " " + str(ay) + " " + str(az))
+        self.get_logger().info("gyro: " + str(gx) + " " + str(gy) + " " + str(gz))
         accel_temp = np.array([ax, ay, az])
         gyro_temp = np.array([gx, gy, gz])
         
