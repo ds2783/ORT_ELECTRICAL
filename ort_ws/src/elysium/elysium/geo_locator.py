@@ -100,7 +100,7 @@ class GeoLocator(Node):
             ),
             child_frame_id="base_link",
             pose=PoseWithCovariance(
-                pose=Pose(position=Point(x=self.x_pos, y=self.y_pos, z=self.z_pos))
+                pose=Pose(position=Point(x=float(self.x_pos), y=float(self.y_pos), z=float(self.z_pos)))
             ),
             twist=TwistWithCovariance(
                 twist=Twist(
