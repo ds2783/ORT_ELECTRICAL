@@ -89,7 +89,7 @@ class GeoLocator(Node):
 
         rotated_increment = np.matmul(rotation, increment)
         dx = rotated_increment[0][0]
-        dy = rotated_increment[0][1]
+        dy = rotated_increment[1][0]
         self.x_pos += dx
         self.y_pos += dy
 
