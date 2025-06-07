@@ -78,7 +78,7 @@ class GeoLocator(Node):
         euler = R.from_quat(
             [self.rotation_.x, self.rotation_.y, self.rotation_.z, self.rotation_.w]
         ).as_euler("zyx", degrees=True)
-        yaw, pitch, roll = euler
+        yaw, roll, pitch = euler
 
         euler_angles = Vector3(x=yaw, y=pitch, z=roll)
         self.euler_angles_pub_.publish(euler_angles)
@@ -99,19 +99,15 @@ class GeoLocator(Node):
                 frame_id="odom",
             ),
             child_frame_id="base_link",
-            pose=PoseWithCovariance(
-                pose=Pose(position=Point(x=self.x_pos, y=self.y_pos, z=self.z_pos))
-            ),
-            twist=TwistWithCovariance(
-                twist=Twist(
+            pose=Pose(position=Point(x=self.x_pos, y=self.y_pos, z=self.z_pos)),
+            twist=Twist(
                     linear=Vector3(
                         x=dx / msg.dt,
                         y=dy / msg.dt,
                         z=(self.z_pos - self.z_prev_) / self.distance_sensor_dt_,
                     )
-                )
-            ),
-        )
+                ),
+            )
 
         self.odom_pub_.publish(odom_msg)
 
