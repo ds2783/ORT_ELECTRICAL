@@ -515,7 +515,7 @@ class VL53L4CD:
         buf = ctypes.cast(read_msg.buf, pointer_type).contents
         print(f"DATA READ: {buf}, {int.from_bytes(buf)}")
 
-        return buf
+        return bytes(buf)
 
     def set_address(self, new_address):
         """
