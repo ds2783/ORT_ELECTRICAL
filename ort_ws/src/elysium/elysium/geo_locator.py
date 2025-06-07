@@ -96,9 +96,9 @@ class GeoLocator(Node):
         odom_msg = Odometry(
             header=Header(
                 stamp=self.get_clock().now().to_msg(),
-                frame_id=self.get_parameter("parent_frame").value,
+                frame_id="odom",
             ),
-            child_frame_id=self.get_parameter("child_frame").value,
+            child_frame_id="base_link",
             pose=PoseWithCovariance(
                 pose=Pose(position=Point(x=self.x_pos, y=self.y_pos, z=self.z_pos))
             ),
