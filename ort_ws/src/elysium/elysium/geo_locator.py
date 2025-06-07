@@ -16,6 +16,7 @@ from std_msgs.msg import Float32, Header
 from ort_interfaces.msg import OpticalFlow
 
 from elysium.config.sensors import DISTANCE_SENSOR_REFRESH_PERIOD
+from elysium.config.network import DIAGNOSTIC_PERIOD
 
 import numpy as np
 from scipy.spatial.transform import Rotation as R
@@ -52,6 +53,11 @@ class GeoLocator(Node):
         )
         # ----------------------
 
+        # Timers ----------------
+        self.create_timer(DIAGNOSTIC_PERIOD, self.publish_)
+        # ------------------------
+
+        self.euler_angles = Vector3()
         self.rotation_ = Quaternion()
         self.distance_sensor_dt_ = DISTANCE_SENSOR_REFRESH_PERIOD
 
@@ -62,6 +68,7 @@ class GeoLocator(Node):
         self.z_pos = 0.0
         self.x_pos = 0.0
         self.y_pos = 0.0
+        self.dt = 0
 
     def tofCB_(self, msg: Float32):
         self.z_prev_ = self.z_pos
@@ -80,19 +87,22 @@ class GeoLocator(Node):
         ).as_euler("zyx", degrees=False)
         yaw, pitch, roll = euler
 
-        euler_angles = Vector3(x=yaw, y=pitch, z=roll)
-        self.euler_angles_pub_.publish(euler_angles)
+        self.euler_angles = Vector3(x=yaw, y=pitch, z=roll)
 
         # rotate the dx and dy increments around the yaw
         rotation = np.array([[np.cos(yaw), -np.sin(yaw)], [np.sin(yaw), np.cos(yaw)]])
         increment = np.array([[msg.dx], [msg.dy]])
 
         rotated_increment = np.matmul(rotation, increment)
-        dx = rotated_increment[0][0]
-        dy = rotated_increment[1][0]
-        self.x_pos += dx
-        self.y_pos += dy
+        self.dx = rotated_increment[0][0]
+        self.dy = rotated_increment[1][0]
+        self.x_pos += self.dx
+        self.y_pos += self.dy
 
+        self.dt = msg.dt
+
+    def publish_(self):
+        self.euler_angles_pub_.publish(self.euler_angles)
         odom_msg = Odometry(
             header=Header(
                 stamp=self.get_clock().now().to_msg(),
@@ -105,8 +115,8 @@ class GeoLocator(Node):
             twist=TwistWithCovariance(
                 twist=Twist(
                     linear=Vector3(
-                        x=dx / msg.dt,
-                        y=dy / msg.dt,
+                        x=self.dx / self.dt,
+                        y=self.dy / self.dt,
                         z=(self.z_pos - self.z_prev_) / self.distance_sensor_dt_,
                     )
                 )

@@ -7,7 +7,7 @@ import smbus3 as smbus
 from std_msgs.msg import Float32
 import threading
 import elysium.hardware.adafruit_vl53l4cd as tof
-from elysium.config.sensors import DISTANCE_SENSOR_REFRESH_PERIOD, DISTANCE_SENSOR_REFRESH_RATE
+from elysium.config.sensors import DISTANCE_SENSOR_REFRESH_PERIOD
 
 
 QoS = QoSProfile(
