@@ -71,7 +71,8 @@ class GeoLocator(Node):
 
         self.dx = 0
         self.dy = 0
-        self.dt = 0
+        # avoids division by zero error
+        self.dt = 0.0001
 
     def tofCB_(self, msg: Float32):
         self.z_prev_ = self.z_pos
