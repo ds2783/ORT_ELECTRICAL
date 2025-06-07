@@ -87,7 +87,7 @@ class GeoLocator(Node):
         rotation = np.array([[np.cos(yaw), -np.sin(yaw)], [np.sin(yaw), np.cos(yaw)]])
         increment = np.array([[msg.dx], [msg.dy]])
 
-        rotated_increment = np.multiply(rotation, increment)
+        rotated_increment = np.matmul(rotation, increment)
         dx = rotated_increment[0]
         dy = rotated_increment[1]
         self.get_logger().info(str(rotated_increment))
