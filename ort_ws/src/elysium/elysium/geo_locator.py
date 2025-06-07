@@ -90,6 +90,7 @@ class GeoLocator(Node):
         rotated_increment = np.multiply(rotation, increment)
         dx = rotated_increment[0]
         dy = rotated_increment[1]
+        self.get_logger().info(str(rotated_increment))
         self.x_pos += dx
         self.y_pos += dy
 
