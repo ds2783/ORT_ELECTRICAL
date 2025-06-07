@@ -500,7 +500,7 @@ class VL53L4CD:
     
         print(f"DATA WRITE TO REG: {register}")
 
-        reg = [register, 0x00] if register < 256 else [0x0F, 0x01]
+        reg = [0x00, register] if register < 256 else [0x01, 0x0F]
 
         self.i2c_bus.i2c_wr(self.i2c_address, reg)
         read_msg = self.i2c_bus.i2c_rd(self.i2c_address, length)  
