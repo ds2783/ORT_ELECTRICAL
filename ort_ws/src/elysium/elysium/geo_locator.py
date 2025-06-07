@@ -84,7 +84,7 @@ class GeoLocator(Node):
         self.euler_angles_pub_.publish(euler_angles)
 
         # rotate the dx and dy increments around the yaw
-        rotation = np.array([np.cos(yaw), -np.sin(yaw)], [np.sin(yaw), np.cos(yaw)])
+        rotation = np.array([[np.cos(yaw), -np.sin(yaw)], [np.sin(yaw), np.cos(yaw)]])
         increment = np.array([msg.dx, msg.dy])
 
         rotated_increment = np.multiply(rotation, increment)
