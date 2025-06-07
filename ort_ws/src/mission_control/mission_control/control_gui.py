@@ -175,8 +175,8 @@ class GUI(Node):
         imgui.begin("Telemetry")
         imgui.text(
             f"""
-            Pitch: {rad_degrees(self.client_.eulerAngles.x):.2f}
-            Yaw: {rad_degrees(self.client_.eulerAngles.y):.2f} 
+            Yaw: {rad_degrees(self.client_.eulerAngles.x):.2f}
+            Pitch: {rad_degrees(self.client_.eulerAngles.y):.2f} 
             Roll: {rad_degrees(self.client_.eulerAngles.z):.2f}
             """
         )

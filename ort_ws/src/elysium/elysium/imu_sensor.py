@@ -13,6 +13,8 @@ from ahrs.filters import EKF
 from elysium.hardware.icm20948 import ICM20948
 from ort_interfaces.action import CalibrateImu
 
+from elysium.config.sensors import IMU_SENSOR_PERIOD
+
 
 class Imu(Node):
     def __init__(self, sleep_node, i2c_addr=0x68):
@@ -30,7 +32,7 @@ class Imu(Node):
         # --------------------
         
         # Timer -----------
-        self.imu_data_timer_ = self.create_timer(0.2, self.sendDataCB_)
+        self.imu_data_timer_ = self.create_timer(IMU_SENSOR_PERIOD, self.sendDataCB_)
         # -----------------
 
         # Variables ---------
@@ -141,7 +143,7 @@ class Imu(Node):
 
         # Update EKF and get updated quaternion
         # w,x,y,z
-        self.q = self.ekf.update(self.q, gyr=gyro_rad, acc=accel, mag=mag_nano)
+        self.q = self.ekf.update(self.q, gyr=gyro_rad, acc=accel, mag=mag_nano, frequency=1/IMU_SENSOR_PERIOD)
 
         # Create message
         quat = Quaternion()
