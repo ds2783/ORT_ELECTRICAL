@@ -48,7 +48,7 @@ def impl_glfw_init(window_name="Project Gorgon", width=2200, height=1300):
 class CalibrationClient(Node):
     def __init__(self):
         super().__init__("calibration_client")
-        self.calibration_client_ = ActionClient(self, CalibrateImu, '/calibrate_imu')
+        self.calibration_client_ = ActionClient(self, CalibrateImu, '/imu/calibrate')
         self.current_step = None
 
     def send_goal(self, code): 

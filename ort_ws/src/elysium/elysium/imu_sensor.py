@@ -22,11 +22,11 @@ class Imu(Node):
         self.ekf = EKF()
 
         # Topics -------------
-        self.quaternion_pub_ = self.create_publisher(Quaternion, "/imu_quat", 10)
+        self.quaternion_pub_ = self.create_publisher(Quaternion, "/imu/quat", 10)
         # -------------------
 
         # Action Server ------
-        self.calibrate_action_server_ = ActionServer(self, CalibrateImu, "/calibrate_imu", self.actionServerCB_) 
+        self.calibrate_action_server_ = ActionServer(self, CalibrateImu, "/imu/calibrate", self.actionServerCB_) 
         # --------------------
         
         # Timer -----------
