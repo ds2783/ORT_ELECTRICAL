@@ -1,3 +1,4 @@
+import re
 import rclpy
 from rclpy import executors
 from rclpy.node import Node
@@ -14,8 +15,6 @@ from mission_control.config.network import COMM_PORT, PORT_MAIN, PORT_SECONDARY,
 
 from threading import Thread
 from multiprocessing.connection import Listener
-
-import numpy as np
 
 # Messages ---
 from ort_interfaces.action import CalibrateImu
@@ -58,24 +57,9 @@ class GuiClient(Node):
         self.calibration_client_ = ActionClient(self, CalibrateImu, "/imu/calibrate")
         self.current_step = None
 
-        # Topics -----------
-        self.euler_angles_pub_ = self.create_subscription(
-            Vector3, "/elysium/euler_angles", self.eulerCB_, 10
-        )
-        self.odom_pub_ = self.create_subscription(
-            Odometry, "/elysium/odom", self.odomCB_, 10
-        )
-        # ------------------
-
-        # Messages
-        self.eulerAngles = Vector3()
-        self.odom = Odometry()
-
     def send_goal(self, code):
         goal_msg = CalibrateImu.Goal()
         goal_msg.code = code
-
-        # self.calibration_client_.wait_for_server()
 
         self._send_goal_future = self.calibration_client_.send_goal_async(
             goal_msg, feedback_callback=self.feedback_callback
@@ -103,12 +87,6 @@ class GuiClient(Node):
         self.current_step = feedback
         self.get_logger().info("Received feedback: {0}".format(feedback.seconds))
 
-    def eulerCB_(self, msg: Vector3):
-        self.eulerAngles = msg
-
-    def odomCB_(self, msg: Odometry):
-        self.odom = msg
-
 
 class GUI(Node):
     def __init__(self, cams, port):
@@ -123,21 +101,60 @@ class GUI(Node):
         # alternative place all shader code with string in a python file
         self.dashboard = Dashboard(cams)
 
+        # QR 
+        self.last_qr_ = "None"
+        
+        # Calbration Client
+        self.client_ = GuiClient()
+
+        # Position
+        self.elysium_x = "0"
+        self.elysium_y = "0"
+        self.elysium_z = "0"
+
+        # Attitude
+        self.elysium_yaw = "0"
+        self.elysium_pitch = "0"
+        self.elysium_roll = "0"
+
+        # Twist
+        self.elysium_x_vel = "0"
+        self.elysium_y_vel = "0"
+        self.elysium_z_vel = "0"
+        
         self.address = ("localhost", port)  # family is deduced to be 'AF_INET'
         self.listener = Listener(self.address, authkey=b"123")
-        self.last_qr_ = "None"
-
-        self.qr_conn = self.listener.accept()
+        
+        self.conn = self.listener.accept()
         comms_thread = Thread(target=self.qrComms)
         comms_thread.start()
 
-        self.client_ = GuiClient()
 
     def qrComms(self):
         while True:
-            recieved_qr = self.qr_conn.recv()
-            if recieved_qr is not None:
-                self.last_qr_ = str(recieved_qr)
+            recieved_msg = self.conn.recv()
+            if recieved_msg is not None:
+                match recieved_msg[:5]:
+                    case "qr---":
+                        self.last_qr_ = str(recieved_msg)[6:]
+                    case "x----":
+                        self.elysium_x = str(recieved_msg)[6:]
+                    case "y----":
+                        self.elysium_y = str(recieved_msg)[6:]
+                    case "z----":
+                        self.elysium_z = str(recieved_msg)[6:]
+                    case "yaw--":
+                        self.elysium_yaw = str(recieved_msg)[6:]
+                    case "pitch":
+                        self.elysium_pitch = str(recieved_msg)[6:]
+                    case "roll-":
+                        self.elysium_roll = str(recieved_msg)[6:]
+                    case "x_vel":
+                        self.elysium_x_vel = str(recieved_msg)[6:]
+                    case "y_vel":
+                        self.elysium_y_vel = str(recieved_msg)[6:] 
+                    case "z_vel":
+                        self.elysium_z_vel = str(recieved_msg)[6:]
 
     def run(self):
         glfw.poll_events()
@@ -178,23 +195,23 @@ class GUI(Node):
         imgui.begin("Telemetry")
         imgui.text(
             f"""
-            Yaw: {rad_degrees(self.client_.eulerAngles.x):.2f}
-            Pitch: {rad_degrees(self.client_.eulerAngles.y):.2f} 
-            Roll: {rad_degrees(self.client_.eulerAngles.z):.2f}
+            Yaw: {self.elysium_yaw}
+            Pitch: {self.elysium_pitch} 
+            Roll: {self.elysium_roll}
             """
         )
         imgui.text(
             f""" 
-            x: {self.client_.odom.pose.pose.position.x:.2f} 
-            y: {self.client_.odom.pose.pose.position.y:.2f}
-            z: {self.client_.odom.pose.pose.position.z:.2f}
+            x: {self.elysium_x} 
+            y: {self.elysium_y}
+            z: {self.elysium_z}
             """
         )
         imgui.text(
             f"""
-            x_vel: {self.client_.odom.twist.twist.linear.x:.2f}
-            y_vel: {self.client_.odom.twist.twist.linear.y:.2f}
-            z_vel: {self.client_.odom.twist.twist.linear.z:.2f}
+            x_vel: {self.elysium_x_vel}
+            y_vel: {self.elysium_y_vel}
+            z_vel: {self.elysium_z_vel}
             """
         )
         imgui.end()
@@ -207,9 +224,6 @@ class GUI(Node):
         self.impl.render(imgui.get_draw_data())
         glfw.swap_buffers(self.window)
 
-
-def rad_degrees(num):
-    return (180 / np.pi) * num
 
 def main(args=None):
     rclpy.init(args=args)
