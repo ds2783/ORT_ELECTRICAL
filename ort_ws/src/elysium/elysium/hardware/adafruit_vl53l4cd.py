@@ -438,7 +438,7 @@ class VL53L4CD:
 
     @property
     def _interrupt_polarity(self):
-        int_pol = self._read_register(_VL53L4CD_GPIO_HV_MUX_CTRL)[0] & 0x10
+        int_pol = self._read_register(_VL53L4CD_GPIO_HV_MUX_CTRL, debug=True)[0] & 0x10
         int_pol = (int_pol >> 4) & 0x01
         return 0 if int_pol else 1
 
@@ -503,7 +503,7 @@ class VL53L4CD:
 
     def _read_register(self, register, length=1, debug=False):
     
-
+        data = bytearray(length)
         reg = [0x00, register] if register < 256 else [0x01, 0x0F]
 
         self.i2c_bus.i2c_wr(self.i2c_address, reg)
