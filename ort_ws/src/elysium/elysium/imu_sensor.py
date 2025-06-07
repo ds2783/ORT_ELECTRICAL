@@ -143,7 +143,7 @@ class Imu(Node):
 
         # Update EKF and get updated quaternion
         # w,x,y,z
-        self.q = self.ekf.update(self.q, gyr=gyro_rad, acc=accel, mag=mag_nano, frequency=1/IMU_SENSOR_PERIOD)
+        self.q = self.ekf.update(self.q, gyr=gyro_rad, acc=accel, mag=mag_nano)
 
         # Create message
         quat = Quaternion()
