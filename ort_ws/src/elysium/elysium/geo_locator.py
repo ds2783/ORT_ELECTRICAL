@@ -58,10 +58,10 @@ class GeoLocator(Node):
         # Cartesian Displacement - Initiale Values
         # TO DO:
         # Add csv file to load previous displacements incase of crash
-        self.z_prev_ = 0
-        self.z_pos = 0
-        self.x_pos = 0
-        self.y_pos = 0
+        self.z_prev_ = 0.0
+        self.z_pos = 0.0
+        self.x_pos = 0.0
+        self.y_pos = 0.0
 
     def tofCB_(self, msg: Float32):
         self.z_prev_ = self.z_pos
@@ -122,4 +122,3 @@ def main(args=None):
     location_node = GeoLocator("location_service")
     rclpy.spin(location_node)
     rclpy.shutdown()
-
