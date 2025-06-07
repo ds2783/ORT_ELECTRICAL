@@ -148,7 +148,7 @@ class Imu(Node):
         quat.y = self.q[2]
         quat.z = self.q[3]
         quat.w = self.q[0]
-        self.quaternion_pub_.publish(self.q)
+        self.quaternion_pub_.publish(quat)
 
         # Convert quaternion to Euler angles (ZYX order = yaw, pitch, roll)
         # euler = R.from_quat([q[1], q[2], q[3], q[0]]).as_euler('zyx', degrees=True)
