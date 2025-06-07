@@ -102,7 +102,7 @@ class VL53L4CD:
         tests = [
             self._read_register(_VL53L4CD_IDENTIFICATION_MODEL_ID, 2),
             self._read_register(_VL53L4CD_FIRMWARE_SYSTEM_STATUS),
-            self._read_register(_VL53L4CD_I2C_SLAVE_DEVICE_ADDRESS, 2)
+            self._read_register(_VL53L4CD_I2C_SLAVE_DEVICE_ADDRESS)
         ]
 
         for test in tests:
@@ -501,12 +501,8 @@ class VL53L4CD:
 
         reg = [register, 0x00] if register < 256 else [0x0F, 0x01]
 
-        write_msg = smbus.i2c_msg.write(self.i2c_address, reg)
-        read_msg = smbus.i2c_msg.read(self.i2c_address, length)
-        print(type(write_msg), type(read_msg))
-
-        self.i2c_bus.i2c_rdwr([write_msg, read_msg]) 
-
+        self.i2c_bus.i2c_wr(self.i2c_address, reg)
+        read_msg = self.i2c_bus.i2c_rd(self.i2c_address, length)  
         # for b in range(length):
         #     data[b] = x = self.i2c_bus.read_byte(self.i2c_address)
         #     print(f"DATA BYTE: {data}")
