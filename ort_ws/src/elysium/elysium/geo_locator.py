@@ -85,7 +85,7 @@ class GeoLocator(Node):
 
         # rotate the dx and dy increments around the yaw
         rotation = np.array([[np.cos(yaw), -np.sin(yaw)], [np.sin(yaw), np.cos(yaw)]])
-        increment = np.array([msg.dx, msg.dy])
+        increment = np.array([[msg.dx], [msg.dy]])
 
         rotated_increment = np.multiply(rotation, increment)
         dx = rotated_increment[0]
