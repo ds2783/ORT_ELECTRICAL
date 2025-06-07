@@ -22,9 +22,12 @@ from ort_interfaces.action import CalibrateImu
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Vector3
 
+from ort_ws.src.elysium.elysium import imu_sensor
+
 
 ACCEL_GRYO = 0
 MAG = 1
+ZERO_AXIS = 2
 
 
 def impl_glfw_init(window_name="Project Gorgon", width=2200, height=1300):
@@ -169,6 +172,9 @@ class GUI(Node):
 
         elif imgui.button("Calibrate Magnometer"):
             self.client_.send_goal(MAG)
+
+        elif imgui.button("Zero Axis"):
+            self.client_.send_goal(ZERO_AXIS)
 
         imgui.end()
 

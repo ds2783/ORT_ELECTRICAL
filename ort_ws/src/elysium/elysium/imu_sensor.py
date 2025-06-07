@@ -7,6 +7,7 @@ from geometry_msgs.msg import Quaternion
 
 import time
 import numpy as np
+from pyrr import quaternion
 from threading import Thread
 from ahrs.filters import EKF
 
@@ -40,7 +41,8 @@ class Imu(Node):
         self.sleep_node = sleep_node
         self.rate = self.sleep_node.create_rate(1)
 
-        self.q = np.array([1.0, 0.0, 0.0, 0.0])  # Initial quaternion
+        self.q = np.array([0.0, 0.0, 0.0, 1.0])  # Initial quaternion
+        self.inverse = np.array([0.0, 0.0, 0.0, 1.0])
 
     def calibrate_accel_gyro(self, samples=100, delay=0.01):
         self.get_logger().info(
@@ -105,6 +107,9 @@ class Imu(Node):
         )
         return mag_offset
 
+    def zero_axis(self):
+        self.inverse = quaternion.inverse(self.q)
+        
 
     def actionServerCB_(self, goal_handle):
         self.get_logger().info("Executing goal.")
@@ -115,7 +120,9 @@ class Imu(Node):
             self.accel_offset, self.gyro_offset = self.calibrate_accel_gyro()
         if goal_handle.request.code == 1:
             self.mag_offset = self.calibrate_magnetometer(goal_handle, feedback_msg)
-        if goal_handle.request.code == 0 or goal_handle.request.code == 1:
+        if goal_handle.request.code == 2:
+            self.zero_axis()
+        if goal_handle.request.code in [0, 1, 2]:
             goal_handle.succeed()
             result = CalibrateImu.Result()
             result.result = 0
@@ -144,13 +151,14 @@ class Imu(Node):
         # Update EKF and get updated quaternion
         # w,x,y,z
         self.q = self.ekf.update(self.q, gyr=gyro_rad, acc=accel, mag=mag_nano)
-
+        
+        corrected_q = self.q * self.inverse
         # Create message
         quat = Quaternion()
-        quat.x = self.q[0]
-        quat.y = self.q[1]
-        quat.z = self.q[2]
-        quat.w = self.q[3]
+        quat.x = corrected_q[0]
+        quat.y = corrected_q[1]
+        quat.z = corrected_q[2]
+        quat.w = corrected_q[3]
         self.quaternion_pub_.publish(quat)
 
         # Convert quaternion to Euler angles (ZYX order = yaw, pitch, roll)
