@@ -493,8 +493,9 @@ class VL53L4CD:
         if not length:
             length = len(data)
 
-        for b in struct.pack(">H", register) + data[:length]:
-            self.i2c_bus.write_byte(self.i2c_address, int.from_bytes(b))
+        data = [_ for _ in data]  # make the data into a list of bytes/ints
+
+        self.i2c_bus.i2c_wr(self.i2c_address, data)
 
     def _read_register(self, register, length=1):
     
@@ -504,9 +505,7 @@ class VL53L4CD:
 
         self.i2c_bus.i2c_wr(self.i2c_address, reg)
         read_msg = self.i2c_bus.i2c_rd(self.i2c_address, length)  
-        # for b in range(length):
-        #     data[b] = x = self.i2c_bus.read_byte(self.i2c_address)
-        #     print(f"DATA BYTE: {data}")
+
         match length:
             case 1: pointer_type = ctypes.POINTER(ctypes.c_uint8)
             case 2: pointer_type = ctypes.POINTER(ctypes.c_uint16)
