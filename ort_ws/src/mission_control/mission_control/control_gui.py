@@ -16,10 +16,14 @@ from threading import Thread
 from multiprocessing.connection import Listener
 
 # Messages ---
-from ort_interfaces.action import CalibrateImu 
+from ort_interfaces.action import CalibrateImu
+from nav_msgs.msg import Odometry
+from geometry_msgs.msg import Vector3
 
-ACCEL_GRYO=0
-MAG=1
+
+ACCEL_GRYO = 0
+MAG = 1
+
 
 def impl_glfw_init(window_name="Project Gorgon", width=2200, height=1300):
     if not glfw.init():
@@ -45,41 +49,62 @@ def impl_glfw_init(window_name="Project Gorgon", width=2200, height=1300):
     return window
 
 
-class CalibrationClient(Node):
+class GuiClient(Node):
     def __init__(self):
-        super().__init__("calibration_client")
-        self.calibration_client_ = ActionClient(self, CalibrateImu, '/imu/calibrate')
+        super().__init__("gui_client")
+        self.calibration_client_ = ActionClient(self, CalibrateImu, "/imu/calibrate")
         self.current_step = None
 
-    def send_goal(self, code): 
+        # Topics -----------
+        self.euler_angles_pub_ = self.create_subscription(
+            Vector3, "/elysium/euler_angles", self.eulerCB_, 10
+        )
+        self.odom_pub_ = self.create_subscription(
+            Odometry, "/elysium/odom", self.odomCB_, 10
+        )
+        # ------------------
+
+        # Messages
+        self.eulerAngles = Vector3()
+        self.odom = Odometry()
+
+    def send_goal(self, code):
         goal_msg = CalibrateImu.Goal()
         goal_msg.code = code
 
         # self.calibration_client_.wait_for_server()
 
-        self._send_goal_future = self.calibration_client_.send_goal_async(goal_msg, feedback_callback=self.feedback_callback)
+        self._send_goal_future = self.calibration_client_.send_goal_async(
+            goal_msg, feedback_callback=self.feedback_callback
+        )
 
         self._send_goal_future.add_done_callback(self.goal_response_callback)
 
     def goal_response_callback(self, future):
         goal_handle = future.result()
         if not goal_handle.accepted:
-            self.get_logger().info('Goal rejected :(')
+            self.get_logger().info("Goal rejected :(")
             return
 
-        self.get_logger().info('Goal accepted :)')
+        self.get_logger().info("Goal accepted :)")
 
         self._get_result_future = goal_handle.get_result_async()
         self._get_result_future.add_done_callback(self.get_result_callback)
 
     def get_result_callback(self, future):
         result = future.result().result
-        self.get_logger().info('Result: {0}'.format(result.result))
+        self.get_logger().info("Result: {0}".format(result.result))
 
     def feedback_callback(self, feedback_msg):
         feedback = feedback_msg.feedback
         self.current_step = feedback
-        self.get_logger().info('Received feedback: {0}'.format(feedback.seconds))
+        self.get_logger().info("Received feedback: {0}".format(feedback.seconds))
+
+    def eulerCB_(self, msg: Vector3):
+        self.eulerAngles = msg
+
+    def odomCB_(self, msg: Odometry):
+        self.odom = msg
 
 
 class GUI(Node):
@@ -95,15 +120,15 @@ class GUI(Node):
         # alternative place all shader code with string in a python file
         self.dashboard = Dashboard(cams)
 
-        self.address = ('localhost', port)     # family is deduced to be 'AF_INET'
-        self.listener = Listener(self.address, authkey=b'123')
+        self.address = ("localhost", port)  # family is deduced to be 'AF_INET'
+        self.listener = Listener(self.address, authkey=b"123")
         self.last_qr_ = "None"
-        
+
         self.qr_conn = self.listener.accept()
         comms_thread = Thread(target=self.qrComms)
         comms_thread.start()
 
-        self.action_server_ = CalibrationClient()
+        self.client_ = GuiClient()
 
     def qrComms(self):
         while True:
@@ -111,13 +136,12 @@ class GUI(Node):
             if recieved_qr is not None:
                 self.last_qr_ = str(recieved_qr)
 
-
     def run(self):
         glfw.poll_events()
         self.impl.process_inputs()
         gl.glClearColor(*self.backgroundColor)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-        
+
         imgui.get_io().font_global_scale = 1.2
 
         self.dashboard.draw()
@@ -134,15 +158,35 @@ class GUI(Node):
         imgui.end()
 
         imgui.begin("CalibrateImu")
-        imgui.text(str(self.action_server_.current_step))
+        imgui.text(str(self.client_.current_step))
         imgui.set_window_size(180, 80)
 
         if imgui.button("Calibrate Accelerometer & Gyro"):
-            self.action_server_.send_goal(ACCEL_GRYO)
-            
-        elif imgui.button("Calibrate Magnometer"):
-            self.action_server_.send_goal(MAG)
+            self.client_.send_goal(ACCEL_GRYO)
 
+        elif imgui.button("Calibrate Magnometer"):
+            self.client_.send_goal(MAG)
+
+        imgui.end()
+
+        imgui.begin("Telemetry")
+        imgui.text(
+            f"""Pitch: {self.client_.eulerAngles.x}
+            Yaw: {self.client_.eulerAngles.y} 
+            Roll: {self.client_.eulerAngles.z}"""
+        )
+        imgui.text(
+            f""" x: {self.client_.odom.pose.pose.position.x} 
+            y: {self.client_.odom.pose.pose.position.y}
+            z: {self.client_.odom.pose.pose.position.z}"""
+        )
+        imgui.text(
+            f"""
+            x_vel: {self.client_.odom.twist.twist.linear.x}
+            y_vel: {self.client_.odom.twist.twist.linear.y}
+            z_vel: {self.client_.odom.twist.twist.linear.z}
+            """
+        )
         imgui.end()
 
         # Display Testing Window
@@ -152,7 +196,6 @@ class GUI(Node):
 
         self.impl.render(imgui.get_draw_data())
         glfw.swap_buffers(self.window)
-        
 
 
 def main(args=None):
@@ -167,14 +210,14 @@ def main(args=None):
     # DON'T BOTH WITH EXECUTORS
     # ONLY USING ROS NODE WRAPPER FOR LAUNCH FILE
     executor = executors.MultiThreadedExecutor()
-    executor.add_node(gui.action_server_)
+    executor.add_node(gui.client_)
 
     node_thread = Thread(target=executor.spin)
     node_thread.start()
 
     # Run GUI
     while not glfw.window_should_close(gui.window):
-       gui.run()
+        gui.run()
 
     # Cleanup After Shutdown
     gui.impl.shutdown()

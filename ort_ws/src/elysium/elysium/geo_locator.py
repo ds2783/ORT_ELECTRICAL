@@ -46,10 +46,10 @@ class GeoLocator(Node):
 
         # Publishers -----------
         self.euler_angles_pub_ = self.create_publisher(
-            Vector3, "/imu/euler_angles", qos_profile_sensor_data
+            Vector3, "/elysium/euler_angles", 10
         )
         self.odom_pub_ = self.create_publisher(
-            Odometry, "/elysium/odom", qos_profile_sensor_data
+            Odometry, "/elysium/odom", 10
         )
         # ----------------------
 
@@ -103,6 +103,7 @@ class GeoLocator(Node):
 
     def publish_(self):
         self.euler_angles_pub_.publish(self.euler_angles)
+
         odom_msg = Odometry(
             header=Header(
                 stamp=self.get_clock().now().to_msg(),
