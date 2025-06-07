@@ -152,7 +152,7 @@ class Imu(Node):
         # w,x,y,z
         self.q = self.ekf.update(self.q, gyr=gyro_rad, acc=accel, mag=mag_nano)
         
-        corrected_q = self.q * self.inverse
+        corrected_q = quaternion.cross(self.q , self.inverse)
         # Create message
         quat = Quaternion()
         quat.x = corrected_q[0]

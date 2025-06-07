@@ -22,8 +22,6 @@ from ort_interfaces.action import CalibrateImu
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Vector3
 
-from ort_ws.src.elysium.elysium import imu_sensor
-
 
 ACCEL_GRYO = 0
 MAG = 1
