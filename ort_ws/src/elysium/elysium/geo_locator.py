@@ -68,6 +68,9 @@ class GeoLocator(Node):
         self.z_pos = 0.0
         self.x_pos = 0.0
         self.y_pos = 0.0
+
+        self.dx = 0
+        self.dy = 0
         self.dt = 0
 
     def tofCB_(self, msg: Float32):
