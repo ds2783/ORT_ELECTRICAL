@@ -513,7 +513,7 @@ class VL53L4CD:
             case 4: pointer_type = ctypes.POINTER(ctypes.c_uint32)
         
         buf = ctypes.cast(read_msg.buf, pointer_type).contents
-        print(f"DATA READ: {buf}, {int(buf)}")
+        print(f"DATA READ: {buf}, {int.from_bytes(buf)}")
 
         return buf
 
