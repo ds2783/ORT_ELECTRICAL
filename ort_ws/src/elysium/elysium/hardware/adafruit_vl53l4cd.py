@@ -26,7 +26,6 @@ Implementation Notes
 """
 
 import struct
-import time
 import ctypes
 
 __version__ = "0.0.0+auto.0"
@@ -89,7 +88,15 @@ RANGE_ERROR_OTHER = 0xFF
 class VL53L4CD:
     """Driver for the VL53L4CD distance sensor."""
 
-    def __init__(self, i2c_bus, i2c_address=0x29):
+    def __init__(self, i2c_bus, i2c_address=0x29, sleep_node=None):
+
+        if not sleep_node:
+            raise ValueError("No sleep node in the VL53L4CD/X lib!")
+        
+        self.sleep_node = sleep_node
+        self.rate = self.sleep_node.create_rate(1e3)
+        self.ros_start = False
+
         if i2c_address != 0x29:
             tmp_addr = i2c_address
             i2c_address = 0x29
@@ -100,24 +107,18 @@ class VL53L4CD:
         self.i2c_bus = i2c_bus
         model_id, module_type = self.model_info
 
-        tests = [
-            self._read_register(_VL53L4CD_IDENTIFICATION_MODEL_ID, 2),
-            self._read_register(_VL53L4CD_FIRMWARE_SYSTEM_STATUS),
-            self._read_register(_VL53L4CD_I2C_SLAVE_DEVICE_ADDRESS)
-        ]
-
-        for test in tests:
-            print(f"{test}")
-
-        print(f"model data {self.model_info}, type {type(self.model_info)}")
-
         if model_id != 0xEB or module_type != 0xAA:
             raise RuntimeError("Wrong sensor ID or type!")
-        self._ranging = False
-        self._sensor_init()
+        self._ranging = False   
 
         if tmp_addr:
             self.set_address(tmp_addr)
+
+
+    def start_sensor(self):
+        if not self.ros_start:
+            self._sensor_init()
+            self.ros_start = True
 
     def _sensor_init(self):
         init_seq = (
@@ -412,7 +413,7 @@ class VL53L4CD:
             if self.data_ready:
                 timed_out = False
                 break
-            time.sleep(0.001)
+            self.rate.sleep()
         if timed_out:
             raise TimeoutError("Time out waiting for data ready.")
 
@@ -431,7 +432,7 @@ class VL53L4CD:
     @property
     def data_ready(self):
         """Returns true if new data is ready, otherwise false."""
-        if self._read_register(_VL53L4CD_GPIO_TIO_HV_STATUS)[0] & 0x01 == self._interrupt_polarity:
+        if self._read_register(_VL53L4CD_GPIO_TIO_HV_STATUS, debug=True)[0] & 0x01 == self._interrupt_polarity:
             return True
         return False
 
@@ -445,7 +446,7 @@ class VL53L4CD:
         for _ in range(1000):
             if self._read_register(_VL53L4CD_FIRMWARE_SYSTEM_STATUS)[0] == 0x03:
                 return
-            time.sleep(0.001)
+            self.rate.sleep()
         raise TimeoutError("Time out waiting for system boot.")
 
     def _start_vhv(self):
@@ -453,7 +454,7 @@ class VL53L4CD:
         for _ in range(1000):
             if self.data_ready:
                 return
-            time.sleep(0.001)
+            self.rate.sleep()
         raise TimeoutError("Time out starting VHV.")
 
     def __old_write_register(self, address, data, length=None):
@@ -488,8 +489,10 @@ class VL53L4CD:
 
         return tmp
 
-    def _write_register(self, register, data, length=None):
-        print(f"DATA WRITE: {data}")
+    def _write_register(self, register, data, length=None, debug=False):
+        if debug:
+            print(f"DATA WRITE: {data}")
+   
         if not length:
             length = len(data)
 
@@ -497,9 +500,8 @@ class VL53L4CD:
 
         self.i2c_bus.i2c_wr(self.i2c_address, data)
 
-    def _read_register(self, register, length=1):
+    def _read_register(self, register, length=1, debug=False):
     
-        print(f"DATA WRITE TO REG: {register}")
 
         reg = [0x00, register] if register < 256 else [0x01, 0x0F]
 
@@ -512,7 +514,10 @@ class VL53L4CD:
             case 4: pointer_type = ctypes.POINTER(ctypes.c_uint32)
         
         buf = ctypes.cast(read_msg.buf, pointer_type).contents
-        print(f"DATA READ: {buf}, {int.from_bytes(buf)}")
+
+        if debug:
+            print(f"DATA WRITE TO REG: {register}")
+            print(f"DATA READ: {buf}, {int.from_bytes(buf)}")
 
         return bytes(buf)
 
