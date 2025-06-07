@@ -507,9 +507,9 @@ class VL53L4CD:
         #     data[b] = x = self.i2c_bus.read_byte(self.i2c_address)
         #     print(f"DATA BYTE: {data}")
             
-        print(f"DATA READ: {read_msg.buf}")
+        print(f"DATA READ: {int(read_msg.buf)}")
 
-        return read_msg.buf
+        return int(read_msg.buf)
 
     def set_address(self, new_address):
         """
