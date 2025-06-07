@@ -27,6 +27,7 @@ Implementation Notes
 
 import struct
 import time
+import ctypes
 
 __version__ = "0.0.0+auto.0"
 __repo__ = "https://github.com/adafruit/Adafruit_CircuitPython_VL53L4CD.git"
@@ -506,10 +507,15 @@ class VL53L4CD:
         # for b in range(length):
         #     data[b] = x = self.i2c_bus.read_byte(self.i2c_address)
         #     print(f"DATA BYTE: {data}")
-            
-        print(f"DATA READ: {read_msg.buf.contents}")
+        match length:
+            case 1: pointer_type = ctypes.POINTER(ctypes.c_uint8)
+            case 2: pointer_type = ctypes.POINTER(ctypes.c_uint16)
+            case 4: pointer_type = ctypes.POINTER(ctypes.c_uint32)
+        
+        buf = ctypes.cast(read_msg.buf, pointer_type).contents
+        print(f"DATA READ: {int(buf)}")
 
-        return read_msg.buf.contents
+        return buf
 
     def set_address(self, new_address):
         """
