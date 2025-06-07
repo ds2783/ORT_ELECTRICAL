@@ -88,9 +88,8 @@ class GeoLocator(Node):
         increment = np.array([[msg.dx], [msg.dy]])
 
         rotated_increment = np.matmul(rotation, increment)
-        dx = rotated_increment[0]
-        dy = rotated_increment[1]
-        self.get_logger().info(str(rotated_increment))
+        dx = rotated_increment[0][0]
+        dy = rotated_increment[0][1]
         self.x_pos += dx
         self.y_pos += dy
 
@@ -101,7 +100,7 @@ class GeoLocator(Node):
             ),
             child_frame_id="base_link",
             pose=PoseWithCovariance(
-                pose=Pose(position=Point(x=float(self.x_pos), y=float(self.y_pos), z=float(self.z_pos)))
+                pose=Pose(position=Point(x=self.x_pos, y=self.y_pos, z=self.z_pos))
             ),
             twist=TwistWithCovariance(
                 twist=Twist(
