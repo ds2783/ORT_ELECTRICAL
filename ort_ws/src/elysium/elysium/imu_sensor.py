@@ -145,10 +145,10 @@ class Imu(Node):
 
         # Create message
         quat = Quaternion()
-        quat.x = self.q[1]
-        quat.y = self.q[2]
-        quat.z = self.q[3]
-        quat.w = self.q[0]
+        quat.x = self.q[0]
+        quat.y = self.q[1]
+        quat.z = self.q[2]
+        quat.w = self.q[3]
         self.quaternion_pub_.publish(quat)
 
         # Convert quaternion to Euler angles (ZYX order = yaw, pitch, roll)
