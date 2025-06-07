@@ -518,7 +518,7 @@ class VL53L4CD:
 
         if debug:
             print(f"DATA WRITE TO REG: {register}")
-            print(f"DATA READ: {buf}, {int.from_bytes(buf)}")
+            print(f"DATA READ: {buf}, {int.from_bytes(buf)}, {bytes(buf)}")
 
         return bytes(buf)
 
