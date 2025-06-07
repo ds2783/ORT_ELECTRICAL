@@ -1,5 +1,4 @@
 import rclpy
-import rclpy.executors
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 
@@ -18,7 +17,6 @@ from ort_interfaces.msg import OpticalFlow
 
 from elysium.config.sensors import DISTANCE_SENSOR_REFRESH_PERIOD
 
-import threading
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
@@ -122,17 +120,6 @@ def main(args=None):
     rclpy.init(args=args)
 
     location_node = GeoLocator("location_service")
-    executor = rclpy.executors.MultiThreadedExecutor()
-    executor.add_node(location_node)
-
-    executor_thread = threading.Thread(target=executor.spin, daemon=True)
-
-    try:
-        executor_thread.start()
-    except KeyboardInterrupt:
-        location_node.get_logger().warn(f"KeyboardInterrupt triggered.")
-    finally:
-        location_node.destroy_node()
-        rclpy.shutdown()
-        executor_thread.join()
+    rclpy.spin(location_node)
+    rclpy.shutdown()
 
