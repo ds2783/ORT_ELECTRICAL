@@ -137,10 +137,11 @@ class Imu(Node):
         gyro = gyro_temp - self.gyro_offset
         
         gyro_rad = np.deg2rad(gyro)
+        mag_nano = mag * 1e-3
 
         # Update EKF and get updated quaternion
         # w,x,y,z
-        self.q = self.ekf.update(self.q, gyr=gyro_rad, acc=accel, mag=mag)
+        self.q = self.ekf.update(self.q, gyr=gyro_rad, acc=accel, mag=mag_nano)
 
         # Create message
         quat = Quaternion()
