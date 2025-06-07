@@ -104,7 +104,6 @@ class GuiClient(Node):
         self.get_logger().info("Received feedback: {0}".format(feedback.seconds))
 
     def eulerCB_(self, msg: Vector3):
-        self.get_logger().info("New angle incoming.")
         self.eulerAngles = msg
 
     def odomCB_(self, msg: Odometry):
