@@ -433,7 +433,7 @@ class VL53L4CD:
     def data_ready(self):
         """Returns true if new data is ready, otherwise false."""
         if self._read_register(_VL53L4CD_GPIO_TIO_HV_STATUS, debug=True)[0] & 0x01 == self._interrupt_polarity:
-            return True
+            return True  # GPIO TIO HV STATUS REG ON THE VL53L4CX is the same register (0x31)
         return False
 
     @property
@@ -454,6 +454,7 @@ class VL53L4CD:
         for _ in range(1000):
             if self.data_ready:
                 return
+            print(f"STATUS: {self._read_register(_VL53L4CD_GPIO_TIO_HV_STATUS, debug=True)}")
             self.rate.sleep()
         raise TimeoutError("Time out starting VHV.")
 
