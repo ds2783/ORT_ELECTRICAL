@@ -38,6 +38,8 @@ class Imu(Node):
         self.sleep_node = sleep_node
         self.rate = self.sleep_node.create_rate(1)
 
+        self.q = np.array([1.0, 0.0, 0.0, 0.0])  # Initial quaternion
+
     def calibrate_accel_gyro(self, samples=100, delay=0.01):
         self.get_logger().info(
             "Calibrating accelerometer and gyroscope... Keep IMU still."
@@ -125,11 +127,8 @@ class Imu(Node):
 
     def sendDataCB_(self):
         mx, my, mz = self.imu.read_magnetometer_data()
-        self.get_logger().info("magnometer: " + str(mx) + " " + str(my) + " " + str(mz))
         mag_temp = np.array([mx, my, mz])
         ax, ay, az, gx, gy, gz = self.imu.read_accelerometer_gyro_data()
-        self.get_logger().info("accelerometer: " + str(ax) + " " + str(ay) + " " + str(az))
-        self.get_logger().info("gyro: " + str(gx) + " " + str(gy) + " " + str(gz))
         accel_temp = np.array([ax, ay, az])
         gyro_temp = np.array([gx, gy, gz])
         
@@ -139,18 +138,17 @@ class Imu(Node):
         
         gyro_rad = np.deg2rad(gyro)
 
-        q = np.array([1.0, 0.0, 0.0, 0.0])  # Initial quaternion
         # Update EKF and get updated quaternion
         # w,x,y,z
-        q = self.ekf.update(q, gyr=gyro_rad, acc=accel, mag=mag)
+        self.q = self.ekf.update(self.q, gyr=gyro_rad, acc=accel, mag=mag)
 
         # Create message
         quat = Quaternion()
-        quat.x = q[1]
-        quat.y = q[2]
-        quat.z = q[3]
-        quat.w = q[0]
-        self.quaternion_pub_.publish(quat)
+        quat.x = self.q[1]
+        quat.y = self.q[2]
+        quat.z = self.q[3]
+        quat.w = self.q[0]
+        self.quaternion_pub_.publish(self.q)
 
         # Convert quaternion to Euler angles (ZYX order = yaw, pitch, roll)
         # euler = R.from_quat([q[1], q[2], q[3], q[0]]).as_euler('zyx', degrees=True)
