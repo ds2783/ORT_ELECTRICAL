@@ -107,9 +107,9 @@ class TelepresenceOperations(Node):
         for i in range(3, 6):
             self.kit.servo[i].angle = left_side
 
-        self.get_logger().info(
-            "left_side: " + str(left_side) + " right_side: " + str(right_side)
-        )
+        # self.get_logger().info(
+        #     "left_side: " + str(left_side) + " right_side: " + str(right_side)
+        # )
 
     def camera_rotate(self):
         # POSITIONAL

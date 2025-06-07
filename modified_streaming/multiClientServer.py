@@ -6,7 +6,7 @@ from Comms.Output import Output
 
 from signal import signal, SIGINT
 
-BASE_IP = '192.168.119.110'
+BASE_IP = '192.168.0.103'
 # config
 MULTICAST=False
 PORT1=5008
