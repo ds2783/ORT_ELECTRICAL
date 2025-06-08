@@ -4,7 +4,8 @@ from rclpy.node import Node
 from std_msgs.msg import Bool
 from sensor_msgs.msg import Joy
 
-from elysium.config.mappings import AXES, BUTTONS
+from elysium.config.mappings import AXES
+from elysium.config.controls import CAMERA_SENSITIVITY
 
 import time
 from dataclasses import dataclass
@@ -13,7 +14,7 @@ from adafruit_servokit import ServoKit
 CAMERA_SERVO_Z = 6
 CAMERA_SERVO_X = 7
 
-OFFSET = 10.
+OFFSET = 10.0
 
 
 @dataclass
@@ -42,14 +43,15 @@ class TelepresenceOperations(Node):
         self.state = twist(0, 0)
         self.target = twist(0, 0)
 
-        self.cam_angles = rotation2D(0, 0)
-
         self.last_connection_ = time.time_ns()
         self.connection_timer_ = self.create_timer(0.2, self.shutdownCB_)
 
         self.offset_ = OFFSET
 
-        self.kit = ServoKit(channels=16)
+        self.kit_ = ServoKit(channels=16)
+
+        # Setting Zeroed rotation for camera servos
+        self.cam_angles_ = rotation2D(90.0, 90.0)
 
     def confirmConnectionCB_(self, msg: Bool):
         self.last_connection_ = time.time_ns()
@@ -59,7 +61,8 @@ class TelepresenceOperations(Node):
             self.target.linear = 0
             self.target.rotation = 0
 
-            self.cam_angles.x_axis = 0
+            self.cam_angles_.x_axis = 90
+            self.cam_angles_.z_axis = 90
 
             self.drive()
             self.camera_rotate()
@@ -75,8 +78,11 @@ class TelepresenceOperations(Node):
 
         self.drive()
         # ------------------------
-        self.cam_angles.z_axis = self.bound_180(90 + msg.axes[AXES["RIGHTX"]] * 90)
-        self.cam_angles.x_axis = self.bound_180(90 + msg.axes[AXES["RIGHTY"]] * 90)
+
+        z_increment = msg.axes[AXES["RIGHTX"]] * CAMERA_SENSITIVITY
+        x_increment = msg.axes[AXES["RIGHTY"]] * CAMERA_SENSITIVITY
+        self.cam_angles_.z_axis = self.bound_180(z_increment + self.cam_angles_.z_axis)
+        self.cam_angles_.x_axis = self.bound_180(x_increment + self.cam_angles_.z_axis)
 
         self.camera_rotate()
 
@@ -103,9 +109,9 @@ class TelepresenceOperations(Node):
         right_side = self.bound_180(90.0 + 60 * right_side + self.offset_)
 
         for i in range(0, 3):
-            self.kit.servo[i].angle = right_side
+            self.kit_.servo[i].angle = right_side
         for i in range(3, 6):
-            self.kit.servo[i].angle = left_side
+            self.kit_.servo[i].angle = left_side
 
         # self.get_logger().info(
         #     "left_side: " + str(left_side) + " right_side: " + str(right_side)
@@ -113,9 +119,9 @@ class TelepresenceOperations(Node):
 
     def camera_rotate(self):
         # POSITIONAL
-        self.kit.servo[CAMERA_SERVO_Z].angle = self.cam_angles.z_axis
+        self.kit_.servo[CAMERA_SERVO_Z].angle = self.cam_angles_.z_axis
         # CONTIOUS
-        self.kit.servo[CAMERA_SERVO_X].angle = self.cam_angles.x_axis
+        self.kit_.servo[CAMERA_SERVO_X].angle = self.cam_angles_.x_axis
 
 
 def main(args=None):
