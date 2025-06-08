@@ -5,16 +5,16 @@ from std_msgs.msg import Bool
 from sensor_msgs.msg import Joy
 
 from elysium.config.mappings import AXES
-from elysium.config.controls import CAMERA_SENSITIVITY
+from elysium.config.controls import (
+    CAMERA_SENSITIVITY,
+    CAMERA_SERVO_X,
+    CAMERA_SERVO_Z,
+    OFFSET,
+)
 
 import time
 from dataclasses import dataclass
 from adafruit_servokit import ServoKit
-
-CAMERA_SERVO_Z = 6
-CAMERA_SERVO_X = 7
-
-OFFSET = 10.0
 
 
 @dataclass
@@ -43,15 +43,17 @@ class TelepresenceOperations(Node):
         self.state = twist(0, 0)
         self.target = twist(0, 0)
 
+        # Setting Zeroed rotation for camera servos
+        self.cam_angles_ = rotation2D(90.0, 90.0)
+
+        # Conncection timer
         self.last_connection_ = time.time_ns()
         self.connection_timer_ = self.create_timer(0.2, self.shutdownCB_)
 
+        # Servo Offset control
         self.offset_ = OFFSET
 
         self.kit_ = ServoKit(channels=16)
-
-        # Setting Zeroed rotation for camera servos
-        self.cam_angles_ = rotation2D(90.0, 90.0)
 
     def confirmConnectionCB_(self, msg: Bool):
         self.last_connection_ = time.time_ns()
