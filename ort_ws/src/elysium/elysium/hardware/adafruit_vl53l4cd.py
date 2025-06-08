@@ -506,7 +506,7 @@ class VL53L4CD:
         #     self.i2c_bus.i2c_wr(self.i2c_address, data)
         # else:
         #     for offset, byte in enumerate(data):
-        #         self.i2c_bus.i2c_wr(self.i2c_address, byte)
+        #         self.i2c_bus.i2c_wr(self.i2c_address, [(register + offset) >> 8, register + offset, byte])
                 
 
 
