@@ -6,7 +6,7 @@ import smbus3 as smbus
 
 from std_msgs.msg import Float32
 import threading
-import elysium.hardware.adafruit_vl53l4cd as tof
+import ORT_ELECTRICAL.ort_ws.src.elysium.elysium.hardware.adafruit_vl53l4cx as tof
 from elysium.config.sensors import DISTANCE_SENSOR_REFRESH_PERIOD
 
 
@@ -51,14 +51,16 @@ class DistanceNode(Node):
             self.get_logger().error(f"Node {self.get_name()} I2C address is not accessible.")
 
     def get_data(self):
-        self.get_logger().info(f"GET DATA")
+        self.sensor.start_sensor()  # we can't have the TOF sensor initialise fully in the __init__ because the sleep node hasn't spun up yet (it uses rate.sleep)
+        self.sensor.start_ranging() # so we start the sensor here proper. It only actually inits once 
 
-        if not self.sensor.ros_start:
-            self.sensor.start_sensor()
+        if self.sensor.data_ready:
+            self.sensor.clear_interrupt()
 
-        data = self.sensor.distance
-        self.distance_publisher.publish(data)
-        self.get_logger().info(f"Distance published: {data} cm")
+        msg = Float32()
+        msg.data = self.sensor.distance
+        self.distance_publisher.publish(msg)
+        self.get_logger().info(f"Distance published: {self.sensor.distance} cm")
 
 def main(args=None):
     rclpy.init(args=args)
