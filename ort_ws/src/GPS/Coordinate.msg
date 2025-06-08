@@ -1,0 +1,2 @@
+string latitude
+string longitude
