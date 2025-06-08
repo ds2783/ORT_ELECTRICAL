@@ -3,6 +3,7 @@ from rclpy.node import Node
 
 from std_msgs.msg import Bool
 from sensor_msgs.msg import Joy
+from ort_interfaces.msg import CameraRotation
 
 from elysium.config.mappings import AXES
 from elysium.config.controls import (
@@ -37,6 +38,9 @@ class TelepresenceOperations(Node):
         )
         self.base_poing_sub_ = self.create_subscription(
             Bool, "ping", self.confirmConnectionCB_, 10
+        )
+        self.cam_angles__pub_ = self.create_publisher(
+            CameraRotation, "/elysium/cam_angles", 10
         )
 
         # State -
@@ -87,6 +91,12 @@ class TelepresenceOperations(Node):
         self.cam_angles_.x_axis = self.bound_180(x_increment + self.cam_angles_.z_axis)
 
         self.camera_rotate()
+
+        # publish camera rotation, note 90degrees servo rotation -> 0degrees around the axis
+        camera_rotation_msg = CameraRotation(
+            z_axis=self.cam_angles_.z_axis - 90, x_axis=self.cam_angles_.x_axis - 90
+        )
+        self.cam_angles__pub_.publish(camera_rotation_msg)
 
     def bound_range(self, value):
         if value > 1:

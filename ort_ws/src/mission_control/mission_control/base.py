@@ -3,9 +3,10 @@ import rclpy
 from rclpy.node import Node
 
 from sensor_msgs.msg import Joy
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, Float32
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Vector3
+from ort_interfaces.msg import CameraRotation
 
 from mission_control.stream.stream_client import StreamClient
 from mission_control.config.mappings import AXES, BUTTONS
@@ -41,23 +42,36 @@ class BaseNode(Node):
         # ----
 
         # Topics ---------------------
-        self.connection_pub_ = self.create_publisher(Bool, "ping", 10)
+        # Subscriptions
         self.controller_sub_ = self.create_subscription(Joy, "joy", self.controlCB_, 10)
 
-        self.euler_angles_pub_ = self.create_subscription(
+        self.qr_tof_sub_ = self.create_subscription(
+            Float32, "/distance_sensor/qr_code", self.tofCB_, 10
+        )
+
+        self.euler_angles_sub_ = self.create_subscription(
             Vector3, "/elysium/euler_angles", self.eulerCB_, 10
         )
-        self.odom_pub_ = self.create_subscription(
+        self.odom_sub_ = self.create_subscription(
             Odometry, "/elysium/odom", self.odomCB_, 10
         )
+
+        self.camera_angles_sub_ = self.create_subscription(
+            CameraRotation, "/elysium/cam_angles", self.camCB_, 10
+        )
+
+        # Publishers
+        self.connection_pub_ = self.create_publisher(Bool, "ping", 10)
         # ----------------------------
 
         # Variables ------------------
         self.qr_button_ = False
         self.last_qr = "None"
 
-        self.eulerAngles = Vector3()
+        self.eulerAngles = Vector3(x=0.0, y=0.0, z=0.0)
         self.odom = Odometry()
+        self.tof_dist = Float32(data=0.0)
+        self.cam_rotation = CameraRotation(z_axis=0.0, x_axis=0.0)
 
         # Elysium Position
         self.elysium_x = 0
@@ -89,16 +103,33 @@ class BaseNode(Node):
             image = self.main_cam.fetch_frame()
             if image is not None:
                 qreader_out = self.qreader_.detect_and_decode(image=image)
-                # record position +
+
                 self.last_qr = str(qreader_out)
                 self.sendComms("qr---:" + self.last_qr)
+
+                # assuming y is the forward coordinate
+                # (still to be tested)
+                # raycasted vector ->
+                relative_elysium_pos = np.array([[0.0], [self.tof_dist]])
+                # x -> yaw, which is rotation around the z_axis
+                xy_plane_rotation = self.eulerAngles.x + self.cam_rotation.z_axis 
+
+                displacement = rotate_vector2D(xy_plane_rotation, relative_elysium_pos)
+                
+                # Calculate the distance from the plane the rover inhabits
+                # rotation x_axis -> pitch
+                offset = displacement * np.cos(self.cam_rotation.x_axis)
+
+                x_dist = self.elysium_x + offset[0]
+                y_dist = self.elysium_y + offset[1]
 
                 for code in qreader_out:
                     if code != None:
                         self.scanned_codes[code] = (
-                            self.elysium_x,
-                            self.elysium_y,
-                            self.elysium_z,
+                                f"x: {x_dist:4f}",
+                                f"y: {y_dist:4f}",
+                                f"distance: {np.sqrt(x_dist ** 2 + y_dist ** 2)}"
+
                         )
 
                 with open("qr_data.csv", "w", newline="") as csvfile:
@@ -146,12 +177,32 @@ class BaseNode(Node):
         self.sendComms("y_vel:" + f"{msg.twist.twist.linear.y:2f}")
         self.sendComms("z_vel:" + f"{msg.twist.twist.linear.z:2f}")
 
+    def tofCB_(self, msg: Float32):
+        self.tof_dist = msg
+
+    def camCB_(self, msg: CameraRotation):
+        self.cam_rotation = msg
+        self.sendComms("cam_y:" + f"{self.cam_rotation.z_axis:2f}")
+        self.sendComms("cam_p:" + f"{self.cam_rotation.x_axis:2f}")
+
     def sendComms(self, msg):
         self.comms_.send(msg)
 
 
 def rad_degrees(num):
     return (180 / np.pi) * num
+
+
+# Euler angle in rads
+# vector2D -> np.array([[x], [y]])
+def rotate_vector2D(euler_angle, vector2D):
+    rotation = np.array(
+        [
+            [np.cos(euler_angle), -np.sin(euler_angle)],
+            [np.sin(euler_angle), np.cos(euler_angle)],
+        ]
+    )
+    return np.matmul(rotation, vector2D)
 
 
 def main(args=None):

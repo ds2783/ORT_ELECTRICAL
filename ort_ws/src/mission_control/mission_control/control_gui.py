@@ -121,6 +121,10 @@ class GUI(Node):
         self.elysium_x_vel = "0"
         self.elysium_y_vel = "0"
         self.elysium_z_vel = "0"
+
+        # Camera Rotation
+        self.camera_yaw = "0"
+        self.camera_pitch = "0"
         
         self.address = ("localhost", port)  # family is deduced to be 'AF_INET'
         self.listener = Listener(self.address, authkey=b"123")
@@ -134,27 +138,32 @@ class GUI(Node):
         while True:
             recieved_msg = self.conn.recv()
             if recieved_msg is not None:
+                data = str(recieved_msg)[6:]
                 match recieved_msg[:5]:
                     case "qr---":
-                        self.last_qr_ = str(recieved_msg)[6:]
+                        self.last_qr_ = data
                     case "x----":
-                        self.elysium_x = str(recieved_msg)[6:]
+                        self.elysium_x = data
                     case "y----":
-                        self.elysium_y = str(recieved_msg)[6:]
+                        self.elysium_y = data
                     case "z----":
-                        self.elysium_z = str(recieved_msg)[6:]
+                        self.elysium_z = data
                     case "yaw--":
-                        self.elysium_yaw = str(recieved_msg)[6:]
+                        self.elysium_yaw = data
                     case "pitch":
-                        self.elysium_pitch = str(recieved_msg)[6:]
+                        self.elysium_pitch = data
                     case "roll-":
-                        self.elysium_roll = str(recieved_msg)[6:]
+                        self.elysium_roll = data
                     case "x_vel":
-                        self.elysium_x_vel = str(recieved_msg)[6:]
+                        self.elysium_x_vel = data
                     case "y_vel":
-                        self.elysium_y_vel = str(recieved_msg)[6:] 
+                        self.elysium_y_vel = data 
                     case "z_vel":
-                        self.elysium_z_vel = str(recieved_msg)[6:]
+                        self.elysium_z_vel = data
+                    case "cam_y":
+                        self.camera_yaw = data
+                    case "cam_p":
+                        self.camera_pitch = data
 
     def run(self):
         glfw.poll_events()
@@ -194,7 +203,7 @@ class GUI(Node):
 
         imgui.begin("Telemetry")
         imgui.text(
-            f"""
+            f""" (degrees)
             Yaw: {self.elysium_yaw}
             Pitch: {self.elysium_pitch} 
             Roll: {self.elysium_roll}
@@ -214,6 +223,12 @@ class GUI(Node):
             z_vel: {self.elysium_z_vel}
             """
         )
+        imgui.text(
+                f""" (degrees)
+                camera-yaw: {self.camera_yaw}
+                camera-pitch: {self.camera_pitch}
+                """
+                )
         imgui.end()
 
         # Display Testing Window

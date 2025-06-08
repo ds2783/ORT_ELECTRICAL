@@ -94,10 +94,9 @@ class GeoLocator(Node):
         self.euler_angles = Vector3(x=yaw, y=pitch, z=roll)
 
         # rotate the dx and dy increments around the yaw
-        rotation = np.array([[np.cos(yaw), -np.sin(yaw)], [np.sin(yaw), np.cos(yaw)]])
         increment = np.array([[msg.dx], [msg.dy]])
+        rotated_increment = rotate_vector2D(yaw, increment)
 
-        rotated_increment = np.matmul(rotation, increment)
         self.dx = rotated_increment[0][0]
         self.dy = rotated_increment[1][0]
         self.x_pos += self.dx
@@ -129,6 +128,12 @@ class GeoLocator(Node):
         )
 
         self.odom_pub_.publish(odom_msg)
+
+# Euler angle in rads
+# vector2D -> np.array([[x], [y]])
+def rotate_vector2D(euler_angle, vector2D):
+    rotation = np.array([[np.cos(euler_angle), -np.sin(euler_angle)], [np.sin(euler_angle), np.cos(euler_angle)]])
+    return np.matmul(rotation, vector2D)    
 
 
 def main(args=None):
