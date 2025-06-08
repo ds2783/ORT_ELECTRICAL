@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 
 from gps_msgs.msg import GPSStatus
-from gps_msgs.msg import Coordinate  # Use your own package name if different
+from gps_msgs.msg import Coordinate
 
 class StartCoordinatesNode(Node):
     def __init__(self):
