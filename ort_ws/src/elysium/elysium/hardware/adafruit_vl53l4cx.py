@@ -8,7 +8,6 @@
 
 Python driver library for the VL53L4CX time of flight distance sensor, using smbus3 instead of CircuitPython. 
 
-
 * Original Author(s): Carter Nelson
 * Modified by Youma Leng-Nijo
 
@@ -22,19 +21,16 @@ Implementation Notes
 **Software and Dependencies:**
 
 * smbus3 <https://smbus3.readthedocs.io/en/latest/modules.html>
+
+Disclaimer: not responsible for whatever happens to the machine this code runs on, use at your own risk. 
 """
 
 import struct
 import ctypes
+import smbus3 as smbus
 
 __version__ = "0.0.0+auto.0"
 __repo__ = "https://github.com/adafruit/Adafruit_CircuitPython_VL53L4CX.git"
-
-import smbus3 as smbus
-
-#__version__ = "0.0.0+auto.0"
-#__repo__ = "https://github.com/adafruit/Adafruit_CircuitPython_VL53L4CX.git"
-
 
 _VL53L4CX_SOFT_RESET = 0x0000  # The VL53L4CD addresses that are used look to be consistent with VL53L4CX addresses. 
 _VL53L4CX_I2C_SLAVE_DEVICE_ADDRESS = 0x0001
