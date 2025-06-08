@@ -3,71 +3,70 @@
 #
 # SPDX-License-Identifier: MIT
 """
-`adafruit_vl53l4cd`
+`adafruit_vl53l4cx adaptation of the adafruit_VL53L4CX circuitpython library`
 ================================================================================
 
-CircuitPython helper library for the VL53L4CD time of flight distance sensor.
+Python driver library for the VL53L4CX time of flight distance sensor, using smbus3 instead of CircuitPython. 
 
 
-* Author(s): Carter Nelson
+* Original Author(s): Carter Nelson
+* Modified by Youma Leng-Nijo
 
 Implementation Notes
 --------------------
 
 **Hardware:**
 
-* `Adafruit VL53L4CD Time of Flight Distance Sensor <https://www.adafruit.com/product/5396>`_
+* `Adafruit VL53L4CX Time of Flight Distance Sensor <https://www.adafruit.com/product/5396>`_
 
 **Software and Dependencies:**
 
-* Adafruit CircuitPython firmware for the supported boards:
-  https://circuitpython.org/downloads
-* Adafruit's Bus Device library: https://github.com/adafruit/Adafruit_CircuitPython_BusDevice
+* smbus3 <https://smbus3.readthedocs.io/en/latest/modules.html>
 """
 
 import struct
 import ctypes
 
 __version__ = "0.0.0+auto.0"
-__repo__ = "https://github.com/adafruit/Adafruit_CircuitPython_VL53L4CD.git"
+__repo__ = "https://github.com/adafruit/Adafruit_CircuitPython_VL53L4CX.git"
 
 import smbus3 as smbus
 
 #__version__ = "0.0.0+auto.0"
-#__repo__ = "https://github.com/adafruit/Adafruit_CircuitPython_VL53L4CD.git"
+#__repo__ = "https://github.com/adafruit/Adafruit_CircuitPython_VL53L4CX.git"
 
 
-_VL53L4CD_SOFT_RESET = 0x0000
-_VL53L4CD_I2C_SLAVE_DEVICE_ADDRESS = 0x0001
-_VL53L4CD_VHV_CONFIG_TIMEOUT_MACROP_LOOP_BOUND = 0x0008
-_VL53L4CD_XTALK_PLANE_OFFSET_KCPS = 0x0016
-_VL53L4CD_XTALK_X_PLANE_GRADIENT_KCPS = 0x0018
-_VL53L4CD_XTALK_Y_PLANE_GRADIENT_KCPS = 0x001A
-_VL53L4CD_RANGE_OFFSET_MM = 0x001E
-_VL53L4CD_INNER_OFFSET_MM = 0x0020
-_VL53L4CD_OUTER_OFFSET_MM = 0x0022
-_VL53L4CD_I2C_FAST_MODE_PLUS = 0x002D
-_VL53L4CD_GPIO_HV_MUX_CTRL = 0x0030
-_VL53L4CD_GPIO_TIO_HV_STATUS = 0x0031
-_VL53L4CD_SYSTEM_INTERRUPT = 0x0046
-_VL53L4CD_RANGE_CONFIG_A = 0x005E
-_VL53L4CD_RANGE_CONFIG_B = 0x0061
-_VL53L4CD_RANGE_CONFIG_SIGMA_THRESH = 0x0064
-_VL53L4CD_MIN_COUNT_RATE_RTN_LIMIT_MCPS = 0x0066
-_VL53L4CD_INTERMEASUREMENT_MS = 0x006C
-_VL53L4CD_THRESH_HIGH = 0x0072
-_VL53L4CD_THRESH_LOW = 0x0074
-_VL53L4CD_SYSTEM_INTERRUPT_CLEAR = 0x0086
-_VL53L4CD_SYSTEM_START = 0x0087
-_VL53L4CD_RESULT_RANGE_STATUS = 0x0089
-_VL53L4CD_RESULT_SPAD_NB = 0x008C
-_VL53L4CD_RESULT_SIGNAL_RATE = 0x008E
-_VL53L4CD_RESULT_AMBIENT_RATE = 0x0090
-_VL53L4CD_RESULT_SIGMA = 0x0092
-_VL53L4CD_RESULT_DISTANCE = 0x0096
-_VL53L4CD_RESULT_OSC_CALIBRATE_VAL = 0x00DE
-_VL53L4CD_FIRMWARE_SYSTEM_STATUS = 0x00E5
-_VL53L4CD_IDENTIFICATION_MODEL_ID = 0x010F
+_VL53L4CX_SOFT_RESET = 0x0000  # The VL53L4CD addresses that are used look to be consistent with VL53L4CX addresses. 
+_VL53L4CX_I2C_SLAVE_DEVICE_ADDRESS = 0x0001
+_VL53L4CX_VHV_CONFIG_TIMEOUT_MACROP_LOOP_BOUND = 0x0008
+_VL53L4CX_XTALK_PLANE_OFFSET_KCPS = 0x0016
+_VL53L4CX_XTALK_X_PLANE_GRADIENT_KCPS = 0x0018
+_VL53L4CX_XTALK_Y_PLANE_GRADIENT_KCPS = 0x001A
+_VL53L4CX_RANGE_OFFSET_MM = 0x001E
+_VL53L4CX_INNER_OFFSET_MM = 0x0020
+_VL53L4CX_OUTER_OFFSET_MM = 0x0022
+_VL53L4CX_I2C_FAST_MODE_PLUS = 0x002D
+_VL53L4CX_GPIO_HV_MUX_CTRL = 0x0030
+_VL53L4CX_GPIO_TIO_HV_STATUS = 0x0031
+_VL53L4CX_SYSTEM_INTERRUPT = 0x0046
+_VL53L4CX_RANGE_CONFIG_A = 0x005E
+_VL53L4CX_RANGE_CONFIG_B = 0x0061
+_VL53L4CX_RANGE_CONFIG_SIGMA_THRESH = 0x0064
+_VL53L4CX_MIN_COUNT_RATE_RTN_LIMIT_MCPS = 0x0066
+_VL53L4CX_INTERMEASUREMENT_MS = 0x006C
+_VL53L4CX_THRESH_HIGH = 0x0072
+_VL53L4CX_THRESH_LOW = 0x0074
+_VL53L4CX_SYSTEM_INTERRUPT_CLEAR = 0x0086
+_VL53L4CX_SYSTEM_START = 0x0087
+_VL53L4CX_RESULT_RANGE_STATUS = 0x0089
+_VL53L4CX_RESULT_SPAD_NB = 0x008C
+_VL53L4CX_RESULT_SIGNAL_RATE = 0x008E
+_VL53L4CX_RESULT_AMBIENT_RATE = 0x0090
+_VL53L4CX_RESULT_SIGMA = 0x0092
+_VL53L4CX_RESULT_DISTANCE = 0x0096
+_VL53L4CX_RESULT_OSC_CALIBRATE_VAL = 0x00DE
+_VL53L4CX_FIRMWARE_SYSTEM_STATUS = 0x00E5
+_VL53L4CX_IDENTIFICATION_MODEL_ID = 0x010F
 
 RANGE_VALID = 0x00
 RANGE_WARN_SIGMA_ABOVE = 0x01
@@ -85,13 +84,16 @@ RANGE_ERROR_SIGNAL_TOO_WEAK = 0x0C
 RANGE_ERROR_OTHER = 0xFF
 
 
-class VL53L4CD:
-    """Driver for the VL53L4CD distance sensor."""
+class VL53L4CX:
+    """Driver for the VL53L4CX distance sensor."""
 
-    def __init__(self, i2c_bus, i2c_address=0x29, sleep_node=None):
+    def __init__(self, 
+                 i2c_bus: smbus.SMBus, 
+                 i2c_address: int = 0x29, 
+                 sleep_node=None):
 
         if not sleep_node:
-            raise ValueError("No sleep node in the VL53L4CD/X lib!")
+            raise ValueError("No sleep node in the VL53L4CX/X lib!")
         
         self.sleep_node = sleep_node
         self.rate = self.sleep_node.create_rate(1e3)
@@ -220,7 +222,7 @@ class VL53L4CD:
         self._start_vhv()
         self.clear_interrupt()
         self.stop_ranging()
-        self._write_register(_VL53L4CD_VHV_CONFIG_TIMEOUT_MACROP_LOOP_BOUND, b"\x09")
+        self._write_register(_VL53L4CX_VHV_CONFIG_TIMEOUT_MACROP_LOOP_BOUND, b"\x09")
         self._write_register(0x0B, b"\x00")
         self._write_register(0x0024, b"\x05\x00")
         self.inter_measurement = 0
@@ -229,13 +231,13 @@ class VL53L4CD:
     @property
     def model_info(self):
         """A 2 tuple of Model ID and Module Type."""
-        info = self._read_register(_VL53L4CD_IDENTIFICATION_MODEL_ID, 2)
+        info = self._read_register(_VL53L4CX_IDENTIFICATION_MODEL_ID, 2)
         return info[0], info[1]  # Model ID, Module Type
 
     @property
     def distance(self):
         """The distance in units of centimeters."""
-        dist = self._read_register(_VL53L4CD_RESULT_DISTANCE, 2)
+        dist = self._read_register(_VL53L4CX_RESULT_DISTANCE, 2)
         dist = struct.unpack(">H", dist)[0]
         return dist / 10
 
@@ -268,7 +270,7 @@ class VL53L4CD:
             RANGE_ERROR_MERGED_TARGET,
             RANGE_ERROR_SIGNAL_TOO_WEAK,
         ]
-        status = self._read_register(_VL53L4CD_RESULT_RANGE_STATUS, 1)
+        status = self._read_register(_VL53L4CX_RESULT_RANGE_STATUS, 1)
         status = struct.unpack(">B", status)[0]
         status = status & 0x1F
         if status < 24:
@@ -280,7 +282,7 @@ class VL53L4CD:
     @property
     def sigma(self):
         """Sigma estimator for the noise in the reported target distance in units of centimeters."""
-        sigma = self._read_register(_VL53L4CD_RESULT_SIGMA, 2)
+        sigma = self._read_register(_VL53L4CX_RESULT_SIGMA, 2)
         sigma = struct.unpack(">H", sigma)[0]
         return sigma / 40
 
@@ -291,7 +293,7 @@ class VL53L4CD:
 
         macro_period_us = 16 * (int(2304 * (1073741824.0 / osc_freq)) >> 6)
 
-        macrop_high = struct.unpack(">H", self._read_register(_VL53L4CD_RANGE_CONFIG_A, 2))[0]
+        macrop_high = struct.unpack(">H", self._read_register(_VL53L4CX_RANGE_CONFIG_A, 2))[0]
 
         ls_byte = (macrop_high & 0x00FF) << 4
         ms_byte = (macrop_high & 0xFF00) >> 8
@@ -341,7 +343,7 @@ class VL53L4CD:
             timing_budget_us -= 4300
             timing_budget_us //= 2
 
-        # VL53L4CD_RANGE_CONFIG_A register
+        # VL53L4CX_RANGE_CONFIG_A register
         ms_byte = 0
         timing_budget_us <<= 12
         tmp = macro_period_us * 16
@@ -350,9 +352,9 @@ class VL53L4CD:
             ls_byte >>= 1
             ms_byte += 1
         ms_byte = (ms_byte << 8) + (ls_byte & 0xFF)
-        self._write_register(_VL53L4CD_RANGE_CONFIG_A, struct.pack(">H", ms_byte))
+        self._write_register(_VL53L4CX_RANGE_CONFIG_A, struct.pack(">H", ms_byte))
 
-        # VL53L4CD_RANGE_CONFIG_B register
+        # VL53L4CX_RANGE_CONFIG_B register
         ms_byte = 0
         tmp = macro_period_us * 12
         ls_byte = int(((timing_budget_us + ((tmp >> 6) >> 1)) / (tmp >> 6)) - 1)
@@ -360,7 +362,7 @@ class VL53L4CD:
             ls_byte >>= 1
             ms_byte += 1
         ms_byte = (ms_byte << 8) + (ls_byte & 0xFF)
-        self._write_register(_VL53L4CD_RANGE_CONFIG_B, struct.pack(">H", ms_byte))
+        self._write_register(_VL53L4CX_RANGE_CONFIG_B, struct.pack(">H", ms_byte))
 
     @property
     def inter_measurement(self):
@@ -368,8 +370,8 @@ class VL53L4CD:
         Inter-measurement period in milliseconds. Valid range is timing_budget to
         5000ms, or 0 to disable.
         """
-        reg_val = struct.unpack(">I", self._read_register(_VL53L4CD_INTERMEASUREMENT_MS, 4))[0]
-        clock_pll = struct.unpack(">H", self._read_register(_VL53L4CD_RESULT_OSC_CALIBRATE_VAL, 2))[
+        reg_val = struct.unpack(">I", self._read_register(_VL53L4CX_INTERMEASUREMENT_MS, 4))[0]
+        clock_pll = struct.unpack(">H", self._read_register(_VL53L4CX_RESULT_OSC_CALIBRATE_VAL, 2))[
             0
         ]
         clock_pll &= 0x3FF
@@ -387,12 +389,12 @@ class VL53L4CD:
                 f"Inter-measurement period can not be less than timing budget ({timing_bud})"
             )
 
-        clock_pll = struct.unpack(">H", self._read_register(_VL53L4CD_RESULT_OSC_CALIBRATE_VAL, 2))[
+        clock_pll = struct.unpack(">H", self._read_register(_VL53L4CX_RESULT_OSC_CALIBRATE_VAL, 2))[
             0
         ]
         clock_pll &= 0x3FF
         int_meas = int(1.055 * val * clock_pll)
-        self._write_register(_VL53L4CD_INTERMEASUREMENT_MS, struct.pack(">I", int_meas))
+        self._write_register(_VL53L4CX_INTERMEASUREMENT_MS, struct.pack(">I", int_meas))
 
         # need to reset timing budget so that it will be based on new inter-measurement period
         self.timing_budget = timing_bud
@@ -402,10 +404,10 @@ class VL53L4CD:
         # start ranging depending inter-measurement setting
         if self.inter_measurement == 0:
             # continuous mode
-            self._write_register(_VL53L4CD_SYSTEM_START, b"\x21")
+            self._write_register(_VL53L4CX_SYSTEM_START, b"\x21")
         else:
             # autonomous mode
-            self._write_register(_VL53L4CD_SYSTEM_START, b"\x40")
+            self._write_register(_VL53L4CX_SYSTEM_START, b"\x40")
 
         # wait for data ready
         timed_out = True
@@ -422,29 +424,29 @@ class VL53L4CD:
 
     def stop_ranging(self):
         """Stops ranging operation."""
-        self._write_register(_VL53L4CD_SYSTEM_START, b"\x00")
+        self._write_register(_VL53L4CX_SYSTEM_START, b"\x00")
         self._ranging = False
 
     def clear_interrupt(self):
         """Clears new data interrupt."""
-        self._write_register(_VL53L4CD_SYSTEM_INTERRUPT_CLEAR, b"\x01")
+        self._write_register(_VL53L4CX_SYSTEM_INTERRUPT_CLEAR, b"\x01")
 
     @property
     def data_ready(self):
         """Returns true if new data is ready, otherwise false."""
-        if self._read_register(_VL53L4CD_GPIO_TIO_HV_STATUS, debug=True)[0] & 0x01 == self._interrupt_polarity:
+        if self._read_register(_VL53L4CX_GPIO_TIO_HV_STATUS, debug=True)[0] & 0x01 == self._interrupt_polarity:
             return True  # GPIO TIO HV STATUS REG ON THE VL53L4CX is the same register (0x31)
         return False
 
     @property
     def _interrupt_polarity(self):
-        int_pol = self._read_register(_VL53L4CD_GPIO_HV_MUX_CTRL, debug=True)[0] & 0x10
+        int_pol = self._read_register(_VL53L4CX_GPIO_HV_MUX_CTRL, debug=True)[0] & 0x10
         int_pol = (int_pol >> 4) & 0x01
         return 0 if int_pol else 1
 
     def _wait_for_boot(self):
         for _ in range(1000):
-            if self._read_register(_VL53L4CD_FIRMWARE_SYSTEM_STATUS)[0] == 0x03:
+            if self._read_register(_VL53L4CX_FIRMWARE_SYSTEM_STATUS)[0] == 0x03:
                 return
             self.rate.sleep()
         raise TimeoutError("Time out waiting for system boot.")
@@ -454,48 +456,23 @@ class VL53L4CD:
         for _ in range(1000):
             if self.data_ready:
                 return
-            print(f"STATUS: {self._read_register(_VL53L4CD_GPIO_TIO_HV_STATUS, debug=True)}")
+            print(f"STATUS: {self._read_register(_VL53L4CX_GPIO_TIO_HV_STATUS, debug=True)}")
             self.rate.sleep()
         raise TimeoutError("Time out starting VHV.")
 
-    def __old_write_register(self, address, data, length=None):
-        if length is None:
-            length = len(data)
-        with self.i2c_device as i2c:
-            i2c.write(struct.pack(">H", address) + data[:length])
+    def _write_register(self, register, data, debug=False):
+        """I2C write to the VL53L4CX sensor.
 
-    def __old_read_register(self, address, length=1):
-        data = bytearray(length)
-        with self.i2c_device as i2c:
-            i2c.write(struct.pack(">H", address))
-            i2c.readinto(data)
-        return data
-        
-    def __write_register(self, register, data, length=None):
-            print(f"DATA WRITE: {data}")
-            if not length: length = len(data)
-            self.i2c_bus.write_i2c_block_data(self.i2c_address, register, list(data)[:length])
+        :param register: Register to be written to
+        :type register: int
+        :param data: Data to be written
+        :type data: list, bytes, bytearray
+        :param debug: Terminal output for debugging, defaults to False
+        :type debug: bool, optional
+        """
 
-
-    def __read_register(self, register, length=1):
-        data = self.i2c_bus.read_i2c_block_data(self.i2c_address, register, length=length)
-        print(f"DATA READ: {data}")
-
-        tmp = bytes()
-
-        for b in data:
-            if isinstance(b, int):
-                b = int.to_bytes(b)
-            tmp += b
-
-        return tmp
-
-    def _write_register(self, register, data, length=None, debug=False):
         if debug:
             print(f"DATA WRITE: {data}")
-   
-        if not length:
-            length = len(data)
 
         data = [_ for _ in data]  # make the data into a list of bytes/ints
         reg = [register >> 8, register]
@@ -503,21 +480,30 @@ class VL53L4CD:
         self.i2c_bus.i2c_wr(self.i2c_address, [*reg, *data])  # prepend the register bytes into the data list of bytes. 
 
         # if not ld_cfg:
-        #     self.i2c_bus.i2c_wr(self.i2c_address, data)
+        #     self.i2c_bus.i2c_wr(self.i2c_address, [*reg, *data]) 
         # else:
         #     for offset, byte in enumerate(data):
         #         self.i2c_bus.i2c_wr(self.i2c_address, [(register + offset) >> 8, register + offset, byte])
-                
-
 
     def _read_register(self, register, length=1, debug=False):
+        """I2C read from the VL53L4CX sensor.
+
+        :param register: Register to be read.
+        :type register: int
+        :param length: Number of bytes to be read, defaults to 1
+        :type length: int, optional
+        :param debug: Terminal output for debugging, defaults to False
+        :type debug: bool, optional
+        :return: Register value
+        :rtype: bytes
+        """
 
         reg = [0x00, register] if register < 256 else [0x01, 0x0F]
 
-        self.i2c_bus.i2c_wr(self.i2c_address, reg)
-        read_msg = self.i2c_bus.i2c_rd(self.i2c_address, length)  
+        self.i2c_bus.i2c_wr(self.i2c_address, reg)  # begin I2C transaction by sending the i2c address and write the 2 register bytes
+        read_msg = self.i2c_bus.i2c_rd(self.i2c_address, length)  # switch to a read op and request X bytes
 
-        match length:
+        match length:  # necessary to convert 
             case 1: pointer_type = ctypes.POINTER(ctypes.c_uint8)
             case 2: pointer_type = ctypes.POINTER(ctypes.c_uint16)
             case 4: pointer_type = ctypes.POINTER(ctypes.c_uint32)
@@ -533,8 +519,8 @@ class VL53L4CD:
     def set_address(self, new_address):
         """
         Set a new I2C address to the instantiated object. This is only called when using
-        multiple VL53L4CD sensors on the same I2C bus (SDA & SCL pins). See also the
+        multiple VL53L4CX sensors on the same I2C bus (SDA & SCL pins). See also the
         `example <examples.html#id2>`_ for proper usage.
         """
-        self._write_register(_VL53L4CD_I2C_SLAVE_DEVICE_ADDRESS, struct.pack(">B", new_address))
+        self._write_register(_VL53L4CX_I2C_SLAVE_DEVICE_ADDRESS, struct.pack(">B", new_address))
         self.i2c_address = new_address
