@@ -498,12 +498,20 @@ class VL53L4CD:
             length = len(data)
 
         data = [_ for _ in data]  # make the data into a list of bytes/ints
+        reg = [register >> 8, register]
 
-        self.i2c_bus.i2c_wr(self.i2c_address, data)
+        self.i2c_bus.i2c_wr(self.i2c_address, [*reg, *data])  # prepend the register bytes into the data list of bytes. 
+
+        # if not ld_cfg:
+        #     self.i2c_bus.i2c_wr(self.i2c_address, data)
+        # else:
+        #     for offset, byte in enumerate(data):
+        #         self.i2c_bus.i2c_wr(self.i2c_address, byte)
+                
+
 
     def _read_register(self, register, length=1, debug=False):
-    
-        data = bytearray(length)
+
         reg = [0x00, register] if register < 256 else [0x01, 0x0F]
 
         self.i2c_bus.i2c_wr(self.i2c_address, reg)
