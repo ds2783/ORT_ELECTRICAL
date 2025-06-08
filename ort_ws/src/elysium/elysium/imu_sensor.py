@@ -4,6 +4,7 @@ from rclpy.node import Node
 from rclpy.action.server import ActionServer
 
 from geometry_msgs.msg import Quaternion
+from ort_interfaces.action import CalibrateImu
 
 import time
 import numpy as np
@@ -12,7 +13,6 @@ from threading import Thread
 from ahrs.filters import EKF
 
 from elysium.hardware.icm20948 import ICM20948
-from ort_interfaces.action import CalibrateImu
 
 from elysium.config.sensors import IMU_SENSOR_PERIOD
 
@@ -146,7 +146,10 @@ class Imu(Node):
         gyro = gyro_temp - self.gyro_offset
         
         gyro_rad = np.deg2rad(gyro)
-        mag_nano = mag * 1e-3
+
+        # magnetometer data comes in micro Tesla ->
+        # EKF take nano Tesla
+        mag_nano = mag * 1e3
 
         # Update EKF and get updated quaternion
         # w,x,y,z
