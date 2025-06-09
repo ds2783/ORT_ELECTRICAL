@@ -5,6 +5,7 @@ from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPo
 import smbus3 as smbus
 
 import gpiozero as gpio
+import lgpio
 from gpiozero.pins.lgpio import LGPIOFactory
 
 from std_msgs.msg import Float32
@@ -65,6 +66,12 @@ class DistanceNode(Node):
         self.distance_publisher.publish(msg)
         self.get_logger().info(f"Distance published from node {self.get_name()}: {self.sensor.distance} cm")
 
+def __patched_init(self, chip=None):
+    gpio.pins.lgpio.LGPIOFactory.__bases__[0].__init__(self)
+    chip = 0
+    self._handle = lgpio.gpiochip_open(chip)
+    self._chip = chip
+    self.pin_class = gpio.pins.lgpio.LGPIOPin
 
 def main(args=None):
     rclpy.init(args=args)
@@ -76,7 +83,9 @@ def main(args=None):
 
     sleep_node = rclpy.create_node("dis_sleep_node")
 
-    factory = LGPIOFactory(chip=0)
+    gpio.pins.lgpio.LGPIOFactory.__init__ = __patched_init
+    factory = LGPIOFactory()
+
     xshut_pin = gpio.DigitalOutputDevice(17, pin_factory=factory)
     xshut_pin.off()
 
