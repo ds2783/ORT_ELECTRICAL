@@ -59,16 +59,20 @@ class Imu(Node):
         gyro_offset = [0.0, 0.0, 0.0]
 
         self.rate = self.sleep_node.create_rate(1/delay)
+        self.rate.sleep()
         
         for _ in range(samples):
-            ax, ay, az, gx, gy, gz = self.imu.read_accelerometer_gyro_data()
-            accel_offset[0] += ax
-            accel_offset[1] += ay
-            accel_offset[2] += az
-            gyro_offset[0] += gx
-            gyro_offset[1] += gy
-            gyro_offset[2] += gz
             self.rate.sleep()
+            try:
+                ax, ay, az, gx, gy, gz = self.imu.read_accelerometer_gyro_data()
+                accel_offset[0] += ax
+                accel_offset[1] += ay
+                accel_offset[2] += az
+                gyro_offset[0] += gx
+                gyro_offset[1] += gy
+                gyro_offset[2] += gz
+            except:
+                self.get_logger().warn("Timeout waiting for Gyrometer.")
 
         accel_offset = np.array([x / samples for x in accel_offset])
         gyro_offset = np.array([x / samples for x in gyro_offset])
