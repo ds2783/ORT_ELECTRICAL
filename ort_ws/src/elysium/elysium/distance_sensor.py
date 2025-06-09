@@ -42,7 +42,7 @@ class DistanceNode(Node):
         self.i2c_addr = i2c_addr
 
         self.get_logger().info(f"TOF INIT")
-        self.sensor = tof.VL53L4CD(self.bus, self.i2c_addr, sleep_node=sleep_node)
+        self.sensor = tof.VL53L4CX(self.bus, self.i2c_addr, sleep_node=sleep_node)
 
     def test_i2c(self):
         try:
