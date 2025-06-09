@@ -74,7 +74,7 @@ def main(args=None):
 
     sleep_node = rclpy.create_node("dis_sleep_node")
 
-    chip = gpiod.Chip("/dev/gpiochip4")
+    chip = gpiod.Chip("/dev/gpiochip0")
 
     xshut_pin = chip.get_line(17)
     xshut_pin.set_value(0)
