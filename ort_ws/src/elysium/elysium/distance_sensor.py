@@ -7,7 +7,6 @@ import smbus3 as smbus
 import gpiod
 from gpiod.line import Direction, Value
 
-
 from std_msgs.msg import Float32
 import threading
 import elysium.hardware.adafruit_vl53l4cx as tof
@@ -92,13 +91,13 @@ def main(args=None):
 
     sleep_node = rclpy.create_node("dis_sleep_node")
 
-    set_line_value("/dev/gpiochip0", 17, 0)
+    set_line_value("/dev/gpiochip0", 11, 0)
 
     _distance_sensor_1 = DistanceNode(node_name_1, topic_name_1, i2c_addr=0x29, sleep_node=sleep_node)
     _distance_sensor_2 = DistanceNode(node_name_2, topic_name_2, i2c_addr=0x29, sleep_node=sleep_node)
     
     _distance_sensor_1.sensor.set_address(0x2A)
-    set_line_value("/dev/gpiochip0", 17, 1)
+    set_line_value("/dev/gpiochip0", 11, 1)
 
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(_distance_sensor_1)
