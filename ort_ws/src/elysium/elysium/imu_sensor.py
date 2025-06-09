@@ -164,25 +164,28 @@ class Imu(Node):
     
     def update_ekf(self):
         while self.imu_process:
-            mx, my, mz = self.imu.read_magnetometer_data()
-            mag_temp = np.array([mx, my, mz])
-            ax, ay, az, gx, gy, gz = self.imu.read_accelerometer_gyro_data()
-            accel_temp = np.array([ax, ay, az])
-            gyro_temp = np.array([gx, gy, gz])
+            try:
+                mx, my, mz = self.imu.read_magnetometer_data()
+                mag_temp = np.array([mx, my, mz])
+                ax, ay, az, gx, gy, gz = self.imu.read_accelerometer_gyro_data()
+                accel_temp = np.array([ax, ay, az])
+                gyro_temp = np.array([gx, gy, gz])
         
-            mag = mag_temp - self.mag_offset
-            accel = accel_temp - self.accel_offset
-            gyro = gyro_temp - self.gyro_offset
+                mag = mag_temp - self.mag_offset
+                accel = accel_temp - self.accel_offset
+                gyro = gyro_temp - self.gyro_offset
         
-            gyro_rad = np.deg2rad(gyro)
+                gyro_rad = np.deg2rad(gyro)
 
-            # magnetometer data comes in micro Tesla ->
-            # EKF take nano Tesla
-            mag_nano = mag * 1e3
+                # magnetometer data comes in micro Tesla ->
+                # EKF take nano Tesla
+                mag_nano = mag * 1e3
 
-            # Update EKF and get updated quaternion
-            # w,x,y,z
-            self.q = self.ekf.update(self.q, gyr=gyro_rad, acc=accel, mag=mag_nano)
+                # Update EKF and get updated quaternion
+                # w,x,y,z
+                self.q = self.ekf.update(self.q, gyr=gyro_rad, acc=accel, mag=mag_nano)
+            except:
+                self.get_logger().warn("Timout waiting for IMU")
         
 
 def main(args=None):
