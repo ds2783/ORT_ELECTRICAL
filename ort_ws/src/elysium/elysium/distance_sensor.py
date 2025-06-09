@@ -87,14 +87,14 @@ def main(args=None):
 
     sleep_node = rclpy.create_node("dis_sleep_node")
 
-    _request = get_request_line("/dev/gpiochip0", 17)
+    _request = get_request_line("/dev/gpiochip0", 17)  # GPIO 17, I believe? Corresponds to Pin 11. 
 
-    _request.set_value(Value.INACTIVE)
+    _request.set_value(17, Value.INACTIVE)
 
     _distance_sensor_1 = DistanceNode(node_name_1, topic_name_1, i2c_addr=0x29, sleep_node=sleep_node)  
     _distance_sensor_1.sensor.set_address(0x2A)
 
-    _request.set_value(Value.ACTIVE)
+    _request.set_value(17, Value.ACTIVE)
 
     _distance_sensor_2 = DistanceNode(node_name_2, topic_name_2, i2c_addr=0x29, sleep_node=sleep_node)
 
