@@ -6,7 +6,7 @@ import smbus3 as smbus
 
 from std_msgs.msg import Float32
 import threading
-import ORT_ELECTRICAL.ort_ws.src.elysium.elysium.hardware.adafruit_vl53l4cx as tof
+import elysium.hardware.adafruit_vl53l4cx as tof
 from elysium.config.sensors import DISTANCE_SENSOR_REFRESH_PERIOD
 
 
