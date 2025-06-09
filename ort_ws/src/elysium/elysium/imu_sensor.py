@@ -44,7 +44,7 @@ class Imu(Node):
         self.q = np.array([0.0, 0.0, 0.0, 1.0])  # Initial quaternion
         self.inverse = np.array([0.0, 0.0, 0.0, 1.0])
 
-        imu_thread = Thread(target=self.qrComms)
+        imu_thread = Thread(target=self.update_ekf)
         imu_thread.start()
 
     def calibrate_accel_gyro(self, samples=100, delay=0.01):

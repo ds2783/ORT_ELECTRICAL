@@ -128,9 +128,9 @@ class TelepresenceOperations(Node):
         for i in range(3, 6):
             self.kit_.servo[i].angle = left_side
 
-        self.get_logger().info(
-            "left_side: " + str(left_side) + " right_side: " + str(right_side)
-        )
+        # self.get_logger().info(
+        #     "left_side: " + str(left_side) + " right_side: " + str(right_side)
+        # )
 
     def camera_rotate(self):
         self.cam_angles_.z_axis = self.bound_180(float(self.z_increment + self.cam_angles_.z_axis))
@@ -140,9 +140,9 @@ class TelepresenceOperations(Node):
         # CONTIOUS
         self.kit_.servo[CAMERA_SERVO_X].angle = self.cam_angles_.x_axis
 
-        self.get_logger().info(
-            "z_axis: " + str(self.cam_angles_.z_axis) + " x_axis: " + str(self.cam_angles_.x_axis)
-        )
+        # self.get_logger().info(
+        #     "z_axis: " + str(self.cam_angles_.z_axis) + " x_axis: " + str(self.cam_angles_.x_axis)
+        # )
 
 
 def main(args=None):
