@@ -24,7 +24,7 @@ from ort_interfaces.action import CalibrateImu
 
 
 
-def impl_glfw_init(window_name="Project Gorgon", width=2200, height=1300):
+def impl_glfw_init(window_name="Project Gorgon", width=WIDTH, height=HEIGHT):
     if not glfw.init():
         print("Could not initialize OpenGL context")
         exit(1)

@@ -31,10 +31,11 @@ class BaseNode(Node):
         )
         self.qreader_ = QReader()
 
-        self.try_again = True
         self.address = ("localhost", port)
         try:
             self.comms_ = Client(self.address, authkey=b"123")
+            self.get_logger().info("Connection Successful.")
+            self.try_again = False
         except:
             self.try_again = True
         # ---
@@ -153,8 +154,9 @@ class BaseNode(Node):
         if self.try_again == True:
             try:
                 self.comms_ = Client(self.address, authkey=b"123")
+                self.try_again = False
             except:
-                self.try_again = True
+                pass
 
     def handler(self, signal_received, frame):
         self.main_cam.stop()
