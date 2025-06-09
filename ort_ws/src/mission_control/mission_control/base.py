@@ -12,8 +12,6 @@ from mission_control.stream.stream_client import StreamClient
 from mission_control.config.mappings import AXES, BUTTONS
 from mission_control.config.network import COMM_PORT, PORT_MAIN_BASE, PI_IP
 
-import glfw
-from multiprocessing import Process
 from qreader import QReader
 from multiprocessing.connection import Client
 
@@ -33,8 +31,12 @@ class BaseNode(Node):
         )
         self.qreader_ = QReader()
 
-        address = ("localhost", port)
-        self.comms_ = Client(address, authkey=b"123")
+        self.try_again = True
+        self.address = ("localhost", port)
+        try:
+            self.comms_ = Client(self.address, authkey=b"123")
+        except:
+            self.try_again = True
         # ---
 
         # TIMERS
@@ -148,6 +150,12 @@ class BaseNode(Node):
         msg.data = True
         self.connection_pub_.publish(msg)
 
+        if self.try_again == True:
+            try:
+                self.comms_ = Client(self.address, authkey=b"123")
+            except:
+                self.try_again = True
+
     def handler(self, signal_received, frame):
         self.main_cam.stop()
         self.get_logger().warn(
@@ -186,7 +194,10 @@ class BaseNode(Node):
         self.sendComms("cam_p:" + f"{self.cam_rotation.x_axis:2f}")
 
     def sendComms(self, msg):
-        self.comms_.send(msg)
+        try:
+            self.comms_.send(msg)
+        except:
+            self.get_logger().warn("Non comms link found.")
 
 
 def rad_degrees(num):

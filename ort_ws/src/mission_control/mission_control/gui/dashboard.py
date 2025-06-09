@@ -6,6 +6,7 @@ from ctypes import c_void_p
 
 from mission_control.gui.data_structures import shaders, EBO, VBO, VAO
 
+from qreader import QReader
 
 vertexSource = """
 #version 330 core
@@ -57,6 +58,7 @@ class Dashboard:
         self.cam_texID = gl.glGenTextures(2)
 
         self.cams = cams
+        self.qreader_ = QReader()
         self.shaderProgram = shaders.rawShaderProgram(vertexSource, fragmentSource)
 
         main_coords = [
@@ -107,7 +109,11 @@ class Dashboard:
 
     def draw_main(self):
         for index, cam in enumerate(self.cams):
-            image = cam.fetch_frame()
+            temp = cam.fetch_frame()
+            if index == 0:
+                image = self.draw_boxes(temp, (255, 255, 0))
+            else:
+                image = temp
             if image is not None:
                 gl.glBindTexture(gl.GL_TEXTURE_2D, self.cam_texID[index])
 
@@ -146,7 +152,61 @@ class Dashboard:
                     gl.GL_TRIANGLES, len(self.indices), gl.GL_UNSIGNED_INT, None
                 )
 
+    def draw_boxes(self, image, color):
+        img = image
+        boxes = self.get_boxes() 
+        for box in boxes:
+           x0 = int(box[0])
+           y0 = int(box[1])
+           x1 = int(box[2])
+           y1 = int(box[3])
+
+           self.line(x0, y0, x1, y0, img, color)
+           self.line(x1, y0, x1, y1, img, color)
+           self.line(x1, y1, x0, y1, img, color)
+           self.line(x0, y1, x0, y0, img, color)
+        return img
+
+    def line(self, x0, y0, x1, y1, image, color):
+        steep = False
+        if abs(x0-x1) < abs(y0-y1):
+            x0, y0 = y0, x0
+            x1, y1 = y1, x1
+            steep = True
+        if x0 > x1:
+            x0, x1 = x1, x0
+            y0, y1 = y1, y0
+        dx = x1-x0
+        dy = y1-y0
+        error2 = 0
+        derror2 = abs(dy)*2
+        y = y0
+        for x in range(x0,x1+1):
+            if steep:
+                self.set_pixel(image, y, x, color)
+            else:
+                self.set_pixel(image, x, y, color)
+            error2 += derror2;
+            if error2 > dx:
+                y += 1 if y1 > y0 else -1
+                error2 -= dx*2
+
+    def get_boxes(self):
+        image = self.cams[0].fetch_frame()
+        box_list = []
+        if image is not None: 
+            output = self.qreader_.detect(image=image)
+            box_list = []
+            for index, obj in enumerate(output):
+                bounds = obj["bbox_xyxy"]
+                box_list.append(bounds)
+        return box_list
+
     def draw(self):
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
         self.draw_main()
+
+    def set_pixel(self, image, x, y, color):
+        if image.shape[0] > y and image.shape[1] > x:
+            image[y, x] = color
 
