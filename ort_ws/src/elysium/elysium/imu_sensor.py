@@ -44,10 +44,13 @@ class Imu(Node):
         self.q = np.array([0.0, 0.0, 0.0, 1.0])  # Initial quaternion
         self.inverse = np.array([0.0, 0.0, 0.0, 1.0])
 
-        imu_thread = Thread(target=self.update_ekf)
-        imu_thread.start()
+        self.imu_thread = Thread(target=self.update_ekf)
+        self.imu_thread.start()
+
+        self.imu_process = True
 
     def calibrate_accel_gyro(self, samples=100, delay=0.01):
+        self.imu_process = False
         self.get_logger().info(
             "Calibrating accelerometer and gyroscope... Keep IMU still."
         )
@@ -73,9 +76,11 @@ class Imu(Node):
         accel_offset[2] -= 1.0
 
         self.get_logger().info("Accel/Gyro calibration done.")
+        self.imu_process = True
         return accel_offset, gyro_offset
 
     def calibrate_magnetometer(self, goal_handle, feedback_msg, duration=20, delay=0.05):
+        self.imu_process = False
         self.get_logger().info(
             "Calibrating magnetometer. Slowly rotate the IMU in all directions..."
         )
@@ -108,6 +113,7 @@ class Imu(Node):
         self.get_logger().info(
             f"Offsets: X={mag_offset[0]:.2f}, Y={mag_offset[1]:.2f}, Z={mag_offset[2]:.2f}"
         )
+        self.imu_process = True
         return mag_offset
 
     def zero_axis(self):
@@ -152,7 +158,7 @@ class Imu(Node):
         # yaw, pitch, roll = euler
     
     def update_ekf(self):
-        while True:
+        while self.imu_process:
             mx, my, mz = self.imu.read_magnetometer_data()
             mag_temp = np.array([mx, my, mz])
             ax, ay, az, gx, gy, gz = self.imu.read_accelerometer_gyro_data()
