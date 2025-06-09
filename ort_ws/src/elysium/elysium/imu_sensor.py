@@ -98,16 +98,20 @@ class Imu(Node):
         start_time = time.time()
         while time.time() - start_time < duration:
             self.rate.sleep()
-            x, y, z = self.imu.read_magnetometer_data()
-            mag_min[0] = min(mag_min[0], x)
-            mag_min[1] = min(mag_min[1], y)
-            mag_min[2] = min(mag_min[2], z)
-            mag_max[0] = max(mag_max[0], x)
-            mag_max[1] = max(mag_max[1], y)
-            mag_max[2] = max(mag_max[2], z)
-            current_duration = duration - (time.time() - start_time)
-            feedback_msg.seconds = int(current_duration)
-            goal_handle.publish_feedback(feedback_msg)
+            try:
+                x, y, z = self.imu.read_magnetometer_data()
+                mag_min[0] = min(mag_min[0], x)
+                mag_min[1] = min(mag_min[1], y)
+                mag_min[2] = min(mag_min[2], z)
+                mag_max[0] = max(mag_max[0], x)
+                mag_max[1] = max(mag_max[1], y)
+                mag_max[2] = max(mag_max[2], z)
+                current_duration = duration - (time.time() - start_time)
+                feedback_msg.seconds = int(current_duration)
+                goal_handle.publish_feedback(feedback_msg)
+            except:
+                self.get_logger().warn("Time out waiting for magnetometer.")
+        
 
         mag_offset = np.array(
             [(max_ + min_) / 2 for max_, min_ in zip(mag_max, mag_min)]
