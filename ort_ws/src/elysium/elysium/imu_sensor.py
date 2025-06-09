@@ -44,6 +44,9 @@ class Imu(Node):
         self.q = np.array([0.0, 0.0, 0.0, 1.0])  # Initial quaternion
         self.inverse = np.array([0.0, 0.0, 0.0, 1.0])
 
+        imu_thread = Thread(target=self.qrComms)
+        imu_thread.start()
+
     def calibrate_accel_gyro(self, samples=100, delay=0.01):
         self.get_logger().info(
             "Calibrating accelerometer and gyroscope... Keep IMU still."
@@ -135,26 +138,6 @@ class Imu(Node):
 
 
     def sendDataCB_(self):
-        mx, my, mz = self.imu.read_magnetometer_data()
-        mag_temp = np.array([mx, my, mz])
-        ax, ay, az, gx, gy, gz = self.imu.read_accelerometer_gyro_data()
-        accel_temp = np.array([ax, ay, az])
-        gyro_temp = np.array([gx, gy, gz])
-        
-        mag = mag_temp - self.mag_offset
-        accel = accel_temp - self.accel_offset
-        gyro = gyro_temp - self.gyro_offset
-        
-        gyro_rad = np.deg2rad(gyro)
-
-        # magnetometer data comes in micro Tesla ->
-        # EKF take nano Tesla
-        mag_nano = mag * 1e3
-
-        # Update EKF and get updated quaternion
-        # w,x,y,z
-        self.q = self.ekf.update(self.q, gyr=gyro_rad, acc=accel, mag=mag_nano)
-        
         corrected_q = quaternion.cross(self.q , self.inverse)
         # Create message
         quat = Quaternion()
@@ -167,6 +150,29 @@ class Imu(Node):
         # Convert quaternion to Euler angles (ZYX order = yaw, pitch, roll)
         # euler = R.from_quat([q[1], q[2], q[3], q[0]]).as_euler('zyx', degrees=True)
         # yaw, pitch, roll = euler
+    
+    def update_ekf(self):
+        while True:
+            mx, my, mz = self.imu.read_magnetometer_data()
+            mag_temp = np.array([mx, my, mz])
+            ax, ay, az, gx, gy, gz = self.imu.read_accelerometer_gyro_data()
+            accel_temp = np.array([ax, ay, az])
+            gyro_temp = np.array([gx, gy, gz])
+        
+            mag = mag_temp - self.mag_offset
+            accel = accel_temp - self.accel_offset
+            gyro = gyro_temp - self.gyro_offset
+        
+            gyro_rad = np.deg2rad(gyro)
+
+            # magnetometer data comes in micro Tesla ->
+            # EKF take nano Tesla
+            mag_nano = mag * 1e3
+
+            # Update EKF and get updated quaternion
+            # w,x,y,z
+            self.q = self.ekf.update(self.q, gyr=gyro_rad, acc=accel, mag=mag_nano)
+        
 
 def main(args=None):
     rclpy.init(args=args)
