@@ -4,8 +4,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
 import smbus3 as smbus
 
-import gpiod
-from gpiod.line import Direction, Value
+import gpiozero as gpio
 
 from std_msgs.msg import Float32
 import threading
@@ -66,17 +65,6 @@ class DistanceNode(Node):
         self.get_logger().info(f"Distance published from node {self.get_name()}: {self.sensor.distance} cm")
 
 
-def get_request_line(chip_path, line_offset):
-    return gpiod.request_lines(
-        chip_path,
-        consumer="toggle-line-value",
-        config={
-            line_offset: gpiod.LineSettings(
-                direction=Direction.OUTPUT, output_value=Value.INACTIVE
-            )
-        },
-    )
-
 def main(args=None):
     rclpy.init(args=args)
 
@@ -87,14 +75,13 @@ def main(args=None):
 
     sleep_node = rclpy.create_node("dis_sleep_node")
 
-    _request = get_request_line("/dev/gpiochip0", 17)  # GPIO 17, I believe? Corresponds to Pin 11. 
-
-    _request.set_value(17, Value.INACTIVE)
+    xshut_pin = gpio.DigitalOutputDevice(17)
+    xshut_pin.off()
 
     _distance_sensor_1 = DistanceNode(node_name_1, topic_name_1, i2c_addr=0x29, sleep_node=sleep_node)  
     _distance_sensor_1.sensor.set_address(0x2A)
 
-    _request.set_value(17, Value.ACTIVE)
+    xshut_pin.on()
 
     _distance_sensor_2 = DistanceNode(node_name_2, topic_name_2, i2c_addr=0x29, sleep_node=sleep_node)
 
@@ -115,6 +102,5 @@ def main(args=None):
     finally:
         _distance_sensor_1.destroy_node()
         _distance_sensor_2.destroy_node()
-        _request.release()
         rclpy.try_shutdown()  
         executor_thread.join()
