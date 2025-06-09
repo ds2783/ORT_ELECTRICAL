@@ -5,6 +5,8 @@ from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPo
 import smbus3 as smbus
 
 import gpiod
+from gpiod.line import Direction, Value
+
 
 from std_msgs.msg import Float32
 import threading
@@ -64,6 +66,22 @@ class DistanceNode(Node):
         self.distance_publisher.publish(msg)
         self.get_logger().info(f"Distance published from node {self.get_name()}: {self.sensor.distance} cm")
 
+
+def set_line_value(chip_path, line_offset, value):
+    value = Value.ACTIVE if value else Value.INACTIVE
+
+    with gpiod.request_lines(
+        chip_path,
+        consumer="toggle-line-value",
+        config={
+            line_offset: gpiod.LineSettings(
+                direction=Direction.OUTPUT, output_value=value
+            )
+        },
+    ) as request:
+        request.set_value(line_offset, value)
+
+
 def main(args=None):
     rclpy.init(args=args)
 
@@ -74,16 +92,13 @@ def main(args=None):
 
     sleep_node = rclpy.create_node("dis_sleep_node")
 
-    chip = gpiod.Chip("/dev/gpiochip0")
-
-    xshut_pin = chip.get_line(17)
-    xshut_pin.set_value(0)
+    set_line_value("/dev/gpiochip0", 17, 0)
 
     _distance_sensor_1 = DistanceNode(node_name_1, topic_name_1, i2c_addr=0x29, sleep_node=sleep_node)
     _distance_sensor_2 = DistanceNode(node_name_2, topic_name_2, i2c_addr=0x29, sleep_node=sleep_node)
     
     _distance_sensor_1.sensor.set_address(0x2A)
-    xshut_pin.set_value(1)
+    set_line_value("/dev/gpiochip0", 17, 1)
 
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(_distance_sensor_1)
@@ -100,7 +115,6 @@ def main(args=None):
         _distance_sensor_1.get_logger().warn(f"KeyboardInterrupt triggered.")
         _distance_sensor_2.get_logger().warn(f"KeyboardInterrupt triggered.")
     finally:
-        chip.close()
         _distance_sensor_1.destroy_node()
         _distance_sensor_2.destroy_node()
         rclpy.try_shutdown()  
