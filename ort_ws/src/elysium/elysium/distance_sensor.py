@@ -5,6 +5,7 @@ from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPo
 import smbus3 as smbus
 
 import gpiozero as gpio
+from gpiozero.pins.lgpio import LGPIOFactory
 
 from std_msgs.msg import Float32
 import threading
@@ -75,7 +76,8 @@ def main(args=None):
 
     sleep_node = rclpy.create_node("dis_sleep_node")
 
-    xshut_pin = gpio.DigitalOutputDevice(17)
+    factory = LGPIOFactory(chip=0)
+    xshut_pin = gpio.DigitalOutputDevice(17, pin_factory=factory)
     xshut_pin.off()
 
     _distance_sensor_1 = DistanceNode(node_name_1, topic_name_1, i2c_addr=0x29, sleep_node=sleep_node)  
