@@ -4,7 +4,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
 import smbus3 as smbus
 
-import gpiozero as gpio
+import gpiod
 
 from std_msgs.msg import Float32
 import threading
@@ -74,14 +74,16 @@ def main(args=None):
 
     sleep_node = rclpy.create_node("dis_sleep_node")
 
-    xshut_pin = gpio.DigitalOutputDevice(17)
-    xshut_pin.off()
+    chip = gpiod.Chip("/dev/gpiochip4")
+
+    xshut_pin = chip.get_line(17)
+    xshut_pin.set_value(0)
 
     _distance_sensor_1 = DistanceNode(node_name_1, topic_name_1, i2c_addr=0x29, sleep_node=sleep_node)
     _distance_sensor_2 = DistanceNode(node_name_2, topic_name_2, i2c_addr=0x29, sleep_node=sleep_node)
     
     _distance_sensor_1.sensor.set_address(0x2A)
-    xshut_pin.on()
+    xshut_pin.set_value(1)
 
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(_distance_sensor_1)
@@ -98,6 +100,7 @@ def main(args=None):
         _distance_sensor_1.get_logger().warn(f"KeyboardInterrupt triggered.")
         _distance_sensor_2.get_logger().warn(f"KeyboardInterrupt triggered.")
     finally:
+        chip.close()
         _distance_sensor_1.destroy_node()
         _distance_sensor_2.destroy_node()
         rclpy.try_shutdown()  
