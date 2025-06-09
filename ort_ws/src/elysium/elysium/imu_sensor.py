@@ -78,6 +78,8 @@ class Imu(Node):
 
         self.get_logger().info("Accel/Gyro calibration done.")
         self.imu_process = True
+        self.imu_thread = Thread(target=self.update_ekf)
+        self.imu_thread.start()
         return accel_offset, gyro_offset
 
     def calibrate_magnetometer(self, goal_handle, feedback_msg, duration=20, delay=0.05):
@@ -115,6 +117,8 @@ class Imu(Node):
             f"Offsets: X={mag_offset[0]:.2f}, Y={mag_offset[1]:.2f}, Z={mag_offset[2]:.2f}"
         )
         self.imu_process = True
+        self.imu_thread = Thread(target=self.update_ekf)
+        self.imu_thread.start()
         return mag_offset
 
     def zero_axis(self):
