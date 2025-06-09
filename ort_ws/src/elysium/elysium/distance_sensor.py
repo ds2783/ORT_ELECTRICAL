@@ -62,7 +62,7 @@ class DistanceNode(Node):
         msg = Float32()
         msg.data = self.sensor.distance
         self.distance_publisher.publish(msg)
-        self.get_logger().info(f"Distance published: {self.sensor.distance} cm")
+        self.get_logger().info(f"Distance published from node {self.get_name()}: {self.sensor.distance} cm")
 
 def main(args=None):
     rclpy.init(args=args)
@@ -80,7 +80,7 @@ def main(args=None):
     _distance_sensor_1 = DistanceNode(node_name_1, topic_name_1, i2c_addr=0x29, sleep_node=sleep_node)
     _distance_sensor_2 = DistanceNode(node_name_2, topic_name_2, i2c_addr=0x29, sleep_node=sleep_node)
     
-    _distance_sensor_1.sensor.set_address(0x30)
+    _distance_sensor_1.sensor.set_address(0x2A)
     xshut_pin.on()
 
     executor = rclpy.executors.MultiThreadedExecutor()
