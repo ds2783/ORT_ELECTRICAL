@@ -1,28 +1,49 @@
-from launch import LaunchDescription
+from rclpy.node import Node
+from launch import LaunchContext, LaunchDescription, LaunchService
+from launch.actions import RegisterEventHandler
+from launch.events.process import ProcessStarted
+from launch.event_handlers.on_process_start import OnProcessStart
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
+    node1 = Node(package="mission_control", executable="base", name="base")
+    node2 = Node(
+        package="joy",
+        executable="joy_node",
+        name="joy_node",
+        parameters=[{"autorepeat_rate": 0.0, "coalesce_interval_ms": 1}],
+    )
+    node3 = Node(package="mission_control", executable="control_gui", name="gui")
+
+    already_started_nodes = set()
+
+    def start_next_node(event: ProcessStarted, context: LaunchContext):
+        print(f"node {event.process_name} started.")
+        already_started_nodes.update([event.process_name])
+        if len(already_started_nodes) == 2:
+            print(f"all required nodes are up, time to start node1")
+            return node1
+
     return LaunchDescription(
         [
-            Node(
-                package="joy",
-                executable="joy_node",
-                namespace="",
-                name="joy_node",
-                parameters=[{"autorepeat_rate": 0.0, "coalesce_interval_ms": 1}],
+            RegisterEventHandler(
+                event_handler=OnProcessStart(
+                    target_action=node2, on_start=start_next_node
+                )
             ),
-            Node(
-                package="mission_control",
-                executable="base",
-                namespace="",
-                name="base",
+            RegisterEventHandler(
+                event_handler=OnProcessStart(
+                    target_action=node3, on_start=start_next_node
+                )
             ),
-            Node(
-                package="mission_control",
-                executable="control_gui",
-                namespace="",
-                name="gui",
-            ),
+            node2,
+            node3,
         ]
     )
+
+
+if __name__ == "__main__":
+    ls = LaunchService()
+    ls.include_launch_description(generate_launch_description())
+    ls.run()

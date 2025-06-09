@@ -196,10 +196,11 @@ class BaseNode(Node):
         self.sendComms("cam_p:" + f"{self.cam_rotation.x_axis:2f}")
 
     def sendComms(self, msg):
-        try:
-            self.comms_.send(msg)
-        except:
-            self.get_logger().warn("Non comms link found.")
+        if self.try_again == False:
+            try:
+                self.comms_.send(msg)
+            except:
+                self.get_logger().warn("Non comms link found.")
 
 
 def rad_degrees(num):
