@@ -13,6 +13,7 @@ from imgui.integrations.glfw import GlfwRenderer
 from mission_control.gui.dashboard import Dashboard
 from mission_control.stream.stream_client import StreamClient
 from mission_control.config.network import COMM_PORT, PORT_MAIN, PORT_SECONDARY, PI_IP
+from mission_control.config.gui import WIDTH, HEIGHT, ACCEL_GRYO, MAG, ZERO_AXIS 
 
 from threading import Thread
 from multiprocessing.connection import Listener
@@ -21,9 +22,6 @@ from multiprocessing.connection import Listener
 from ort_interfaces.action import CalibrateImu
 
 
-ACCEL_GRYO = 0
-MAG = 1
-ZERO_AXIS = 2
 
 
 def impl_glfw_init(window_name="Project Gorgon", width=2200, height=1300):
