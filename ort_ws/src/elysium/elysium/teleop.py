@@ -57,7 +57,7 @@ class TelepresenceOperations(Node):
         # Conncection timer
         self.last_connection_ = time.time_ns()
         self.connection_timer_ = self.create_timer(0.2, self.shutdownCB_)
-        self.driver_timer_ = self.create_timer(0.1, self.driveCB_)
+        self.driver_timer_ = self.create_timer(0.01, self.driveCB_)
 
         # Servo Offset control
         self.offset_ = OFFSET
