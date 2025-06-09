@@ -76,7 +76,7 @@ def main(args=None):
 
     sleep_node = rclpy.create_node("dis_sleep_node")
 
-    factory = LGPIOFactory(chip=0)
+    factory = LGPIOFactory(chip=4)
     xshut_pin = gpio.DigitalOutputDevice(17, pin_factory=factory)
     xshut_pin.off()
 
