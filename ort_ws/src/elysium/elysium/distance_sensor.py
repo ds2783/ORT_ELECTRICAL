@@ -4,6 +4,8 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
 import smbus3 as smbus
 
+import gpiozero as gpio
+
 from std_msgs.msg import Float32
 import threading
 import elysium.hardware.adafruit_vl53l4cx as tof
@@ -72,13 +74,18 @@ def main(args=None):
 
     sleep_node = rclpy.create_node("dis_sleep_node")
 
+    xshut_pin = gpio.DigitalOutputDevice(17)
+    xshut_pin.off()
 
     _distance_sensor_1 = DistanceNode(node_name_1, topic_name_1, i2c_addr=0x29, sleep_node=sleep_node)
-    #_distance_sensor_2 = DistanceNode(topic_name_2)
+    _distance_sensor_2 = DistanceNode(node_name_2, topic_name_2, i2c_addr=0x29, sleep_node=sleep_node)
     
+    _distance_sensor_1.sensor.set_address(0x30)
+    xshut_pin.on()
+
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(_distance_sensor_1)
-    # executor.add_node(_distance_sensor_2)
+    executor.add_node(_distance_sensor_2)
     executor.add_node(sleep_node)
 
     executor_thread = threading.Thread(target=executor.spin, daemon=True)
@@ -89,9 +96,9 @@ def main(args=None):
             pass
     except KeyboardInterrupt:
         _distance_sensor_1.get_logger().warn(f"KeyboardInterrupt triggered.")
-        # _distance_sensor_2.get_logger().warn(f"KeyboardInterrupt triggered.")
+        _distance_sensor_2.get_logger().warn(f"KeyboardInterrupt triggered.")
     finally:
         _distance_sensor_1.destroy_node()
-        # _distance_sensor_2.destroy_node()
+        _distance_sensor_2.destroy_node()
         rclpy.try_shutdown()  
         executor_thread.join()

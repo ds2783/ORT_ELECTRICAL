@@ -430,7 +430,7 @@ class VL53L4CX:
     @property
     def data_ready(self):
         """Returns true if new data is ready, otherwise false."""
-        if self._read_register(_VL53L4CX_GPIO_TIO_HV_STATUS, debug=True)[0] & 0x01 == self._interrupt_polarity:
+        if self._read_register(_VL53L4CX_GPIO_TIO_HV_STATUS)[0] & 0x01 == self._interrupt_polarity:
             return True  # GPIO TIO HV STATUS REG ON THE VL53L4CX is the same register (0x31)
         return False
 
@@ -452,7 +452,6 @@ class VL53L4CX:
         for _ in range(1000):
             if self.data_ready:
                 return
-            print(f"STATUS: {self._read_register(_VL53L4CX_GPIO_TIO_HV_STATUS, debug=True)}")
             self.rate.sleep()
         raise TimeoutError("Time out starting VHV.")
 
@@ -474,12 +473,6 @@ class VL53L4CX:
         reg = [register >> 8, register]
 
         self.i2c_bus.i2c_wr(self.i2c_address, [*reg, *data])  # prepend the register bytes into the data list of bytes. 
-
-        # if not ld_cfg:
-        #     self.i2c_bus.i2c_wr(self.i2c_address, [*reg, *data]) 
-        # else:
-        #     for offset, byte in enumerate(data):
-        #         self.i2c_bus.i2c_wr(self.i2c_address, [(register + offset) >> 8, register + offset, byte])
 
     def _read_register(self, register, length=1, debug=False):
         """I2C read from the VL53L4CX sensor.
