@@ -59,6 +59,7 @@ class GeoLocator(Node):
 
         self.euler_angles = Vector3()
         self.rotation_ = Quaternion()
+        self.quat_ = np.array([1.0, 0.0, 0.0, 0.0])
         self.distance_sensor_dt_ = DISTANCE_SENSOR_REFRESH_PERIOD
 
         # Cartesian Displacement - Initiale Values
@@ -89,7 +90,7 @@ class GeoLocator(Node):
         euler = R.from_quat(
             [self.rotation_.x, self.rotation_.y, self.rotation_.z, self.rotation_.w]
         ).as_euler("zyx", degrees=False)
-        pitch, roll, yaw = euler
+        yaw, pitch, roll = euler
 
         self.euler_angles = Vector3(x=yaw, y=pitch, z=roll)
 

@@ -202,32 +202,33 @@ class GUI(Node):
         imgui.end()
 
         imgui.begin("Telemetry")
+        imgui.text("All data is in degrees.")
         imgui.text(
-            f""" (degrees)
-            Yaw: {self.elysium_yaw}
-            Pitch: {self.elysium_pitch} 
-            Roll: {self.elysium_roll}
-            """
+        f"""
+        Yaw: {self.elysium_yaw}
+        Pitch: {self.elysium_pitch} 
+        Roll: {self.elysium_roll}
+        """
         )
         imgui.text(
-            f""" 
-            x: {self.elysium_x} 
-            y: {self.elysium_y}
-            z: {self.elysium_z}
-            """
+        f""" 
+        x: {self.elysium_x} 
+        y: {self.elysium_y}
+        z: {self.elysium_z}
+        """
         )
         imgui.text(
-            f"""
-            x_vel: {self.elysium_x_vel}
-            y_vel: {self.elysium_y_vel}
-            z_vel: {self.elysium_z_vel}
-            """
+        f"""
+        x_vel: {self.elysium_x_vel}
+        y_vel: {self.elysium_y_vel}
+        z_vel: {self.elysium_z_vel}
+        """
         )
         imgui.text(
-                f""" (degrees)
-                camera-yaw: {self.camera_yaw}
-                camera-pitch: {self.camera_pitch}
-                """
+        f"""
+        camera-yaw: {self.camera_yaw}
+        camera-pitch: {self.camera_pitch}
+        """
                 )
         imgui.end()
 

@@ -153,15 +153,15 @@ class Imu(Node):
 
         # Update EKF and get updated quaternion
         # w,x,y,z
-        self.q = self.ekf.update(self.q, gyr=gyro_rad, acc=accel, mag=mag_nano)
+        self.q = self.ekf.update(self.q, gyr=gyro_rad, acc=accel, mag=mag_nano, dt=IMU_SENSOR_PERIOD)
         
         corrected_q = quaternion.cross(self.q , self.inverse)
         # Create message
         quat = Quaternion()
-        quat.x = corrected_q[0]
-        quat.y = corrected_q[1]
-        quat.z = corrected_q[2]
-        quat.w = corrected_q[3]
+        quat.x = corrected_q[1]
+        quat.y = corrected_q[2]
+        quat.z = corrected_q[3]
+        quat.w = corrected_q[0]
         self.quaternion_pub_.publish(quat)
 
         # Convert quaternion to Euler angles (ZYX order = yaw, pitch, roll)

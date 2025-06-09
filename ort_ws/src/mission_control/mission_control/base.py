@@ -110,7 +110,7 @@ class BaseNode(Node):
                 # assuming y is the forward coordinate
                 # (still to be tested)
                 # raycasted vector ->
-                relative_elysium_pos = np.array([[0.0], [self.tof_dist]])
+                relative_elysium_pos = np.array([[0.0], [self.tof_dist.data]])
                 # x -> yaw, which is rotation around the z_axis
                 xy_plane_rotation = self.eulerAngles.x + self.cam_rotation.z_axis 
 
@@ -119,9 +119,9 @@ class BaseNode(Node):
                 # Calculate the distance from the plane the rover inhabits
                 # rotation x_axis -> pitch
                 offset = displacement * np.cos(self.cam_rotation.x_axis)
-
-                x_dist = self.elysium_x + offset[0]
-                y_dist = self.elysium_y + offset[1]
+                
+                x_dist = self.elysium_x + offset[0][0]
+                y_dist = self.elysium_y + offset[1][0]
 
                 for code in qreader_out:
                     if code != None:
