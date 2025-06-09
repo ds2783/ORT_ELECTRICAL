@@ -89,7 +89,7 @@ class TelepresenceOperations(Node):
         z_increment = msg.axes[AXES["RIGHTX"]] * CAMERA_SENSITIVITY
         x_increment = msg.axes[AXES["RIGHTY"]] * CAMERA_SENSITIVITY
         self.cam_angles_.z_axis = self.bound_180(float(z_increment + self.cam_angles_.z_axis))
-        self.cam_angles_.x_axis = self.bound_180(float(x_increment + self.cam_angles_.z_axis))
+        self.cam_angles_.x_axis = self.bound_180(float(x_increment + self.cam_angles_.x_axis))
 
         self.camera_rotate()
 
