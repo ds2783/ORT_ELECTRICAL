@@ -66,20 +66,16 @@ class DistanceNode(Node):
         self.get_logger().info(f"Distance published from node {self.get_name()}: {self.sensor.distance} cm")
 
 
-def set_line_value(chip_path, line_offset, value):
-    value = Value.ACTIVE if value else Value.INACTIVE
-
-    with gpiod.request_lines(
+def get_request_line(chip_path, line_offset):
+    return gpiod.request_lines(
         chip_path,
         consumer="toggle-line-value",
         config={
             line_offset: gpiod.LineSettings(
-                direction=Direction.OUTPUT, output_value=value
+                direction=Direction.OUTPUT, output_value=Value.INACTIVE
             )
         },
-    ) as request:
-        request.set_value(line_offset, value)
-
+    )
 
 def main(args=None):
     rclpy.init(args=args)
@@ -91,13 +87,16 @@ def main(args=None):
 
     sleep_node = rclpy.create_node("dis_sleep_node")
 
-    set_line_value("/dev/gpiochip0", 11, 0)
+    _request = get_request_line("/dev/gpiochip0", 17)
 
-    _distance_sensor_1 = DistanceNode(node_name_1, topic_name_1, i2c_addr=0x29, sleep_node=sleep_node)
-    _distance_sensor_2 = DistanceNode(node_name_2, topic_name_2, i2c_addr=0x29, sleep_node=sleep_node)
-    
+    _request.set_value(Value.INACTIVE)
+
+    _distance_sensor_1 = DistanceNode(node_name_1, topic_name_1, i2c_addr=0x29, sleep_node=sleep_node)  
     _distance_sensor_1.sensor.set_address(0x2A)
-    set_line_value("/dev/gpiochip0", 11, 1)
+
+    _request.set_value(Value.ACTIVE)
+
+    _distance_sensor_2 = DistanceNode(node_name_2, topic_name_2, i2c_addr=0x29, sleep_node=sleep_node)
 
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(_distance_sensor_1)
@@ -116,5 +115,6 @@ def main(args=None):
     finally:
         _distance_sensor_1.destroy_node()
         _distance_sensor_2.destroy_node()
+        _request.release()
         rclpy.try_shutdown()  
         executor_thread.join()
