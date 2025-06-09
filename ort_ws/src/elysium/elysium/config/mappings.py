@@ -1,9 +1,9 @@
 AXES = {
     "LEFTX": 0,
     "LEFTY": 1,
-    "RIGHTX": 2,
-    "RIGHTY": 3,
-    "TRIGGERLEFT": 4,
+    "RIGHTX": 3,
+    "RIGHTY": 4,
+    "TRIGGERLEFT": 2,
     "TRIGGERRIGHT": 5,
 }
 
