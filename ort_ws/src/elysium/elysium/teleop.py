@@ -48,12 +48,16 @@ class TelepresenceOperations(Node):
         self.state = twist(0, 0)
         self.target = twist(0, 0)
 
+        self.z_increment = 0
+        self.x_increment = 0
+        
         # Setting Zeroed rotation for camera servos
         self.cam_angles_ = rotation2D(90.0, 90.0)
 
         # Conncection timer
         self.last_connection_ = time.time_ns()
         self.connection_timer_ = self.create_timer(0.2, self.shutdownCB_)
+        self.driver_timer_ = self.create_timer(0.1, self.driveCB_)
 
         # Servo Offset control
         self.offset_ = OFFSET
@@ -82,22 +86,20 @@ class TelepresenceOperations(Node):
         # should be halved.
         self.target.linear /= 2
         self.target.rotation = msg.axes[AXES["LEFTX"]]
-
-        self.drive()
         # ------------------------
 
-        z_increment = msg.axes[AXES["RIGHTX"]] * CAMERA_SENSITIVITY
-        x_increment = msg.axes[AXES["RIGHTY"]] * CAMERA_SENSITIVITY
-        self.cam_angles_.z_axis = self.bound_180(float(z_increment + self.cam_angles_.z_axis))
-        self.cam_angles_.x_axis = self.bound_180(float(x_increment + self.cam_angles_.x_axis))
-
-        self.camera_rotate()
+        self.z_increment = msg.axes[AXES["RIGHTX"]] * CAMERA_SENSITIVITY
+        self.x_increment = msg.axes[AXES["RIGHTY"]] * CAMERA_SENSITIVITY
 
         # publish camera rotation, note 90degrees servo rotation -> 0degrees around the axis
         camera_rotation_msg = CameraRotation(
             z_axis=float(self.cam_angles_.z_axis - 90), x_axis=float(self.cam_angles_.x_axis - 90)
         )
         self.cam_angles__pub_.publish(camera_rotation_msg)
+
+    def driveCB_(self):
+        self.drive()
+        self.camera_rotate()
 
     def bound_range(self, value):
         if value > 1:
@@ -131,6 +133,8 @@ class TelepresenceOperations(Node):
         )
 
     def camera_rotate(self):
+        self.cam_angles_.z_axis = self.bound_180(float(self.z_increment + self.cam_angles_.z_axis))
+        self.cam_angles_.x_axis = self.bound_180(float(self.x_increment + self.cam_angles_.x_axis))
         # POSITIONAL
         self.kit_.servo[CAMERA_SERVO_Z].angle = self.cam_angles_.z_axis
         # CONTIOUS
