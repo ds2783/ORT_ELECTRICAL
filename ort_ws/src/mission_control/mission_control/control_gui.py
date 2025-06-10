@@ -13,7 +13,7 @@ from imgui.integrations.glfw import GlfwRenderer
 from mission_control.gui.dashboard import Dashboard
 from mission_control.stream.stream_client import StreamClient
 from mission_control.config.network import COMM_PORT, PORT_MAIN, PORT_SECONDARY, PI_IP
-from mission_control.config.gui import WIDTH, HEIGHT, ACCEL_GRYO, MAG, ZERO_AXIS 
+from mission_control.config.gui import CALLIBRATE_IMU, WIDTH, HEIGHT, ACCEL_GRYO, MAG, ZERO_AXIS 
 
 from threading import Thread
 from multiprocessing.connection import Listener
@@ -187,11 +187,8 @@ class GUI(Node):
         imgui.text(str(self.client_.current_step))
         imgui.set_window_size(180, 80)
 
-        if imgui.button("Calibrate Accelerometer & Gyro"):
-            self.client_.send_goal(ACCEL_GRYO)
-
-        elif imgui.button("Calibrate Magnometer"):
-            self.client_.send_goal(MAG)
+        if imgui.button("Calibrate IMU"):
+            self.client_.send_goal(CALLIBRATE_IMU)
 
         elif imgui.button("Zero Axis"):
             self.client_.send_goal(ZERO_AXIS)

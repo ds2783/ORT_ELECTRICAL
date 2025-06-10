@@ -76,18 +76,18 @@ class OpticalFlowPublisher(Node):
         self._sensor = None
 
         # Create fixed rotation to align frames with right-hand coordinate system
-        # self._rhs_coord_rot = euler2mat(pi, pi, 0, "sxyz")  # 180° around x and y axes
+        self._rhs_coord_rot = euler2mat(pi, pi, 0, "sxyz")  # 180° around x and y axes
 
         self.get_logger().info("Initialized")
 
     def publish_step_(self):
         if self._optical_pub is not None and self._optical_pub.is_activated:
             try:
-                dx, dy = self._sensor.get_motion(
+                dy, dx = self._sensor.get_motion(
                     timeout=self.get_parameter("sensor_timeout").value
                 )
             except (RuntimeError, AttributeError) as e:
-                dx, dy = 0.0, 0.0
+                dy, dx = 0.0, 0.0
 
             fov = np.radians(FOV_DEG)
             cf = self._pos_z * 2 * np.tan(fov / 2) / (RES_PIX * self._motion_scale)
