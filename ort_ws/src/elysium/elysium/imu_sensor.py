@@ -26,7 +26,7 @@ class Imu(Node):
         super().__init__("imu_sensor")
         i2c = busio.I2C(board.SCL, board.SDA)
         self.bno = BNO08X_I2C(i2c, address=i2c_addr)
-        self.bno.initialise()
+        self.bno.initialize()
         
         # self.ekf = EKF()
 
