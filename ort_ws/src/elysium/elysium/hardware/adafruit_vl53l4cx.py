@@ -436,7 +436,7 @@ class VL53L4CX:
 
     @property
     def _interrupt_polarity(self):
-        int_pol = self._read_register(_VL53L4CX_GPIO_HV_MUX_CTRL, debug=True)[0] & 0x10
+        int_pol = self._read_register(_VL53L4CX_GPIO_HV_MUX_CTRL)[0] & 0x10
         int_pol = (int_pol >> 4) & 0x01
         return 0 if int_pol else 1
 
@@ -511,5 +511,5 @@ class VL53L4CX:
         multiple VL53L4CX sensors on the same I2C bus (SDA & SCL pins). See also the
         `example <examples.html#id2>`_ for proper usage.
         """
-        self._write_register(_VL53L4CX_I2C_SLAVE_DEVICE_ADDRESS, struct.pack(">B", new_address), debug=True)
+        self._write_register(_VL53L4CX_I2C_SLAVE_DEVICE_ADDRESS, struct.pack(">B", new_address))
         self.i2c_address = new_address
