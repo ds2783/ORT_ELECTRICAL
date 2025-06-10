@@ -129,6 +129,10 @@ class GUI(Node):
         # Camera Rotation
         self.camera_yaw = "0"
         self.camera_pitch = "0"
+
+        # tof
+        self.q_tof = "0"
+        self.o_tof = "0"
         
         self.address = ("localhost", port)  # family is deduced to be 'AF_INET'
         self.listener = Listener(self.address, authkey=b"123")
@@ -168,6 +172,10 @@ class GUI(Node):
                         self.camera_yaw = data
                     case "cam_p":
                         self.camera_pitch = data
+                    case "q-tof":
+                        self.q_tof = data
+                    case "o-tof":
+                        self.o_tof = data
 
     def run(self):
         glfw.poll_events()
@@ -229,6 +237,12 @@ class GUI(Node):
         f"""
         camera-yaw: {self.camera_yaw}
         camera-pitch: {self.camera_pitch}
+        """
+                )
+        imgui.text(
+        f"""
+        bottom-dist: {self.o_tof}
+        camera-dist: {self.q_tof}
         """
                 )
         imgui.end()
