@@ -55,8 +55,6 @@ class Imu(Node):
     def calibrate_imu(self):
         self.bno.begin_calibration()
         self.bno.save_calibration_data()
-        while self.bno.calibration_status < 2:
-            self.get_logger().info(str(self.bno.calibration_status))
 
 
     def sendDataCB_(self):
