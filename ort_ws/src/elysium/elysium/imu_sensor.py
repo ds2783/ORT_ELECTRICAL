@@ -18,7 +18,7 @@ from elysium.config.sensors import IMU_SENSOR_PERIOD
 import board
 import busio
 from adafruit_bno08x.i2c import BNO08X_I2C
-from adafruit_bno08x import BNO_REPORT_ACCELEROMETER
+from adafruit_bno08x import BNO_REPORT_ACCELEROMETER, BNO_REPORT_ROTATION_VECTOR
 
 
 class Imu(Node):
@@ -27,6 +27,7 @@ class Imu(Node):
         i2c = busio.I2C(board.SCL, board.SDA)
         self.bno = BNO08X_I2C(i2c, address=i2c_addr)
         self.bno.initialize()
+        self.bno.enable_feature(BNO_REPORT_ROTATION_VECTOR)
         
         # self.ekf = EKF()
 
@@ -49,6 +50,8 @@ class Imu(Node):
         self.q = np.array([0.0, 0.0, 0.0, 1.0])  # Initial quaternion
         self.inverse = np.array([0.0, 0.0, 0.0, 1.0])
 
+    def zero_axis(self):
+        self.inverse = quaternion.inverse(self.q)
 
     def calibrate_imu(self):
         self.get_logger().info(str(self.bno.calibration_status))
