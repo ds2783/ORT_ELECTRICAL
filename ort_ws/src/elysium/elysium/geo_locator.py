@@ -1,7 +1,9 @@
+from nav_msgs import msg
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 
+from std_msgs.msg import Bool
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import (
     Quaternion,
@@ -42,6 +44,7 @@ class GeoLocator(Node):
             self.opticalCB_,
             qos_profile_sensor_data,
         )
+        self.reset_pos_ = self.create_subscription(Bool, "/elysium/reset_pos", self.resetCB_, 10)
         # ----------------------
 
         # Publishers -----------
@@ -74,6 +77,11 @@ class GeoLocator(Node):
         self.dy = 0
         # avoids division by zero error
         self.dt = 0.0001
+
+    def resetCB_(self, msg: Bool):
+        if msg.data == True:
+            self.x_pos = 0
+            self.y_pos = 0
 
     def tofCB_(self, msg: Float32):
         self.z_prev_ = self.z_pos
