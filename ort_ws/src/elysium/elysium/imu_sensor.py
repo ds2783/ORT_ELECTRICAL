@@ -29,7 +29,6 @@ class Imu(Node):
         self.bno.initialize()
         self.bno.enable_feature(BNO_REPORT_ROTATION_VECTOR)
         
-        # self.ekf = EKF()
 
         # Topics -------------
         self.quaternion_pub_ = self.create_publisher(Quaternion, "/imu/quat", 10)
@@ -54,10 +53,11 @@ class Imu(Node):
         self.inverse = quaternion.inverse(self.q)
 
     def calibrate_imu(self):
-        self.get_logger().info(str(self.bno.calibration_status))
         self.bno.begin_calibration()
-        self.get_logger().info(str(self.bno.calibration_status))
+        while self.bno.calibration_status < 2:
+            self.get_logger().info(str(self.bno.calibration_status))
 
+        self.bno.save_calibration_data()
 
     def sendDataCB_(self):
         self.q = np.array(self.bno.quaternion)
@@ -75,7 +75,6 @@ class Imu(Node):
     def actionServerCB_(self, goal_handle):
         self.get_logger().info("Executing goal.")
         
-        feedback_msg = CalibrateImu.Feedback()
         # Accelerometer + Gyrometer calibration.
         if goal_handle.request.code == 0:
             self.calibrate_imu()

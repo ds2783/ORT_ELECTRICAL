@@ -90,7 +90,7 @@ class GeoLocator(Node):
         euler = R.from_quat(
             [self.rotation_.x, self.rotation_.y, self.rotation_.z, self.rotation_.w]
         ).as_euler("zyx", degrees=False)
-        yaw, pitch, roll = euler
+        roll, pitch, yaw = euler
 
         self.euler_angles = Vector3(x=yaw, y=pitch, z=roll)
 
