@@ -98,7 +98,7 @@ class VL53L4CX:
         self.i2c_address = i2c_address
         self.i2c_bus = i2c_bus
 
-        if not self.check_valid_i2c(0x29):
+        if not self.check_valid_i2c():
             self.i2c_address = 0x2A
 
         model_id, module_type = self.model_info
