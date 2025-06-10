@@ -62,10 +62,10 @@ class Dashboard:
         self.shaderProgram = shaders.rawShaderProgram(vertexSource, fragmentSource)
 
         main_coords = [
-            -0.5, 0.0, 0.0, 0.0,  # lower left corner
-            -0.5, 0.5, 1.0, 0.0,  # upper left corner
-             0.0, 0.5, 1.0, 1.0,  # upper right corner
-             0.0, 0.0, 0.0, 1.0,  # lower right corner
+            -0.5, 0.0, 1.0, 1.0,  # lower left corner
+            -0.5, 0.5, 0.0, 1.0,  # upper left corner
+             0.0, 0.5, 0.0, 0.0,  # upper right corner
+             0.0, 0.0, 1.0, 0.0,  # lower right corner
         ]
 
         secondary_coords = [
@@ -110,7 +110,8 @@ class Dashboard:
     def draw_main(self):
         for index, cam in enumerate(self.cams):
             temp = cam.fetch_frame()
-            if index == 0:
+            # Disabled for TRR
+            if index == 0 and False:
                 image = self.draw_boxes(temp, (255, 255, 0))
             else:
                 image = temp

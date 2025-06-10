@@ -20,6 +20,7 @@ from multiprocessing.connection import Listener
 
 # Messages ---
 from ort_interfaces.action import CalibrateImu
+from std_msgs.msg import Bool
 
 
 
@@ -54,8 +55,14 @@ class GuiClient(Node):
         self.calibration_client_ = ActionClient(self, CalibrateImu, "/imu/calibrate")
         self.current_step = None
 
+        self.reset_pos_pub_ = self.create_publisher(Bool, "/elysium/reset_pos", 10)
+
     def send_goal(self, code):
         goal_msg = CalibrateImu.Goal()
+        if code == ZERO_AXIS:
+            msg = Bool()
+            msg.data = True
+            self.reset_pos_pub_.publish(msg)
         goal_msg.code = code
 
         self._send_goal_future = self.calibration_client_.send_goal_async(

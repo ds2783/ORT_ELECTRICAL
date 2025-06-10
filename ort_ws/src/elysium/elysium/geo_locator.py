@@ -1,7 +1,9 @@
+from nav_msgs import msg
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 
+from std_msgs.msg import Bool
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import (
     Quaternion,
@@ -15,7 +17,7 @@ from geometry_msgs.msg import (
 from std_msgs.msg import Float32, Header
 from ort_interfaces.msg import OpticalFlow
 
-from elysium.config.sensors import DISTANCE_SENSOR_REFRESH_PERIOD
+from elysium.config.sensors import DISTANCE_SENSOR_REFRESH_PERIOD, OPTICAL_CALIBRATION
 from elysium.config.network import DIAGNOSTIC_PERIOD
 
 import numpy as np
@@ -42,6 +44,7 @@ class GeoLocator(Node):
             self.opticalCB_,
             qos_profile_sensor_data,
         )
+        self.reset_pos_ = self.create_subscription(Bool, "/elysium/reset_pos", self.resetCB_, 10)
         # ----------------------
 
         # Publishers -----------
@@ -75,6 +78,11 @@ class GeoLocator(Node):
         # avoids division by zero error
         self.dt = 0.0001
 
+    def resetCB_(self, msg: Bool):
+        if msg.data == True:
+            self.x_pos = 0.0
+            self.y_pos = 0.0
+
     def tofCB_(self, msg: Float32):
         self.z_prev_ = self.z_pos
         self.z_axis = msg.data
@@ -100,8 +108,8 @@ class GeoLocator(Node):
 
         self.dx = rotated_increment[0][0]
         self.dy = rotated_increment[1][0]
-        self.x_pos += self.dx
-        self.y_pos += self.dy
+        self.x_pos += self.dx * OPTICAL_CALIBRATION
+        self.y_pos += self.dy * OPTICAL_CALIBRATION
 
         self.dt = msg.dt
 
@@ -115,14 +123,14 @@ class GeoLocator(Node):
             ),
             child_frame_id="base_link",
             pose=PoseWithCovariance(
-                pose=Pose(position=Point(x=self.x_pos, y=self.y_pos, z=self.z_pos))
+                pose=Pose(position=Point(x=float(self.x_pos), y=float(self.y_pos), z=float(self.z_pos)))
             ),
             twist=TwistWithCovariance(
                 twist=Twist(
                     linear=Vector3(
-                        x=self.dx / self.dt,
-                        y=self.dy / self.dt,
-                        z=(self.z_pos - self.z_prev_) / self.distance_sensor_dt_,
+                        x=float(self.dx / self.dt),
+                        y=float(self.dy / self.dt),
+                        z=float((self.z_pos - self.z_prev_) / self.distance_sensor_dt_)
                     )
                 )
             ),
