@@ -108,12 +108,12 @@ class VL53L4CX:
 
         self._ranging = False   
 
-    def check_valid_i2c(self, addr):
+    def check_valid_i2c(self):
         """Checks if the I2C address is available to write. 
         """
         
         try:
-            self._read_register(addr, _VL53L4CX_I2C_SLAVE_DEVICE_ADDRESS, 1)
+            self._read_register(_VL53L4CX_I2C_SLAVE_DEVICE_ADDRESS, 1)
         except OSError:
             return False
         return True
