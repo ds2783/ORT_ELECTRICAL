@@ -27,16 +27,12 @@ QoS = QoSProfile(
 
 
 class LEDNode(Node):
-    def __init__(self, node_name, topic_name, func_):
+    def __init__(self, node_name, topic_name, factory):
         super().__init__(node_name)
 
         msg_type = Float32
         self.led_subscriber = self.create_subscription(msg_type=msg_type, topic=topic_name, callback=self._led_callback, qos_profile=QoS)
-        gpio.pins.lgpio.LGPIOFactory.__init__ = func_
-        factory = LGPIOFactory()    
         self.led_pwm_pin = gpio.PWMOutputDevice(pin=12, initial_value=0, frequency=1000, pin_factory=factory)
-        
-
 
     def _led_callback(self, msg):
         float_val = msg.data
@@ -46,7 +42,6 @@ class LEDNode(Node):
         
         self.set_brightness(float_val)
     
-
     def set_brightness(self, value: float):
         """Set the brightness of the LED board, value between 0 and 1. 
         """
@@ -70,7 +65,10 @@ def main(args=None):
 
     topic_name = "/led"
     node_name  = "led_camera"
-    _led_node = LEDNode(node_name, topic_name, func_=__patched_init)
+    
+    gpio.pins.lgpio.LGPIOFactory.__init__ = __patched_init
+    factory = LGPIOFactory()    
+    _led_node = LEDNode(node_name, topic_name, factory)
 
     try:
         while rclpy.ok():
