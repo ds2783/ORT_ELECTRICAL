@@ -511,5 +511,5 @@ class VL53L4CX:
         multiple VL53L4CX sensors on the same I2C bus (SDA & SCL pins). See also the
         `example <examples.html#id2>`_ for proper usage.
         """
-        self._write_register(_VL53L4CX_I2C_SLAVE_DEVICE_ADDRESS, struct.pack(">B", new_address))
+        self._write_register(_VL53L4CX_I2C_SLAVE_DEVICE_ADDRESS, struct.pack(">B", new_address), debug=True)
         self.i2c_address = new_address
