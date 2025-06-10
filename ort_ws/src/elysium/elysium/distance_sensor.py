@@ -89,11 +89,13 @@ def main(args=None):
     xshut_pin = gpio.DigitalOutputDevice(17, pin_factory=factory)
     xshut_pin.off()
 
-    _distance_sensor_1 = DistanceNode(node_name_1, topic_name_1, i2c_addr=0x29, sleep_node=sleep_node)  
-    _distance_sensor_1.sensor.set_address(0x2A)
-
     import time
-    time.sleep(0.5)
+
+    _distance_sensor_1 = DistanceNode(node_name_1, topic_name_1, i2c_addr=0x29, sleep_node=sleep_node)  
+    time.sleep(0.1)
+    _distance_sensor_1.sensor.set_address(0x2A)
+    time.sleep(0.1)
+    
 
     xshut_pin.on()
 
