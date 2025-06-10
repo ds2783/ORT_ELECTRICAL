@@ -93,7 +93,7 @@ def main(args=None):
     _distance_sensor_1.sensor.set_address(0x2A)
 
     import time
-    time.sleep(0.01)
+    time.sleep(0.1)
 
     xshut_pin.on()
 
