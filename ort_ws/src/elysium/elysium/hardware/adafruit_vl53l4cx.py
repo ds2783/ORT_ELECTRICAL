@@ -467,7 +467,7 @@ class VL53L4CX:
         """
 
         if debug:
-            print(f"DATA WRITE: {data}")
+            print(f"DATA WRITE: {hex(data)}, to register {hex(register)}.")
 
         data = [_ for _ in data]  # make the data into a list of bytes/ints
         reg = [register >> 8, register]
