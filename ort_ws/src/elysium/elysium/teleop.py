@@ -56,8 +56,8 @@ class TelepresenceOperations(Node):
 
         # Conncection timer
         self.last_connection_ = time.time_ns()
-        self.connection_timer_ = self.create_timer(0.2, self.shutdownCB_)
-        self.driver_timer_ = self.create_timer(0.01, self.driveCB_)
+        self.connection_timer_ = self.create_timer(0.4, self.shutdownCB_)
+        self.driver_timer_ = self.create_timer(0.02, self.driveCB_)
 
         # Servo Offset control
         self.offset_ = OFFSET
@@ -72,11 +72,7 @@ class TelepresenceOperations(Node):
             self.target.linear = 0
             self.target.rotation = 0
 
-            self.cam_angles_.x_axis = 90
-            self.cam_angles_.z_axis = 90
-
             self.drive()
-            self.camera_rotate()
 
     def teleopCB_(self, msg: Joy):
         # DRIVE -----------------
