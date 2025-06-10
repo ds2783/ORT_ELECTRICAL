@@ -13,7 +13,7 @@ from imgui.integrations.glfw import GlfwRenderer
 from mission_control.gui.dashboard import Dashboard
 from mission_control.stream.stream_client import StreamClient
 from mission_control.config.network import COMM_PORT, PORT_MAIN, PORT_SECONDARY, PI_IP
-from mission_control.config.gui import CALLIBRATE_IMU, WIDTH, HEIGHT, ACCEL_GRYO, MAG, ZERO_AXIS 
+from mission_control.config.gui import CALLIBRATE_IMU, WIDTH, HEIGHT, CALLIBRATE_IMU, ZERO_AXIS 
 
 from threading import Thread
 from multiprocessing.connection import Listener
