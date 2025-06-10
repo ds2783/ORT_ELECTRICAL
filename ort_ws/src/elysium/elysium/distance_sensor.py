@@ -64,7 +64,7 @@ class DistanceNode(Node):
         msg = Float32()
         msg.data = self.sensor.distance
         self.distance_publisher.publish(msg)
-        self.get_logger().info(f"Distance published from node {self.get_name()}: {self.sensor.distance} cm")
+
 
 def __patched_init(self, chip=None):
     gpio.pins.lgpio.LGPIOFactory.__bases__[0].__init__(self)
