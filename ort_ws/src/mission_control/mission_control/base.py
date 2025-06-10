@@ -49,7 +49,11 @@ class BaseNode(Node):
         self.controller_sub_ = self.create_subscription(Joy, "joy", self.controlCB_, 10)
 
         self.qr_tof_sub_ = self.create_subscription(
-            Float32, "/distance_sensor/qr_code", self.tofCB_, 10
+            Float32, "/distance_sensor/qr_code", self.qTofCB_, 10
+        )
+
+        self.bottom_tof_sub_ = self.create_subscription(
+            Float32, "/distance_sensor/optical_flow", self.oTofCB_, 10
         )
 
         self.euler_angles_sub_ = self.create_subscription(
@@ -73,7 +77,8 @@ class BaseNode(Node):
 
         self.eulerAngles = Vector3(x=0.0, y=0.0, z=0.0)
         self.odom = Odometry()
-        self.tof_dist = Float32(data=0.0)
+        self.qr_tof_dist = Float32(data=0.0)
+        self.op_tof_dist = Float32(data=0.0)
         self.cam_rotation = CameraRotation(z_axis=0.0, x_axis=0.0)
 
         # Elysium Position
@@ -113,26 +118,25 @@ class BaseNode(Node):
                 # assuming y is the forward coordinate
                 # (still to be tested)
                 # raycasted vector ->
-                relative_elysium_pos = np.array([[0.0], [self.tof_dist.data]])
+                relative_elysium_pos = np.array([[0.0], [self.qr_tof_dist.data]])
                 # x -> yaw, which is rotation around the z_axis
-                xy_plane_rotation = self.eulerAngles.x + self.cam_rotation.z_axis 
+                xy_plane_rotation = self.eulerAngles.x + self.cam_rotation.z_axis
 
                 displacement = rotate_vector2D(xy_plane_rotation, relative_elysium_pos)
-                
+
                 # Calculate the distance from the plane the rover inhabits
                 # rotation x_axis -> pitch
                 offset = displacement * np.cos(self.cam_rotation.x_axis)
-                
+
                 x_dist = self.elysium_x + offset[0][0]
                 y_dist = self.elysium_y + offset[1][0]
 
                 for code in qreader_out:
                     if code != None:
                         self.scanned_codes[code] = (
-                                f"x: {x_dist:4f}",
-                                f"y: {y_dist:4f}",
-                                f"distance: {np.sqrt(x_dist ** 2 + y_dist ** 2)}"
-
+                            f"x: {x_dist:4f}",
+                            f"y: {y_dist:4f}",
+                            f"distance: {np.sqrt(x_dist ** 2 + y_dist ** 2)}",
                         )
 
                 with open("qr_data.csv", "w", newline="") as csvfile:
@@ -187,8 +191,14 @@ class BaseNode(Node):
         self.sendComms("y_vel:" + f"{msg.twist.twist.linear.y:2f}")
         self.sendComms("z_vel:" + f"{msg.twist.twist.linear.z:2f}")
 
-    def tofCB_(self, msg: Float32):
-        self.tof_dist = msg
+        self.sendComms("q-tof:" + f"{self.qr_tof_dist.data:2f}")
+        self.sendComms("o-tof:" + f"{self.op_tof_dist.data:2f}")
+
+    def qTofCB_(self, msg: Float32):
+        self.qr_tof_dist = msg
+
+    def oTofCB_(self, msg: Float32):
+        self.op_tof_dist = msg
 
     def camCB_(self, msg: CameraRotation):
         self.cam_rotation = msg
