@@ -17,7 +17,7 @@ from geometry_msgs.msg import (
 from std_msgs.msg import Float32, Header
 from ort_interfaces.msg import OpticalFlow
 
-from elysium.config.sensors import DISTANCE_SENSOR_REFRESH_PERIOD
+from elysium.config.sensors import DISTANCE_SENSOR_REFRESH_PERIOD, OPTICAL_CALIBRATION
 from elysium.config.network import DIAGNOSTIC_PERIOD
 
 import numpy as np
@@ -108,8 +108,8 @@ class GeoLocator(Node):
 
         self.dx = rotated_increment[0][0]
         self.dy = rotated_increment[1][0]
-        self.x_pos += self.dx
-        self.y_pos += self.dy
+        self.x_pos += self.dx * OPTICAL_CALIBRATION
+        self.y_pos += self.dy * OPTICAL_CALIBRATION
 
         self.dt = msg.dt
 

@@ -61,7 +61,7 @@ class GuiClient(Node):
         goal_msg = CalibrateImu.Goal()
         if code == ZERO_AXIS:
             msg = Bool()
-            msg.data = 1
+            msg.data = True
             self.reset_pos_pub_.publish(msg)
         goal_msg.code = code
 
