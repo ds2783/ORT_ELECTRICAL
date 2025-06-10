@@ -110,7 +110,8 @@ class Dashboard:
     def draw_main(self):
         for index, cam in enumerate(self.cams):
             temp = cam.fetch_frame()
-            if index == 0:
+            # Disabled for TRR
+            if index == 0 and True:
                 image = self.draw_boxes(temp, (255, 255, 0))
             else:
                 image = temp
