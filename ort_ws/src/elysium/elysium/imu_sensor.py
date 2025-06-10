@@ -22,10 +22,10 @@ from adafruit_bno08x import BNO_REPORT_ACCELEROMETER
 
 
 class Imu(Node):
-    def __init__(self, sleep_node, i2c_addr=0x68):
+    def __init__(self, sleep_node, i2c_addr=0x4b):
         super().__init__("imu_sensor")
         i2c = busio.I2C(board.SCL, board.SDA)
-        self.bno = BNO08X_I2C(i2c)
+        self.bno = BNO08X_I2C(i2c, address=i2c_addr)
         self.bno.initialise()
         
         # self.ekf = EKF()
