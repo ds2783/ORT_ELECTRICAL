@@ -97,19 +97,26 @@ class VL53L4CX:
 
         self.i2c_address = i2c_address
         self.i2c_bus = i2c_bus
-        
-        try: 
-            model_id, module_type = self.model_info
-            if model_id != 0xEB or module_type != 0xAA:
-                raise RuntimeError("Wrong sensor ID or type!")
-        except OSError:
-            pass  # NOTE: Take note that either:
-                # A: The XSHUT pin on the down-facing TOF sensor is disconnected, make sure it is connected to 
-                # the GPIO pin 17 (left side of the GPIO bank)
-                # B: The TOF sensor has been already reassigned its address so we just ignore this error. 
+
+        if not self.check_valid_i2c(0x29):
+            self.i2c_address = 0x2A
+
+        model_id, module_type = self.model_info
+
+        if model_id != 0xEB or module_type != 0xAA:
+            raise RuntimeError("Wrong sensor ID or type!")
 
         self._ranging = False   
 
+    def check_valid_i2c(self, addr):
+        """Checks if the I2C address is available to write. 
+        """
+        
+        try:
+            self._read_register(addr, _VL53L4CX_I2C_SLAVE_DEVICE_ADDRESS, 1)
+        except OSError:
+            return False
+        return True
 
     def start_sensor(self):
         if not self.ros_start:
