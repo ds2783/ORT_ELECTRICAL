@@ -95,22 +95,20 @@ class VL53L4CX:
         self.rate = self.sleep_node.create_rate(1e3)
         self.ros_start = False
 
-        if i2c_address != 0x29:
-            tmp_addr = i2c_address
-            i2c_address = 0x29
-        else:
-            tmp_addr = None
-
         self.i2c_address = i2c_address
         self.i2c_bus = i2c_bus
         model_id, module_type = self.model_info
 
-        if model_id != 0xEB or module_type != 0xAA:
-            raise RuntimeError("Wrong sensor ID or type!")
-        self._ranging = False   
+        try: 
+            if model_id != 0xEB or module_type != 0xAA:
+                raise RuntimeError("Wrong sensor ID or type!")
+        except OSError:
+            pass  # NOTE: Take note that either:
+                # A: The XSHUT pin on the down-facing TOF sensor is disconnected, make sure it is connected to 
+                # the GPIO pin 17 (left side of the GPIO bank)
+                # B: The TOF sensor has been already reassigned its address so we just ignore this error. 
 
-        if tmp_addr:
-            self.set_address(tmp_addr)
+        self._ranging = False   
 
 
     def start_sensor(self):
