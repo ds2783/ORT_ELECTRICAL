@@ -92,6 +92,9 @@ def main(args=None):
     _distance_sensor_1 = DistanceNode(node_name_1, topic_name_1, i2c_addr=0x29, sleep_node=sleep_node)  
     _distance_sensor_1.sensor.set_address(0x2A)
 
+    import time
+    time.sleep(0.01)
+
     xshut_pin.on()
 
     _distance_sensor_2 = DistanceNode(node_name_2, topic_name_2, i2c_addr=0x29, sleep_node=sleep_node)
