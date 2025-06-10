@@ -237,10 +237,10 @@ class VL53L4CX:
 
     @property
     def distance(self):
-        """The distance in units of centimeters."""
+        """The distance in units of meters."""
         dist = self._read_register(_VL53L4CX_RESULT_DISTANCE, 2)
         dist = struct.unpack(">H", dist)[0]
-        return dist / 10
+        return dist / 1000
 
     @property
     def range_status(self):

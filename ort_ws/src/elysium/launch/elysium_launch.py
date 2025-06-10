@@ -33,6 +33,12 @@ def generate_launch_description():
             ),
             Node(
                 package="elysium",
+                executable="camera_led",
+                namespace="",
+                name="camera_led",
+            ),
+            Node(
+                package="elysium",
                 executable="geo_locator",
                 namespace="",
                 name="geo_locator",

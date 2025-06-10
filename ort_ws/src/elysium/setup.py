@@ -24,6 +24,7 @@ setup(
             'imu_sensor = elysium.imu_sensor:main',
             'distance_sensor = elysium.distance_sensor:main',
             'geo_locator = elysium.geo_locator:main',
+            'camera_led = elysium.camera_led:main',
         ],
     },
 )
