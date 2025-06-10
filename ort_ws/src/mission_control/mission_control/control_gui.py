@@ -59,7 +59,7 @@ class GuiClient(Node):
 
     def send_goal(self, code):
         goal_msg = CalibrateImu.Goal()
-        if code == CALLIBRATE_IMU:
+        if code == ZERO_AXIS:
             msg = Bool()
             msg.data = 1
             self.reset_pos_pub_.publish(msg)
