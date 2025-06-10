@@ -80,8 +80,8 @@ class GeoLocator(Node):
 
     def resetCB_(self, msg: Bool):
         if msg.data == True:
-            self.x_pos = 0
-            self.y_pos = 0
+            self.x_pos = 0.0
+            self.y_pos = 0.0
 
     def tofCB_(self, msg: Float32):
         self.z_prev_ = self.z_pos
