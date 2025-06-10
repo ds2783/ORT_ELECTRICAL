@@ -97,9 +97,9 @@ class VL53L4CX:
 
         self.i2c_address = i2c_address
         self.i2c_bus = i2c_bus
-        model_id, module_type = self.model_info
-
+        
         try: 
+            model_id, module_type = self.model_info
             if model_id != 0xEB or module_type != 0xAA:
                 raise RuntimeError("Wrong sensor ID or type!")
         except OSError:
