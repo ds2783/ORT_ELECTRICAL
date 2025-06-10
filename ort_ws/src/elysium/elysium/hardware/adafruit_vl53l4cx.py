@@ -475,7 +475,7 @@ class VL53L4CX:
             print(f"DATA WRITE: {hex(int.from_bytes(data))}, to register {hex(register)}.")
 
         data = [_ for _ in data]  # make the data into a list of bytes/ints
-        reg = [register >> 8, register]
+        reg = [register >> 8, register & 0xFF]
 
         self.i2c_bus.i2c_wr(self.i2c_address, [*reg, *data])  # prepend the register bytes into the data list of bytes. 
 
@@ -492,7 +492,7 @@ class VL53L4CX:
         :rtype: bytes
         """
 
-        reg = [0x00, register] if register < 256 else [0x01, 0x0F]
+        reg = [register >> 8, register & 0xFF]
 
         self.i2c_bus.i2c_wr(self.i2c_address, reg)  # begin I2C transaction by sending the i2c address and write the 2 register bytes
         read_msg = self.i2c_bus.i2c_rd(self.i2c_address, length)  # switch to a read op and request X bytes
