@@ -48,7 +48,7 @@ class DistanceNode(Node):
             self.sensor = tof.VL53L4CX(self.bus, self.i2c_addr, sleep_node=sleep_node)
 
         except Exception:
-            self.get_logger().error(f"Could not open i2c bus/initialise TOF. Falling back onto the original firmware library.")
+            self.get_logger().error(f"[{self.get_name()}] Could not open i2c bus/initialise TOF. Falling back onto the original firmware library.")
             import elysium.hardware.adafruit_vl53l4cd as tof_fallback
             self.sensor = tof_fallback.VL53L4CD(address=i2c_addr)
 
