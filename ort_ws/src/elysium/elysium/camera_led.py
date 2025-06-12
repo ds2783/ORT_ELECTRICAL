@@ -31,7 +31,10 @@ class LEDNode(Node):
         super().__init__(node_name)
 
         msg_type = Float32
-        self.led_subscriber = self.create_subscription(msg_type=msg_type, topic=topic_name, callback=self._led_callback, qos_profile=QoS)
+        self.led_subscriber = self.create_subscription(msg_type=msg_type, 
+                                                       topic=topic_name, 
+                                                       callback=self._led_callback, 
+                                                       qos_profile=QoS)
         self.led_pwm_pin = gpio.PWMOutputDevice(pin=12, initial_value=0, frequency=1000, pin_factory=factory)
 
     def _led_callback(self, msg):
