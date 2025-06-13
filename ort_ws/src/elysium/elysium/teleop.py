@@ -56,8 +56,8 @@ class TelepresenceOperations(Node):
 
         # Conncection timer
         self.last_connection_ = time.time_ns()
-        self.connection_timer_ = self.create_timer(0.2, self.shutdownCB_)
-        self.driver_timer_ = self.create_timer(0.01, self.driveCB_)
+        self.connection_timer_ = self.create_timer(0.4, self.shutdownCB_)
+        self.driver_timer_ = self.create_timer(0.02, self.driveCB_)
 
         # Servo Offset control
         self.offset_ = OFFSET
@@ -72,11 +72,7 @@ class TelepresenceOperations(Node):
             self.target.linear = 0
             self.target.rotation = 0
 
-            self.cam_angles_.x_axis = 90
-            self.cam_angles_.z_axis = 90
-
             self.drive()
-            self.camera_rotate()
 
     def teleopCB_(self, msg: Joy):
         # DRIVE -----------------
@@ -85,7 +81,7 @@ class TelepresenceOperations(Node):
         # goes from 1 to -1, therefore difference between the two
         # should be halved.
         self.target.linear /= 2
-        self.target.rotation = msg.axes[AXES["LEFTX"]]
+        self.target.rotation = -msg.axes[AXES["LEFTX"]]
         # ------------------------
 
         self.z_increment = msg.axes[AXES["RIGHTX"]] * CAMERA_SENSITIVITY
@@ -133,7 +129,7 @@ class TelepresenceOperations(Node):
         # )
 
     def camera_rotate(self):
-        self.cam_angles_.z_axis = self.bound_180(float(self.z_increment + self.cam_angles_.z_axis))
+        self.cam_angles_.z_axis = self.bound_180(float(-self.z_increment + self.cam_angles_.z_axis))
         self.cam_angles_.x_axis = self.bound_180(float(self.x_increment + self.cam_angles_.x_axis))
         # POSITIONAL
         self.kit_.servo[CAMERA_SERVO_Z].angle = self.cam_angles_.z_axis
