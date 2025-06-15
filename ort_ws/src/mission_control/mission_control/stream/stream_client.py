@@ -1,14 +1,26 @@
 import subprocess
 import cv2
 import numpy as np
-
-# import multiprocessing as mp
+import socket 
+import pickle 
 import threading
 
 NO_CROP = 0
 LEFT_CROP = 1
 RIGHT_CROP = 2
 
+class ServerClient:
+    def __init__(self, server_host, server_port):
+        self.server_host = server_host
+        self.server_port = server_port
+
+    def get_picture(self):
+        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client.connect((self.server_host, self.server_port))
+        client.send("QR".encode())
+        
+        response = client.recv(1_000_000)
+        return pickle.loads(response)
 
 class StreamClient:
     thread = None
@@ -61,28 +73,17 @@ class StreamClient:
         else:
             options = ""
         command = [
-            "ffmpeg",
-            "-hide_banner",
-            "-probesize",
-            "500000",
-            "-analyzeduration",
-            "0",
-            "-flags",
-            "low_delay",
-            "-strict",
-            "experimental",
-            "-hwaccel",
-            "auto",
-            "-i",
-            f"{self.type}://{self.host}:{self.port}{options}",
-            "-vf",
-            f"scale={self.width}:{self.height}",
-            "-fflags",
-            "nobuffer",
-            "-f",
-            "rawvideo",  # Get rawvideo output format.
-            "-pix_fmt",
-            "rgb24",  # Set BGR pixel format
+            "ffmpeg","-hide_banner",
+            "-probesize","500000",
+            "-analyzeduration","0",
+            "-flags","low_delay",
+            "-strict","experimental",
+            "-hwaccel","auto",
+            "-i",f"{self.type}://{self.host}:{self.port}{options}",
+            "-vf",f"scale={self.width}:{self.height}",
+            "-fflags","nobuffer",
+            "-f","rawvideo",  # Get rawvideo output format.
+            "-pix_fmt","rgb24",  # Set BGR pixel format
             "pipe:",
         ]
         try:
@@ -149,3 +150,4 @@ class StreamClient:
         self.process.stdout.close()  # Closing stdout terminates FFmpeg sub-process.
         self.process.kill()
         self.process.terminate()
+

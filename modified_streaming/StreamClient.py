@@ -1,14 +1,16 @@
 import subprocess
 import cv2
 import numpy as np
+import pickle
 # import multiprocessing as mp
 import threading
+import socket
 
 NO_CROP=0
 LEFT_CROP=1
 RIGHT_CROP=2
 
-class StreamClient:
+class StreamServerClient:
     thread=None
     process=None
     frame=None
@@ -20,12 +22,14 @@ class StreamClient:
         "rtsp":"?buffer_size=1000&reorder_queue_size=100",
         "rtp":"",
     }
-    def __init__(self,name,host,type,port,width,height,rotate=0,stereo=False,crop=NO_CROP):
+
+    def __init__(self,name,server_host,type,stream_port,server_port,width,height,rotate=0,stereo=False,crop=NO_CROP):
         self.crop=crop
         self.rotate=rotate
         self.name=name
-        self.host=host
-        self.port=port
+        self.host=server_host
+        self.port=stream_port
+        self.server_port=server_port
         self.type=type
         self.width=width
         self.height=height
@@ -34,11 +38,13 @@ class StreamClient:
             self.width*=2
         self.thread=threading.Thread(target=self.run,daemon=True)
         self.thread.start()
+
     def running(self):
         if not self.process.poll() is None:
             return False
         else:
             return True
+        
     def start(self):
         if self.type in self.options:
             options=self.options[self.type]
@@ -64,6 +70,7 @@ class StreamClient:
         except:
             pass
         self.process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
+        
     def read(self):
         raw_frame = self.process.stdout.read(self.width*self.height*3)
         # print(len(raw_frame))
@@ -77,6 +84,7 @@ class StreamClient:
         self.frame=np.rot90(self.frame,self.rotate)
         # print(len(self.frame))
         return self.frame
+    
     def run(self):
         self.start()
         while(True):
@@ -89,6 +97,7 @@ class StreamClient:
                     self.read()
                 except:
                     pass
+                
     def display(self):
         if not self.frame is None:
             try:
@@ -98,6 +107,15 @@ class StreamClient:
                 cv2.imshow(self.name, frame)
             except Exception as e:
                 print(e)
+
+    def get_picture(self):
+        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client.connect((self.host, self.server_port))
+        client.send("QR".encode())
+        
+        response = client.recv(1_000_000)
+        return pickle.loads(response)
+
     def stop(self):
         self.end=True
         self.process.stdout.close()  # Closing stdout terminates FFmpeg sub-process.

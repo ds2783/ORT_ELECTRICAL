@@ -8,7 +8,7 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Vector3
 from ort_interfaces.msg import CameraRotation
 
-from mission_control.stream.stream_client import StreamClient
+from mission_control.stream.stream_client import ServerClient, StreamClient
 from mission_control.config.mappings import AXES, BUTTONS
 from mission_control.config.network import COMM_PORT, PORT_MAIN_BASE, PI_IP
 
@@ -26,9 +26,7 @@ class BaseNode(Node):
         # ---
 
         # STATE OBJECTS
-        self.main_cam = StreamClient(
-            "Stereo", PI_IP, "udp", PORT_MAIN_BASE, 640, 480, stereo=False
-        )
+        self.main_cam = ServerClient(PI_IP, PORT_MAIN_BASE)
         self.qreader_ = QReader()
 
         self.address = ("localhost", port)
@@ -108,7 +106,7 @@ class BaseNode(Node):
         if trigger_pressed and not self.qr_button_:
             # CAPTURE QR-CODE
             self.qr_button_ = True
-            image = self.main_cam.fetch_frame()
+            image = self.main_cam.get_picture()
             if image is not None:
                 qreader_out = self.qreader_.detect_and_decode(image=image)
 
