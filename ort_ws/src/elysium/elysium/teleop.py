@@ -130,7 +130,7 @@ class TelepresenceOperations(Node):
 
     def camera_rotate(self):
         # to fix or not to fix
-        self.cam_angles_.z_axis = self.bound_180(float(-self.z_increment + self.cam_angles_.z_axis))
+        self.cam_angles_.z_axis = self.bound_180(float(self.z_increment + self.cam_angles_.z_axis))
         self.cam_angles_.x_axis = self.bound_180(float(-self.x_increment + self.cam_angles_.x_axis))
         # POSITIONAL
         self.kit_.servo[CAMERA_SERVO_Z].angle = self.cam_angles_.z_axis
