@@ -2,8 +2,7 @@ import math
 import rclpy
 from rclpy.node import Node
 
-from gps_msgs.msg import GPSStatus
-from gps_msgs.msg import Coordinate
+from ort_interfaces.msg import GPSStatus, Coordinate
 
 class DistanceCalculatorNode(Node):
     def __init__(self):
@@ -12,8 +11,8 @@ class DistanceCalculatorNode(Node):
         self.start_lat = None
         self.start_lon = None
 
-        self.create_subscription(Coordinate, 'start_coordinates', self.start_coordinates_callback, 10)
-        self.create_subscription(GPSStatus, 'gps_data', self.gps_callback, 10)
+        self.create_subscription(Coordinate, '/start_coordinates', self.start_coordinates_callback, 10)
+        self.create_subscription(GPSStatus, '/gps_data', self.gps_callback, 10)
 
     def start_coordinates_callback(self, msg):
         try:

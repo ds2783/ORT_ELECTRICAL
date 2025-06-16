@@ -5,7 +5,7 @@ import adafruit_gps
 import rclpy
 from rclpy.node import Node
 
-from gps_msgs.msg import GPSStatus, SatelliteInfo
+from ort_interfaces.msg import GPSStatus, SatelliteInfo
 
 class GPSPublisher(Node):
     def __init__(self):
@@ -19,7 +19,7 @@ class GPSPublisher(Node):
         self.gps.send_command(b"PMTK314,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0")
         self.gps.send_command(b"PMTK220,1000")  # 1 Hz update rate
 
-        self.publisher_ = self.create_publisher(GPSStatus, 'gps_data', 10)
+        self.publisher_ = self.create_publisher(GPSStatus, '/gps_data', 10)
         self.timer = self.create_timer(1.0, self.timer_callback)
         self.last_print = time.monotonic()
 

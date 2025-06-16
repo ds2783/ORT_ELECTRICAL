@@ -1,17 +1,16 @@
 import rclpy
 from rclpy.node import Node
 
-from gps_msgs.msg import GPSStatus
-from gps_msgs.msg import Coordinate
+from ort_interfaces.msg import GPSStatus, Coordinate
 
 class StartCoordinatesNode(Node):
     def __init__(self):
         super().__init__('start_coordinates_node')
 
-        self.publisher_ = self.create_publisher(Coordinate, 'start_coordinates', 10)
+        self.publisher_ = self.create_publisher(Coordinate, '/start_coordinates', 10)
         self.subscription = self.create_subscription(
             GPSStatus,
-            'gps_data',
+            '/gps_data',
             self.gps_callback,
             10)
 
