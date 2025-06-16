@@ -20,7 +20,9 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            "",
+            "distance_calculator = gps.distance_calculator_node:main",
+            "gps_publisher = gps.gps_publisher_node:main",
+            "start_coordinates = gps.start_coordinates_node:main",
         ],
     },
 )
