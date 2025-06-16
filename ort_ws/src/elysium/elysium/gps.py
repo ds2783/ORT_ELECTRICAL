@@ -7,7 +7,7 @@ from rclpy.node import Node
 
 from ort_interfaces.msg import GPSStatus, SatelliteInfo
 
-class GPSPublisher(Node):
+class GPS(Node):
     def __init__(self):
         super().__init__('gps_publisher')
 
@@ -20,7 +20,7 @@ class GPSPublisher(Node):
         self.gps.send_command(b"PMTK220,1000")  # 1 Hz update rate
 
         self.publisher_ = self.create_publisher(GPSStatus, '/gps_data', 10)
-        self.timer = self.create_timer(1.0, self.timer_callback)
+        self.timer = self.create_timer(1.0, self.gpsCB_)
         self.last_print = time.monotonic()
 
         self.talkers = {
@@ -49,7 +49,7 @@ class GPSPublisher(Node):
         else:
             return f"{dop:.1f} - Ideal"
 
-    def timer_callback(self):
+    def gpsCB_(self):
         self.gps.update()
 
         if not self.gps.has_fix:
@@ -57,13 +57,13 @@ class GPSPublisher(Node):
             return
 
         msg = GPSStatus()
-        msg.latitude = f"{self.gps.latitude:.6f}"
-        msg.longitude = f"{self.gps.longitude:.6f}"
-        msg.fix_quality = self.gps.fix_quality or 0
-        msg.satellites = self.gps.satellites or 0
-        msg.pdop = self.format_dop(self.gps.pdop)
-        msg.hdop = self.format_dop(self.gps.hdop)
-        msg.vdop = self.format_dop(self.gps.vdop)
+        msg.latitude = float(self.gps.latitude)
+        msg.longitude = float(self.gps.longitude)
+        msg.fix_quality = int(self.gps.fix_quality) or 0
+        msg.satellites = int(self.gps.satellites) or 0
+        msg.pdop = float(self.gps.pdop)
+        msg.hdop = float(self.gps.hdop)
+        msg.vdop = float(self.gps.vdop)
 
         # Add satellite info
         msg.satellites_info = []
@@ -88,10 +88,10 @@ class GPSPublisher(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = GPSPublisher()
+
+    node = GPS()
     rclpy.spin(node)
+
     node.destroy_node()
     rclpy.shutdown()
 
-if __name__ == '__main__':
-    main()
