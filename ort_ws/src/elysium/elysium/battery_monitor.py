@@ -42,9 +42,9 @@ class BatteryMonitorNode(Node):
     def send_data(self):
         msg = BatteryInfo()
 
-        msg.voltage = self.bms.voltage
-        msg.current = self.bms.current
-        msg.power = self.bms.power
+        msg.voltage = float(self.bms.voltage)
+        msg.current = float(self.bms.current)
+        msg.power = float(self.bms.power)
         
         self.bms_publisher.publish(msg)
 
