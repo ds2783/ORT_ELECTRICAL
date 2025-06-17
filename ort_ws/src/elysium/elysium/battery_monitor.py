@@ -8,8 +8,7 @@ from elysium.config.sensors import BMS_REFRESH_PERIOD
 
 import busio, board
 
-from sensor_msgs.msg import BatteryState
-from std_msgs.msg import Float32
+from ort_interfaces.msg import BatteryInfo
 
 
 QoS = QoSProfile(
@@ -41,10 +40,11 @@ class BatteryMonitorNode(Node):
 
 
     def send_data(self):
-        msg = BatteryState()
+        msg = BatteryInfo()
 
         msg.voltage = self.bms.voltage
         msg.current = self.bms.current
+        msg.power = self.bms.power
         
         self.bms_publisher.publish(msg)
 
