@@ -1,4 +1,3 @@
-from nav_msgs import msg
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
@@ -146,8 +145,11 @@ class GeoLocator(Node):
         ):
             self.lat = msg.latitude
             self.long = msg.longitude
-
-            if self.start_lat and self.start_lon:
+            
+            if not self.start_lon or not self.start_lat:
+                self.start_lat = self.lat
+                self.start_lon = self.long
+            else:
                 dist = haversine(self.start_lat, self.start_lon, self.lat, self.long)
                 msg = Float32(data=float(dist))
                 self.gps_dist_pub_.publish(msg)
