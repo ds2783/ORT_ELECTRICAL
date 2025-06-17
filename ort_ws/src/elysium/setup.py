@@ -25,6 +25,7 @@ setup(
             'distance_sensor = elysium.distance_sensor:main',
             'geo_locator = elysium.geo_locator:main',
             'camera_led = elysium.camera_led:main',
+            'battery_monitor = elysium.battery_monitor:main'
         ],
     },
 )
