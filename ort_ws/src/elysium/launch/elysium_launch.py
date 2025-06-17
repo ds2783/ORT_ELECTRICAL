@@ -9,11 +9,24 @@ from launch_ros.events.lifecycle import ChangeState
 from launch_ros.substitutions import FindPackageShare
 from lifecycle_msgs.msg import Transition
 
-from subprocess import call
+import gpiozero as gpio
+import lgpio
+
+def __patched_init(self, chip=None):
+    gpio.pins.lgpio.LGPIOFactory.__bases__[0].__init__(self)
+    chip = 0
+    self._handle = lgpio.gpiochip_open(chip)
+    self._chip = chip
+    self.pin_class = gpio.pins.lgpio.LGPIOPin
+
 
 def generate_launch_description():
 
-    call('pinctrl set 26 op dh', shell=True)  # set the green LED on the indicator board. 
+    gpio.pins.lgpio.LGPIOFactory.__init__ = __patched_init
+    factory = LGPIOFactory()
+
+    green_led = gpio.DigitalOutputDevice(26, pin_factory=factory)
+    green_led.on()  # ignore the cursed code. 
 
     ld = LaunchDescription(
         [
