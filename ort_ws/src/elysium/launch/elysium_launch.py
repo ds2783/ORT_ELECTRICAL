@@ -9,27 +9,8 @@ from launch_ros.events.lifecycle import ChangeState
 from launch_ros.substitutions import FindPackageShare
 from lifecycle_msgs.msg import Transition
 
-import gpiozero as gpio
-import lgpio
-from gpiozero.pins.lgpio import LGPIOFactory
-
-
-def __patched_init(self, chip=None):
-    gpio.pins.lgpio.LGPIOFactory.__bases__[0].__init__(self)
-    chip = 0
-    self._handle = lgpio.gpiochip_open(chip)
-    self._chip = chip
-    self.pin_class = gpio.pins.lgpio.LGPIOPin
-
 
 def generate_launch_description():
-
-    gpio.pins.lgpio.LGPIOFactory.__init__ = __patched_init
-    factory = LGPIOFactory()
-
-    green_led = gpio.DigitalOutputDevice(26, pin_factory=factory)
-    green_led.on()  # ignore the cursed code. 
-
     ld = LaunchDescription(
         [
             Node(
