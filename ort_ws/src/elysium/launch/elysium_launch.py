@@ -9,8 +9,12 @@ from launch_ros.events.lifecycle import ChangeState
 from launch_ros.substitutions import FindPackageShare
 from lifecycle_msgs.msg import Transition
 
+from subprocess import call
 
 def generate_launch_description():
+
+    call('pinctrl set 26 op dh', shell=True)  # set the green LED on the indicator board. 
+
     ld = LaunchDescription(
         [
             Node(
