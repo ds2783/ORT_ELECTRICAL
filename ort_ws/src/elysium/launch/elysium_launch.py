@@ -42,26 +42,13 @@ def generate_launch_description():
                 executable="geo_locator",
                 namespace="",
                 name="geo_locator",
-                ),
+            ),
             Node(
-                package="gps",
-                executable="distance_calculator",
+                package="elysium",
+                executable="gps",
                 namespace="",
-                name="distance_calculator",
-                ),
-            Node(
-                package="gps",
-                executable="gps_publisher",
-                namespace="",
-                name="gps_publisher",
-                ),
-            Node(
-                package="gps",
-                executable="start_coordinates",
-                namespace="",
-                name="start_coordinates",
-                ),
-            
+                name="gps",
+            ),
         ]
     )
     optical_flow_params_path = PathJoinSubstitution(
