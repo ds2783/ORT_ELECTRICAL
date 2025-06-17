@@ -56,7 +56,7 @@ def main(args=None):
     topic_name = "/battery_monitor"
     node_name  = "battery_monitor"
     
-    _bms_node = BatteryMonitorNode(node_name, topic_name)
+    _bms_node = BatteryMonitorNode(node_name, topic_name, i2c_addr=0x44)
 
     try:
         while rclpy.ok():
