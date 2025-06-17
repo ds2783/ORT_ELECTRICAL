@@ -1,9 +1,7 @@
 # SPDX-FileCopyrightText: 2021 ladyada for Adafruit Industries
 # SPDX-License-Identifier: MIT
 
-# Simple GPS module demonstration.
-# Will wait for a fix and print a message every second with the current location
-# and other details, including antenna status.
+# Simple GPS module demonstration with antenna status output.
 
 import time
 import board
@@ -13,7 +11,7 @@ import serial
 
 # Create a serial connection for the GPS connection
 uart = serial.Serial("/dev/ttyAMA0", baudrate=9600, timeout=5)
-# Alternatively, for USB:
+# For USB-based GPS:
 # uart = serial.Serial("/dev/ttyUSB0", baudrate=9600, timeout=10)
 
 # Create a GPS module instance
@@ -35,11 +33,23 @@ while True:
     if current - last_print >= 1.0:
         last_print = current
 
+        print("=" * 40)
+        # Always print antenna status
+        if gps.antenna is not None:
+            if gps.antenna == 0:
+                print("Antenna status: Internal")
+            elif gps.antenna == 1:
+                print("Antenna status: External")
+            else:
+                print(f"Antenna status: Unknown ({gps.antenna})")
+        else:
+            print("Antenna status: Not available yet")
+
         if not gps.has_fix:
             print("Waiting for fix...")
             continue
 
-        print("=" * 40)
+        # We have a fix, print details
         print(
             "Fix timestamp: {}/{}/{} {:02}:{:02}:{:02}".format(
                 gps.timestamp_utc.tm_mon,
@@ -69,12 +79,3 @@ while True:
             print(f"Horizontal dilution: {gps.horizontal_dilution}")
         if gps.height_geoid is not None:
             print(f"Height geoid: {gps.height_geoid} meters")
-
-        # Antenna status (parsed from PGTOP sentence)
-        if gps.antenna is not None:
-            if gps.antenna == 0:
-                print("Antenna status: Internal")
-            elif gps.antenna == 1:
-                print("Antenna status: External")
-            else:
-                print(f"Antenna status: Unknown ({gps.antenna})")
