@@ -11,6 +11,8 @@ from lifecycle_msgs.msg import Transition
 
 import gpiozero as gpio
 import lgpio
+from gpiozero.pins.lgpio import LGPIOFactory
+
 
 def __patched_init(self, chip=None):
     gpio.pins.lgpio.LGPIOFactory.__bases__[0].__init__(self)
