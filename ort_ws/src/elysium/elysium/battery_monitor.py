@@ -29,7 +29,7 @@ class BatteryMonitorNode(Node):
     def __init__(self, node_name, topic_name, i2c_addr=0x40):
         super().__init__(node_name)
 
-        msg_type = BatteryState
+        msg_type = BatteryInfo
         self.bms_publisher = self.create_publisher(msg_type=msg_type, topic=topic_name, qos_profile=QoS)
         self.update_timer = self.create_timer(BMS_REFRESH_PERIOD, self.send_data)
     
