@@ -5,6 +5,8 @@ import adafruit_gps
 import rclpy
 from rclpy.node import Node
 
+from elysium.config.sensors import GPS_REFRESH_PERIOD
+
 from ort_interfaces.msg import GPSStatus, SatelliteInfo
 
 class GPS(Node):
@@ -19,8 +21,8 @@ class GPS(Node):
         self.gps.send_command(b"PMTK314,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0")
         self.gps.send_command(b"PMTK220,1000")  # 1 Hz update rate
 
-        self.publisher_ = self.create_publisher(GPSStatus, '/gps_data', 10)
-        self.timer = self.create_timer(1.0, self.gpsCB_)
+        self.publisher_ = self.create_publisher(GPSStatus, '/elysium/gps_data', 10)
+        self.timer = self.create_timer(GPS_REFRESH_PERIOD, self.gpsCB_)
         self.last_print = time.monotonic()
 
         self.talkers = {

@@ -15,7 +15,7 @@ from geometry_msgs.msg import (
     TwistWithCovariance,
 )
 from std_msgs.msg import Float32, Header
-from ort_interfaces.msg import OpticalFlow
+from ort_interfaces.msg import OpticalFlow, GPSStatus
 
 from elysium.config.sensors import DISTANCE_SENSOR_REFRESH_PERIOD, OPTICAL_CALIBRATION
 from elysium.config.network import DIAGNOSTIC_PERIOD
@@ -23,6 +23,8 @@ from elysium.config.network import DIAGNOSTIC_PERIOD
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
+
+# TO DO: Integrate GPS, OpticalFlow and IMU to all use the same coordinate system.
 
 class GeoLocator(Node):
     def __init__(self, node_name):
@@ -44,16 +46,22 @@ class GeoLocator(Node):
             self.opticalCB_,
             qos_profile_sensor_data,
         )
-        self.reset_pos_ = self.create_subscription(Bool, "/elysium/reset_pos", self.resetCB_, 10)
+        self.reset_pos_ = self.create_subscription(
+            Bool, "/elysium/reset_pos", self.resetCB_, 10
+        )
+
+        self.gps_sub_ = self.create_subscription(
+            GPSStatus, "/elysium/gps_data", self.gpsCB_, 10
+        )
         # ----------------------
 
         # Publishers -----------
         self.euler_angles_pub_ = self.create_publisher(
             Vector3, "/elysium/euler_angles", 10
         )
-        self.odom_pub_ = self.create_publisher(
-            Odometry, "/elysium/odom", 10
-        )
+        self.odom_pub_ = self.create_publisher(Odometry, "/elysium/odom", 10)
+
+        self.gps_dist_pub_ = self.create_publisher(Float32, "/elysium/gps_dist", 10)
         # ----------------------
 
         # Timers ----------------
@@ -78,10 +86,23 @@ class GeoLocator(Node):
         # avoids division by zero error
         self.dt = 0.0001
 
+        # GPS Vars
+        self.start_lat = None
+        self.start_lon = None
+
+        self.lat = None
+        self.long = None
+
     def resetCB_(self, msg: Bool):
         if msg.data == True:
             self.x_pos = 0.0
             self.y_pos = 0.0
+
+            self.start_lat = self.lat
+            self.start_lon = self.long
+            self.get_logger().info(
+                f"Captured start coordinates: {self.start_lat}, {self.start_lon}"
+            )
 
     def tofCB_(self, msg: Float32):
         self.z_prev_ = self.z_pos
@@ -113,6 +134,27 @@ class GeoLocator(Node):
 
         self.dt = msg.dt
 
+    def gpsCB_(self, msg):
+        # conditions to define a reasonable fix
+        if (
+            msg.fix_quality > 0
+            and msg.latitude
+            and msg.longitude
+            and msg.pdop < 10
+            and msg.hdop < 10
+            and msg.vdop < 10
+        ):
+            self.lat = msg.latitude
+            self.long = msg.longitude
+
+            if self.start_lat and self.start_lon:
+                dist = haversine(self.start_lat, self.start_lon, self.lat, self.long)
+                msg = Float32(data=float(dist))
+                self.gps_dist_pub_.publish(msg)
+
+        else:
+            self.get_logger().info("GPS data is ignored as there is no solid fix.")
+
     def publish_(self):
         self.euler_angles_pub_.publish(self.euler_angles)
 
@@ -123,14 +165,18 @@ class GeoLocator(Node):
             ),
             child_frame_id="base_link",
             pose=PoseWithCovariance(
-                pose=Pose(position=Point(x=float(self.x_pos), y=float(self.y_pos), z=float(self.z_pos)))
+                pose=Pose(
+                    position=Point(
+                        x=float(self.x_pos), y=float(self.y_pos), z=float(self.z_pos)
+                    )
+                )
             ),
             twist=TwistWithCovariance(
                 twist=Twist(
                     linear=Vector3(
                         x=float(self.dx / self.dt),
                         y=float(self.dy / self.dt),
-                        z=float((self.z_pos - self.z_prev_) / self.distance_sensor_dt_)
+                        z=float((self.z_pos - self.z_prev_) / self.distance_sensor_dt_),
                     )
                 )
             ),
@@ -138,11 +184,34 @@ class GeoLocator(Node):
 
         self.odom_pub_.publish(odom_msg)
 
+
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371000  # Earth radius in meters
+    phi1 = np.radians(lat1)
+    phi2 = np.radians(lat2)
+    delta_phi = np.radians(lat2 - lat1)
+    delta_lambda = np.radians(lon2 - lon1)
+
+    a = (
+        np.sin(delta_phi / 2.0) ** 2
+        + np.cos(phi1) * np.cos(phi2) * np.sin(delta_lambda / 2.0) ** 2
+    )
+
+    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+
+    return R * c
+
+
 # Euler angle in rads
 # vector2D -> np.array([[x], [y]])
 def rotate_vector2D(euler_angle, vector2D):
-    rotation = np.array([[np.cos(euler_angle), -np.sin(euler_angle)], [np.sin(euler_angle), np.cos(euler_angle)]])
-    return np.matmul(rotation, vector2D)    
+    rotation = np.array(
+        [
+            [np.cos(euler_angle), -np.sin(euler_angle)],
+            [np.sin(euler_angle), np.cos(euler_angle)],
+        ]
+    )
+    return np.matmul(rotation, vector2D)
 
 
 def main(args=None):
