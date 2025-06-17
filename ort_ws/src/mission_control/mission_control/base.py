@@ -9,7 +9,7 @@ from geometry_msgs.msg import Vector3
 from ort_interfaces.msg import CameraRotation
 
 from mission_control.stream.stream_client import StreamClient
-from mission_control.config.mappings import AXES, BUTTONS
+from mission_control.config.mappings import BUTTONS
 from mission_control.config.network import COMM_PORT, PORT_MAIN_BASE, PI_IP
 
 from qreader import QReader
@@ -17,6 +17,7 @@ from multiprocessing.connection import Client
 
 import numpy as np
 import csv
+import time
 
 
 class BaseNode(Node):
@@ -89,7 +90,7 @@ class BaseNode(Node):
         self.elysium_x = 0
         self.elysium_y = 0
         self.elysium_z = 0
-        
+
         # GPS
         self.gps_dist_ = 0
 
@@ -121,10 +122,10 @@ class BaseNode(Node):
 
                 self.last_qr = str(qreader_out)
                 self.sendComms("qr---:" + self.last_qr)
-
+                    
                 # assuming y is the forward coordinate
                 # (still to be tested)
-                # raycasted vector ->
+                # raycasted vector  ->
                 relative_elysium_pos = np.array([[0.0], [self.qr_tof_dist.data]])
                 # x -> yaw, which is rotation around the z_axis
                 xy_plane_rotation = self.eulerAngles.x + self.cam_rotation.z_axis
@@ -138,12 +139,32 @@ class BaseNode(Node):
                 x_dist = self.elysium_x + offset[0][0]
                 y_dist = self.elysium_y + offset[1][0]
 
+                dist = np.sqrt(x_dist**2 + y_dist**2)
+                
+                elysium_dist = np.sqrt(self.elysium_x**2 + self.elysium_y**2)
+                
+                # checks the difference between gps dist and elysium dist, and checks last gps distance is 
+                # is recent.
+                if abs(self.gps_dist_ - elysium_dist) > 3.0 and (time.monotonic() - self.last_gps_) < 2.0:
+                    self.get_logger().warn(
+                        "GPS and calculated coordinates of the Rover disagree by more than 3m."
+                    )
+                    self.get_logger().warn(
+                        "Defaulting to GPS as it is deemed to be more reliable."
+                    )
+                    reliable_sensor = "gps"
+                else:
+
+                    reliable_sensor = "op-imu"
+
                 for code in qreader_out:
                     if code != None:
                         self.scanned_codes[code] = (
                             f"x: {x_dist:4f}",
                             f"y: {y_dist:4f}",
-                            f"distance: {np.sqrt(x_dist ** 2 + y_dist ** 2)}",
+                            f"distance-op-imu: {dist}",
+                            f"distance-gps: {self.gps_dist_}"
+                            f"more-reliable: {reliable_sensor}",
                         )
 
                 with open("qr_data.csv", "w", newline="") as csvfile:
@@ -214,6 +235,7 @@ class BaseNode(Node):
 
     def gpsCB_(self, msg: Float32):
         self.gps_dist_ = msg.data
+        self.last_gps_ = time.monotonic()
         self.sendComms("gps-d:" + f"{self.gps_dist_:2f}")
 
     def sendComms(self, msg):
@@ -249,3 +271,4 @@ def main(args=None):
     rclpy.spin(base)
     # Cleanup After Shutdown
     rclpy.shutdown()
+

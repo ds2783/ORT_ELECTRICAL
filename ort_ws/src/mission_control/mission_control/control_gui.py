@@ -231,13 +231,11 @@ class GUI(Node):
         z: {self.elysium_z}
         """
         )
-
         imgui.text(
         f"""
         gps-dist: {self.gps_dist}
         """
         )
-
         imgui.text(
         f"""
         x_vel: {self.elysium_x_vel}
@@ -293,3 +291,4 @@ def main(args=None):
     gui.impl.shutdown()
     glfw.terminate()
     rclpy.shutdown()
+

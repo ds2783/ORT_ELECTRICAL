@@ -15,6 +15,7 @@ from elysium.config.controls import (
 )
 
 import time
+from numpy import pi
 from dataclasses import dataclass
 from adafruit_servokit import ServoKit
 
@@ -50,7 +51,7 @@ class TelepresenceOperations(Node):
 
         self.z_increment = 0
         self.x_increment = 0
-        
+
         # Setting Zeroed rotation for camera servos
         self.cam_angles_ = rotation2D(90.0, 90.0)
 
@@ -89,7 +90,8 @@ class TelepresenceOperations(Node):
 
         # publish camera rotation, note 90degrees servo rotation -> 0degrees around the axis
         camera_rotation_msg = CameraRotation(
-            z_axis=float(self.cam_angles_.z_axis - 90), x_axis=float(self.cam_angles_.x_axis - 90)
+            z_axis=float(float_to_rad(self.cam_angles_.z_axis - 90)),
+            x_axis=float(float_to_rad(self.cam_angles_.x_axis - 90)),
         )
         self.cam_angles__pub_.publish(camera_rotation_msg)
 
@@ -130,8 +132,12 @@ class TelepresenceOperations(Node):
 
     def camera_rotate(self):
         # to fix or not to fix
-        self.cam_angles_.z_axis = self.bound_180(float(-self.z_increment + self.cam_angles_.z_axis))
-        self.cam_angles_.x_axis = self.bound_180(float(-self.x_increment + self.cam_angles_.x_axis))
+        self.cam_angles_.z_axis = self.bound_180(
+            float(-self.z_increment + self.cam_angles_.z_axis)
+        )
+        self.cam_angles_.x_axis = self.bound_180(
+            float(-self.x_increment + self.cam_angles_.x_axis)
+        )
         # POSITIONAL
         self.kit_.servo[CAMERA_SERVO_Z].angle = self.cam_angles_.z_axis
         # CONTIOUS
@@ -140,6 +146,10 @@ class TelepresenceOperations(Node):
         # self.get_logger().info(
         #     "z_axis: " + str(self.cam_angles_.z_axis) + " x_axis: " + str(self.cam_angles_.x_axis)
         # )
+
+
+def float_to_rad(val):
+    return (pi / 180) * val
 
 
 def main(args=None):
