@@ -115,6 +115,9 @@ class GUI(Node):
         self.elysium_x = "0"
         self.elysium_y = "0"
         self.elysium_z = "0"
+        
+        # GPS
+        self.gps_dist = "0"
 
         # Attitude
         self.elysium_yaw = "0"
@@ -176,6 +179,8 @@ class GUI(Node):
                         self.q_tof = data
                     case "o-tof":
                         self.o_tof = data
+                    case "gps-d":
+                        self.gps_dist = data
 
     def run(self):
         glfw.poll_events()
@@ -226,6 +231,13 @@ class GUI(Node):
         z: {self.elysium_z}
         """
         )
+
+        imgui.text(
+        f"""
+        gps-dist: {self.gps_dist}
+        """
+        )
+
         imgui.text(
         f"""
         x_vel: {self.elysium_x_vel}

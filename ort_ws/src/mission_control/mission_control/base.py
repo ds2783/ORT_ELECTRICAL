@@ -67,6 +67,10 @@ class BaseNode(Node):
             CameraRotation, "/elysium/cam_angles", self.camCB_, 10
         )
 
+        self.gps_dist_sub_ = self.create_subscription(
+            Float32, "/elysium/gps_dist", self.gpsCB_, 10
+        )
+
         # Publishers
         self.connection_pub_ = self.create_publisher(Bool, "ping", 10)
         # ----------------------------
@@ -85,6 +89,9 @@ class BaseNode(Node):
         self.elysium_x = 0
         self.elysium_y = 0
         self.elysium_z = 0
+        
+        # GPS
+        self.gps_dist_ = 0
 
         # Recover Old Codes
         self.scanned_codes = {}
@@ -204,6 +211,10 @@ class BaseNode(Node):
         self.cam_rotation = msg
         self.sendComms("cam_y:" + f"{self.cam_rotation.z_axis:2f}")
         self.sendComms("cam_p:" + f"{self.cam_rotation.x_axis:2f}")
+
+    def gpsCB_(self, msg: Float32):
+        self.gps_dist_ = msg.data
+        self.sendComms("gps-d:" + f"{self.gps_dist_:2f}")
 
     def sendComms(self, msg):
         if self.try_again == False:
