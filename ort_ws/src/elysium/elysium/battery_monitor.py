@@ -35,6 +35,7 @@ class BatteryMonitorNode(Node):
         msg_type = BatteryInfo
         self.bms_publisher = self.create_publisher(msg_type=msg_type, topic=topic_name, qos_profile=QoS)
         self.publisher_timer = self.create_timer(BMS_REFRESH_PERIOD, self.send_data)
+        self.save_timer = self.create_timer(10, self._save_lookup_data)
     
         i2c = busio.I2C(board.SCL, board.SDA)
         self.bms = _ina260.INA260(i2c, address=i2c_addr)
@@ -52,7 +53,7 @@ class BatteryMonitorNode(Node):
         # We are going to assume we are entering with a full battery. This needs to be backed up by a voltage lookup table I'll generate by running a few 
         # discharges while tracking the current integrated SOC. 
 
-        # 3.85 max
+        # 4.18 max on a 12.6V 1.5A full charge
         # 2.2 min 
 
         self.lookup_table = self._read_lookup_data(BMS_LOOKUP_TABLE_PATH)
@@ -76,6 +77,7 @@ class BatteryMonitorNode(Node):
             except OSError:
                 self.get_logger().error(f"[{self.get_name()}] - OSError: probably given a bad path for the ocv_lookup.csv file.")
 
+        self.lookup_table.to_csv(path, sep=",", na_rep=0)
         
     def get_data(self):
         self.measured_voltage = self.bms.voltage  # V

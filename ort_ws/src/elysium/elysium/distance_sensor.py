@@ -60,7 +60,13 @@ class DistanceNode(Node):
 
     def get_data(self):
         self.sensor.start_sensor()  # we can't have the TOF sensor initialise fully in the __init__ because the sleep node hasn't spun up yet (it uses rate.sleep)
-        self.sensor.start_ranging() # so we start the sensor here proper. It only actually inits once 
+        
+        try:
+            self.sensor.start_ranging() # so we start the sensor here proper. It only actually inits once 
+        except OSError:
+            self.get_logger().warn(f"[{self.get_name()}] OSError, probably due to the TOF updating internal addresses.")
+            self.sleep_node.create_rate(5).sleep()
+
 
         if self.sensor.data_ready:
             self.sensor.clear_interrupt()
