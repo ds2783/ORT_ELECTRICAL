@@ -1,13 +1,13 @@
 import rclpy
-import rclpy.logging
 from rclpy.node import Node 
 from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
 
-import elysium.hardware.adafruit_ina260 as _ina260
-from elysium.config.sensors import BMS_REFRESH_PERIOD, BMS_DELTA_T, BMS_BATTERY_CAPACITY
-
+import pandas
+from pathlib import Path
 import busio, board
 
+import elysium.hardware.adafruit_ina260 as _ina260
+from elysium.config.sensors import BMS_REFRESH_PERIOD, BMS_DELTA_T, BMS_BATTERY_CAPACITY, BMS_LOOKUP_TABLE_PATH
 from ort_interfaces.msg import BatteryInfo
 
 
@@ -55,8 +55,28 @@ class BatteryMonitorNode(Node):
         # 3.85 max
         # 2.2 min 
 
+        self.lookup_table = self._read_lookup_data(BMS_LOOKUP_TABLE_PATH)
+
         if lookup_recording:
             self.lookup = True
+
+    def _read_lookup_data(self, path):
+        dataframe = pandas.read_csv(path, sep=",")
+        self.get_logger().info(f"{dataframe}")
+        return dataframe
+
+    def _save_lookup_data(self, path):
+        
+        # Make sure this path is valid!
+
+        if not Path(path).is_file():
+            try:
+                with open(path, "w") as fs:
+                    ...
+            except OSError:
+                self.get_logger().error(f"[{self.get_name()}] - OSError: probably given a bad path for the ocv_lookup.csv file.")
+
+        
 
 
     def get_data(self):
@@ -64,9 +84,12 @@ class BatteryMonitorNode(Node):
         self.measured_current = self.bms.current  # mA 
         self.measured_power = self.bms.power # mW
 
-        charge_expended = self.measured_current * 1e3 * BMS_DELTA_T  # mW * 1000 * dt 
+        charge_expended = self.measured_current * 1e-3 * BMS_DELTA_T  # mW * 0.0001 * dt 
         self.current_capacity -= charge_expended
         self.soc = self.current_capacity / self.total_capacity
+
+        # if self.lookup:
+        #     self._save_lookup_data(BMS_LOOKUP_TABLE_PATH)
 
     def send_data(self):
         msg = BatteryInfo()
@@ -79,7 +102,6 @@ class BatteryMonitorNode(Node):
         msg.total_capacity = float(self.total_capacity)
         
         self.bms_publisher.publish(msg)
-
 
 
 def main(args=None):
