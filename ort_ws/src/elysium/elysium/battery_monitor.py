@@ -45,7 +45,7 @@ class BatteryMonitorNode(Node):
 
         self.measured_voltage, self.measured_current, self.measured_power = .0, .0, .0
 
-        self.soc = 1  # state of charge = capacity remaining / total capacity
+        self.soc, self.old_soc = 1, 1  # state of charge = capacity remaining / total capacity
         self.current_capacity = BMS_BATTERY_CAPACITY
         self.total_capacity = BMS_BATTERY_CAPACITY
 
