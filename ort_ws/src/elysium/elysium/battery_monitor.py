@@ -7,7 +7,7 @@ from pathlib import Path
 import busio, board
 
 import elysium.hardware.adafruit_ina260 as _ina260
-from elysium.config.sensors import BMS_REFRESH_PERIOD, BMS_DELTA_T, BMS_BATTERY_CAPACITY, BMS_LOOKUP_TABLE_PATH
+from elysium.config.sensors import BMS_REFRESH_PERIOD, BMS_DELTA_T, BMS_BATTERY_CAPACITY, BMS_SAVE_PATH, BMS_LOOKUP_TABLE_PATH
 from ort_interfaces.msg import BatteryInfo
 
 
@@ -45,7 +45,7 @@ class BatteryMonitorNode(Node):
 
         self.measured_voltage, self.measured_current, self.measured_power = .0, .0, .0
 
-        self.soc, self.old_soc = 1, 1  # state of charge = capacity remaining / total capacity
+        
         self.current_capacity = BMS_BATTERY_CAPACITY
         self.total_capacity = BMS_BATTERY_CAPACITY
 
@@ -55,12 +55,30 @@ class BatteryMonitorNode(Node):
         # 4.18 max on a 12.6V 1.5A full charge
         # 2.2 min 
 
-        self.lookup_table = self._read_lookup_data(BMS_LOOKUP_TABLE_PATH)
+        self.lookup_table = self._read_lookup_data()
+        self.soc, self.prev_soc = self._read_battery_file()  # state of charge = capacity remaining / total capacity
 
-        if lookup_recording:
-            self.lookup = True
+        self._compare_ocv_soc()  # sanity check the stored SOC values against the 'OCV' values in the lookup table. 
+        
+        self.lookup = lookup_recording  # if this should be a full-discharge lookup table calibration.
 
-    def _read_lookup_data(self, path):
+    def _read_battery_file(self, path=BMS_SAVE_PATH):
+        if not Path(path).is_file():  # Under the assumption that there isn't a SOC to be had, refer to the lookup table. 
+            tmp = self.bms.voltage
+            self.soc = self._find_ocv_soc(tmp)
+            self._save_battery_file()
+
+        with open(path, "r") as fs:
+            data = fs.readline()
+            
+        soc = float(data)
+        return soc, soc
+    
+    def _save_battery_file(self, path=BMS_SAVE_PATH):
+        with open(path, "w") as fs:
+            fs.write(f"{self.soc}")
+
+    def _read_lookup_data(self, path=BMS_LOOKUP_TABLE_PATH):
         dataframe = pandas.read_csv(path, sep=",")
         _row_range = pandas.array(range(0, 1001)) # 0 to 1000, 0 inclusive which is why we use 1001. 
         _soc_values = pandas.array(range(0, 1001)) / 1000
@@ -85,8 +103,23 @@ class BatteryMonitorNode(Node):
                 self.get_logger().error(f"[{self.get_name()}] - OSError: probably given a bad path for the ocv_lookup.csv file.")
 
         self.lookup_table.to_csv(path, sep=",", na_rep=0)
-        self.old_soc = self.soc
-        
+        self.prev_soc = self.soc
+
+        self._save_battery_file()
+
+    def _compare_ocv_soc(self):
+        experimental_ocv_value = self.lookup_table.iloc[self.soc, 3]
+        tmp_voltage = self.bms.voltage
+        if tmp_voltage / experimental_ocv_value >= 0.1:
+            self.get_logger().warn(f"[{self.get_name()}] The expected OCV value is more than 10% different to what we are expecting of the battery voltage, rebasing SOC.")
+            self.soc = self._find_ocv_soc(tmp_voltage)
+
+    def _find_ocv_soc(self, ocv):
+        for i in range(1, 1000):
+            if self.lookup_table.iloc[i, 3] > ocv and self.lookup_table.iloc[i+1, 3] < ocv:
+                return self.lookup_table.iloc[i, 3]
+                    
+
     def get_data(self):
         self.measured_voltage = self.bms.voltage  # V
         self.measured_current = self.bms.current  # mA 
@@ -96,7 +129,7 @@ class BatteryMonitorNode(Node):
         self.current_capacity -= charge_expended
         self.soc = round(self.current_capacity / self.total_capacity, ndigits=3)
         
-        if (self.old_soc - self.soc) >= 0.001:
+        if self.lookup and (self.prev_soc - self.soc) >= 0.001:
             self.lookup_table.iloc[int(round(1000*self.soc)), 1:] = [charge_expended, self.measured_current, self.measured_voltage]
             self._save_lookup_data()
 
