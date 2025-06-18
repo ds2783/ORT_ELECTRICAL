@@ -73,7 +73,7 @@ class BatteryMonitorNode(Node):
         self.get_logger().info(f"{dataframe}")
         return dataframe
 
-    def _save_lookup_data(self, path=BMS_BATTERY_CAPACITY):
+    def _save_lookup_data(self, path=BMS_LOOKUP_TABLE_PATH):
         
         # Make sure this path is valid!
 
