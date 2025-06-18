@@ -35,7 +35,6 @@ class BatteryMonitorNode(Node):
         msg_type = BatteryInfo
         self.bms_publisher = self.create_publisher(msg_type=msg_type, topic=topic_name, qos_profile=QoS)
         self.publisher_timer = self.create_timer(BMS_REFRESH_PERIOD, self.send_data)
-        self.save_timer = self.create_timer(10, self._save_lookup_data)
     
         i2c = busio.I2C(board.SCL, board.SDA)
         self.bms = _ina260.INA260(i2c, address=i2c_addr)
@@ -63,6 +62,14 @@ class BatteryMonitorNode(Node):
 
     def _read_lookup_data(self, path):
         dataframe = pandas.read_csv(path, sep=",")
+        _row_range = pandas.array(range(0, 1001)) # 0 to 1000, 0 inclusive which is why we use 1001. 
+        _soc_values = pandas.array(range(0, 1001)) / 1000
+
+        if dataframe.shape != (1001, 4):
+            new_dataframe = pandas.DataFrame(index=_row_range, columns=["soc", "charge", "current", "ocv"])    
+            new_dataframe.iloc[:, 0] = _soc_values
+            dataframe = new_dataframe
+        
         self.get_logger().info(f"{dataframe}")
         return dataframe
 
@@ -78,6 +85,7 @@ class BatteryMonitorNode(Node):
                 self.get_logger().error(f"[{self.get_name()}] - OSError: probably given a bad path for the ocv_lookup.csv file.")
 
         self.lookup_table.to_csv(path, sep=",", na_rep=0)
+        self.old_soc = self.soc
         
     def get_data(self):
         self.measured_voltage = self.bms.voltage  # V
@@ -86,7 +94,11 @@ class BatteryMonitorNode(Node):
 
         charge_expended = self.measured_current * 1e-3 * BMS_DELTA_T  # mW * 0.0001 * dt 
         self.current_capacity -= charge_expended
-        self.soc = self.current_capacity / self.total_capacity
+        self.soc = round(self.current_capacity / self.total_capacity, ndigits=3)
+        
+        if (self.old_soc - self.soc) >= 0.001:
+            self.lookup_table.iloc[int(round(1000*self.soc)), 1:] = [charge_expended, self.measured_current, self.measured_voltage]
+            self._save_lookup_data()
 
         # if self.lookup:
         #     self._save_lookup_data(BMS_LOOKUP_TABLE_PATH)
