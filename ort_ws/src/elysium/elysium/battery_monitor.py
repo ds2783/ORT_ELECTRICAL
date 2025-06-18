@@ -91,9 +91,9 @@ class BatteryMonitorNode(Node):
 
         dataframe.fillna(0)  # fills empty NAN values with 0. 
 
-        if dataframe.shape != (1001, 4):
+        if dataframe.shape != (1001, 4):  # create a new dataframe if there doesn't exist one. 
             new_dataframe = pandas.DataFrame(index=_row_range, columns=["soc", "charge", "current", "ocv"])
-            dataframe.fillna(0)  # fills empty NAN values with 0. 
+            new_dataframe.fillna(0)  # fills empty NAN values with 0. 
             new_dataframe.iloc[:, 0] = _soc_values
             dataframe = new_dataframe
         
