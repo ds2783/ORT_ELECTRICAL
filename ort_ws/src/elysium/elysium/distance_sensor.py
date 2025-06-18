@@ -98,7 +98,7 @@ def main(args=None):
 
     import time
     _distance_sensor_1 = DistanceNode(node_name_1, topic_name_1, i2c_addr=0x29, sleep_node=sleep_node)  
-    time.sleep(0.1)
+    time.sleep(0.1)  # we accept the cursed for what it is. It's 100ms each on startup only anyway it's fineeee.
     _distance_sensor_1.sensor.set_address(0x2A)
     time.sleep(0.1)
     xshut_pin.on()

@@ -4,7 +4,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
 
 import elysium.hardware.adafruit_ina260 as _ina260
-from elysium.config.sensors import BMS_REFRESH_PERIOD
+from elysium.config.sensors import BMS_REFRESH_PERIOD, BMS_DELTA_T, BMS_BATTERY_CAPACITY
 
 import busio, board
 
@@ -25,26 +25,58 @@ QoS = QoSProfile(
 )
 
 
+# BMS CAPACITY LOGIC DERIVED HERE: https://www.youtube.com/watch?v=rOwcxFErcvQ
+
+
 class BatteryMonitorNode(Node):
-    def __init__(self, node_name, topic_name, i2c_addr=0x40):
+    def __init__(self, node_name, topic_name, i2c_addr=0x40, lookup_recording=True):
         super().__init__(node_name)
 
         msg_type = BatteryInfo
         self.bms_publisher = self.create_publisher(msg_type=msg_type, topic=topic_name, qos_profile=QoS)
-        self.update_timer = self.create_timer(BMS_REFRESH_PERIOD, self.send_data)
+        self.publisher_timer = self.create_timer(BMS_REFRESH_PERIOD, self.send_data)
     
         i2c = busio.I2C(board.SCL, board.SDA)
         self.bms = _ina260.INA260(i2c, address=i2c_addr)
 
         self.bms.averaging_count = _ina260.AveragingCount.COUNT_4   # averaging out on 4 samples
 
+        self.delta_t = self.create_timer(BMS_DELTA_T, self.get_data)
+
+        self.measured_voltage, self.measured_current, self.measured_power = .0, .0, .0
+
+        self.soc = 1  # state of charge = capacity remaining / total capacity
+        self.current_capacity = BMS_BATTERY_CAPACITY
+        self.total_capacity = BMS_BATTERY_CAPACITY
+
+        # We are going to assume we are entering with a full battery. This needs to be backed up by a voltage lookup table I'll generate by running a few 
+        # discharges while tracking the current integrated SOC. 
+
+        # 3.85 max
+        # 2.2 min 
+
+        if lookup_recording:
+            self.lookup = True
+
+
+    def get_data(self):
+        self.measured_voltage = self.bms.voltage
+        self.measured_current = self.bms.current
+        self.measured_power = self.bms.power
+
+        charge_expended = self.measured_current * BMS_DELTA_T
+        self.current_capacity -= charge_expended
+        self.soc = self.current_capacity / self.total_capacity
 
     def send_data(self):
         msg = BatteryInfo()
 
-        msg.voltage = float(self.bms.voltage)
-        msg.current = float(self.bms.current)
-        msg.power = float(self.bms.power)
+        msg.voltage = float(self.measured_voltage)
+        msg.current = float(self.measured_current)
+        msg.power = float(self.measured_power)
+        msg.soc = float(self.soc)
+        msg.remaining_capacity = float(self.current_capacity)
+        msg.total_capacity = float(self.total_capacity)
         
         self.bms_publisher.publish(msg)
 

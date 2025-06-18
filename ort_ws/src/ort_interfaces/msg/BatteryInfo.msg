@@ -1,3 +1,5 @@
 float32 voltage
 float32 current
 float32 power
+float32 remaining_capacity
+float32 total_capacity
