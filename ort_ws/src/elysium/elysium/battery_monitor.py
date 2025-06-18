@@ -7,7 +7,13 @@ from pathlib import Path
 import busio, board
 
 import elysium.hardware.adafruit_ina260 as _ina260
-from elysium.config.sensors import BMS_REFRESH_PERIOD, BMS_DELTA_T, BMS_BATTERY_CAPACITY, BMS_SAVE_PATH, BMS_LOOKUP_TABLE_PATH
+from elysium.config.sensors import (BMS_REFRESH_PERIOD, 
+                                    BMS_DELTA_T, 
+                                    BMS_UNDERVOLT_WARN, 
+                                    BMS_UNDERVOLT_SHUTDOWN,
+                                    BMS_BATTERY_CAPACITY, 
+                                    BMS_SAVE_PATH, 
+                                    BMS_LOOKUP_TABLE_PATH)
 from ort_interfaces.msg import BatteryInfo
 
 
@@ -121,7 +127,12 @@ class BatteryMonitorNode(Node):
         for i in range(1, 1000):
             if self.lookup_table.iloc[i, 3] > ocv and self.lookup_table.iloc[i+1, 3] < ocv:
                 return self.lookup_table.iloc[i, 3]
-                    
+
+    def _shutdown(self, grace_time=1):
+        import os
+        os.system(f"shutdown --halt +{grace_time}")
+        self.get_logger().warn(f"Queued shutdown for one minute.")
+
 
     def get_data(self):
         self.measured_voltage = self.bms.voltage  # V
@@ -132,12 +143,19 @@ class BatteryMonitorNode(Node):
         self.current_capacity -= charge_expended
         self.soc = round(self.current_capacity / self.total_capacity, ndigits=3)
         
-        if self.lookup and (self.prev_soc - self.soc) >= 0.001:
+        if self.lookup and (self.prev_soc - self.soc) >= 0.001:  # if the soc value has dropped 0.1%, save the data to the lookup table. 
             self.lookup_table.iloc[int(round(1000*self.soc)), 1:] = [charge_expended, self.measured_current, self.measured_voltage]
             self._save_lookup_data()
-
-        # if self.lookup:
-        #     self._save_lookup_data(BMS_LOOKUP_TABLE_PATH)
+        
+        if self.measured_voltage <= BMS_UNDERVOLT_WARN and self.measured_voltage > 1:  # checking if the voltage isn't around 0, since the Pi could be connected 
+            # to external power supplies, leading to near-zero reading on the INA260.  
+            self.get_logger().warn(f"[{self.get_name()}] The battery is providing {BMS_UNDERVOLT_WARN}V or lower, please charge the battery. Lowest recorded voltage in operation was about 6.7V.")
+        
+        elif self.measured_voltage <= BMS_UNDERVOLT_SHUTDOWN and self.measured_voltage > 1:  # will try to gracefully shutdown the entire system. 
+            for _ in range(3):
+                self.get_logger().error(f"[{self.get_name()}] The battery is providing {BMS_UNDERVOLT_SHUTDOWN}V or lower, the system will summarily power down in 1 minute to preserve data.")
+            
+            self._shutdown(grace_time=1)
 
     def send_data(self):
         msg = BatteryInfo()
