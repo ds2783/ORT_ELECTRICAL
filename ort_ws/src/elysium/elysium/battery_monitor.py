@@ -33,6 +33,9 @@ QoS = QoSProfile(
 
 # BMS CAPACITY LOGIC DERIVED HERE: https://www.youtube.com/watch?v=rOwcxFErcvQ
 
+# USING A COMBINATION OF SIMPLISTIC COLOUMB COUNTING AND AN 'OCV' LOOKUP TABLE. 
+# SUBSEQUENT YEARS SHOULD LOOK AT KALMANN FILTERS FOR A MORE OPTIMISED ESTIMATION OF THE SOC OF THE BATTERY.  
+
 
 class BatteryMonitorNode(Node):
     def __init__(self, node_name, topic_name, i2c_addr=0x40, lookup_recording=True):
@@ -97,7 +100,6 @@ class BatteryMonitorNode(Node):
             new_dataframe.iloc[:, 0] = _soc_values
             dataframe = new_dataframe
         
-        self.get_logger().info(f"{dataframe}")
         return dataframe
 
     def _save_lookup_data(self, path=BMS_LOOKUP_TABLE_PATH):
