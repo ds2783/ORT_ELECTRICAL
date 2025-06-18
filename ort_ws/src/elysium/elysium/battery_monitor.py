@@ -77,8 +77,6 @@ class BatteryMonitorNode(Node):
                 self.get_logger().error(f"[{self.get_name()}] - OSError: probably given a bad path for the ocv_lookup.csv file.")
 
         
-
-
     def get_data(self):
         self.measured_voltage = self.bms.voltage  # V
         self.measured_current = self.bms.current  # mA 
