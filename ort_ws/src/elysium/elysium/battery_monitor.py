@@ -131,7 +131,7 @@ class BatteryMonitorNode(Node):
     def _shutdown(self, grace_time=1):
         import os
         os.system(f"shutdown --halt +{grace_time}")
-        self.get_logger().warn(f"Queued shutdown for one minute.")
+        self.get_logger().warn(f"Queued shutdown for {grace_time} minute(s).")
 
 
     def get_data(self):
