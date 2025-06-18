@@ -60,11 +60,11 @@ class BatteryMonitorNode(Node):
 
 
     def get_data(self):
-        self.measured_voltage = self.bms.voltage
-        self.measured_current = self.bms.current
-        self.measured_power = self.bms.power
+        self.measured_voltage = self.bms.voltage  # V
+        self.measured_current = self.bms.current  # mA 
+        self.measured_power = self.bms.power # mW
 
-        charge_expended = self.measured_current * BMS_DELTA_T
+        charge_expended = self.measured_current * 1e3 * BMS_DELTA_T  # mW * 1000 * dt 
         self.current_capacity -= charge_expended
         self.soc = self.current_capacity / self.total_capacity
 
