@@ -124,6 +124,7 @@ class BatteryMonitorNode(Node):
         if tmp_voltage / experimental_ocv_value >= 0.1:
             self.get_logger().warn(f"[{self.get_name()}] The expected OCV value is more than 10% different to what we are expecting of the battery voltage, rebasing SOC.")
             self.soc = self._find_ocv_soc(tmp_voltage)
+            self.current_capacity = self.total_capacity * self.soc
 
     def _find_ocv_soc(self, ocv):
         for i in range(1, 1000):
