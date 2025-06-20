@@ -78,7 +78,7 @@ class BatteryMonitorNode(Node):
             
             if (self.lookup_table == 0).sum().sum() > 2500:  # if the number of zeroes is above 2500, assume that 
                 # the table has NOT been populated yet. 
-                self.soc = 1
+                return 1, 1
             else:
                 self.soc = self._find_ocv_soc(tmp)
     
