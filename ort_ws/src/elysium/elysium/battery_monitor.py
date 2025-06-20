@@ -81,13 +81,8 @@ class BatteryMonitorNode(Node):
                 return 1, 1
             else:
                 self.soc = self._find_ocv_soc(tmp)
-     
-            self._save_battery_file()
-
-        with open(path, "r") as fs:
-            data = fs.readline()
             
-        soc = float(data)
+        soc = float(self.soc)
         return soc, soc
     
     def _save_battery_file(self, path=BMS_SAVE_PATH):
@@ -96,10 +91,8 @@ class BatteryMonitorNode(Node):
 
     def _read_lookup_data(self, path=BMS_LOOKUP_TABLE_PATH):
         if not Path(path).is_file():  
-            self._create_blank_file(path)
-        else:
             dataframe = pandas.read_csv(path, sep=",")
-            
+
         dataframe = dataframe.fillna(0)  # fills empty NAN values with 0. 
 
         cond_1 = dataframe.shape != (1001, 4)
