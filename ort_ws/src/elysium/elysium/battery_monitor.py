@@ -79,13 +79,18 @@ class BatteryMonitorNode(Node):
             fs.write(f"{self.soc}")
 
     def _read_lookup_data(self, path=BMS_LOOKUP_TABLE_PATH):
-        dataframe = pandas.read_csv(path, sep=",")
+        try:
+            dataframe = pandas.read_csv(path, sep=",")
+        except FileNotFoundError:
+            self.get_logger().warn("OCV Lookup table does not exists, making a new one...")
+            
         _row_range = pandas.array(range(0, 1001)) # 0 to 1000, 0 inclusive which is why we use 1001. 
         _soc_values = pandas.array(range(0, 1001)) / 1000
 
         dataframe.fillna(0)  # fills empty NAN values with 0. 
 
         if dataframe.shape != (1001, 4):
+            file_exists = False
             new_dataframe = pandas.DataFrame(index=_row_range, columns=["soc", "charge", "current", "ocv"])
             dataframe.fillna(0)  # fills empty NAN values with 0. 
             new_dataframe.iloc[:, 0] = _soc_values
