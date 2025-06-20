@@ -96,12 +96,14 @@ class BatteryMonitorNode(Node):
             fs.write(f"{self.soc}")
 
     def _read_lookup_data(self, path=BMS_LOOKUP_TABLE_PATH):
+        dataframe = pandas.DataFrame(dtype=pandas.Float64Dtype)
+
         if Path(path).is_file(): 
             try:
                 dataframe = pandas.read_csv(path, sep=",")
             except pandas.errors.EmptyDataError:
-                dataframe = pandas.DataFrame(dtype=pandas.Float64Dtype)
-
+                pass
+        
         dataframe = dataframe.fillna(0)  # fills empty NAN values with 0. 
 
         cond_1 = dataframe.shape != (1001, 4)
