@@ -5,8 +5,6 @@ from Comms.Output import Output
 
 from signal import signal, SIGINT
 
-from ort_ws.src.mission_control.mission_control.config.network import PORT_MAIN, PORT_MAIN_BASE
-
 BASE_IP = '192.168.0.103'
 PI_IP = '192.168.0.101'
 # config
