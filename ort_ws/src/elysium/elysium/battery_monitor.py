@@ -70,7 +70,8 @@ class BatteryMonitorNode(Node):
         self.lookup_table = self._read_lookup_data()
         self.soc, self.prev_soc = self._read_battery_file()  # state of charge = capacity remaining / total capacity
 
-        self._compare_ocv_soc()  # sanity check the stored SOC values against the 'OCV' values in the lookup table. 
+        if not self.lookup:
+            self._compare_ocv_soc()  # sanity check the stored SOC values against the 'OCV' values in the lookup table. 
         
 
     def _read_battery_file(self, path=BMS_SAVE_PATH):
