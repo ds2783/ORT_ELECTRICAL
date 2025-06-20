@@ -1,6 +1,6 @@
-from os import wait
 import rclpy
 from rclpy.node import Node
+import rclpy.executors
 
 from std_msgs.msg import Bool
 from sensor_msgs.msg import Joy
@@ -15,6 +15,7 @@ from elysium.config.controls import (
 )
 
 import time
+from threading import Thread
 from numpy import pi
 from dataclasses import dataclass
 from adafruit_servokit import ServoKit
@@ -33,8 +34,13 @@ class rotation2D:
 
 
 class TelepresenceOperations(Node):
-    def __init__(self):
+    def __init__(self, sleep_node):
         super().__init__("teleop")
+       
+        self.sleep_node = sleep_node
+        self.rate = self.sleep_node.create_rate(1)
+        
+        # Topics 
         self.controller_commands_sub_ = self.create_subscription(
             Joy, "joy", self.teleopCB_, 10
         )
@@ -154,6 +160,16 @@ def float_to_rad(val):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = TelepresenceOperations()
-    rclpy.spin(node)
+
+    sleep_node = rclpy.create_node("control_sleep_node")  
+    
+    tele = TelepresenceOperations(sleep_node)
+   
+    executor = rclpy.executors.MultiThreadedExecutor()
+    executor.add_node(tele)
+    executor.add_node(sleep_node)
+
+    executor_thread = Thread(target=executor.spin, daemon=True)
+    executor_thread.start()
+
     rclpy.shutdown()

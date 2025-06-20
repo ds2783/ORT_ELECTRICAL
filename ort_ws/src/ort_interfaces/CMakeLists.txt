@@ -35,7 +35,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/SatelliteInfo.msg"
   "msg/Coordinate.msg"
   "srv/SetMode.srv"
-  "action/CalibrateImu.action"
+  "action/Calibrate.action"
 )
 
 ament_package()

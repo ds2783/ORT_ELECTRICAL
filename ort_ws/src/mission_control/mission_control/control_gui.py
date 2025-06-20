@@ -1,5 +1,3 @@
-import re
-from qreader import QReader
 import rclpy
 from rclpy import executors
 from rclpy.node import Node
@@ -13,16 +11,21 @@ from imgui.integrations.glfw import GlfwRenderer
 from mission_control.gui.dashboard import Dashboard
 from mission_control.stream.stream_client import StreamClient
 from mission_control.config.network import COMM_PORT, PORT_MAIN, PORT_SECONDARY, PI_IP
-from mission_control.config.gui import CALLIBRATE_IMU, WIDTH, HEIGHT, CALLIBRATE_IMU, ZERO_AXIS 
+from mission_control.config.gui import (
+    CALLIBRATE_IMU,
+    WIDTH,
+    HEIGHT,
+    CALLIBRATE_IMU,
+    ZERO_AXIS,
+    CALIRATE_OFS,
+)
 
 from threading import Thread
 from multiprocessing.connection import Listener
 
 # Messages ---
-from ort_interfaces.action import CalibrateImu
+from ort_interfaces.action import Calibrate
 from std_msgs.msg import Bool
-
-
 
 
 def impl_glfw_init(window_name="Project Gorgon", width=WIDTH, height=HEIGHT):
@@ -52,22 +55,33 @@ def impl_glfw_init(window_name="Project Gorgon", width=WIDTH, height=HEIGHT):
 class GuiClient(Node):
     def __init__(self):
         super().__init__("gui_client")
-        self.calibration_client_ = ActionClient(self, CalibrateImu, "/imu/calibrate")
+        # Action Servers
+        self.calibration_client_ = ActionClient(self, Calibrate, "/imu/calibrate")
+        self.optical_calibration_client_ = ActionClient(
+            self, Calibrate, "/optical_flow/calibrate"
+        )
+
         self.current_step = None
 
         self.reset_pos_pub_ = self.create_publisher(Bool, "/elysium/reset_pos", 10)
 
     def send_goal(self, code):
-        goal_msg = CalibrateImu.Goal()
+        goal_msg = Calibrate.Goal()
         if code == ZERO_AXIS:
             msg = Bool()
             msg.data = True
             self.reset_pos_pub_.publish(msg)
+
         goal_msg.code = code
 
-        self._send_goal_future = self.calibration_client_.send_goal_async(
-            goal_msg, feedback_callback=self.feedback_callback
-        )
+        if code == CALIRATE_OFS:
+            self._send_goal_future = self.optical_calibration_client_.send_goal_async(
+                goal_msg, feedback_callback=self.feedback_callback
+            )
+        else:
+            self._send_goal_future = self.calibration_client_.send_goal_async(
+                goal_msg, feedback_callback=self.feedback_callback
+            )
 
         self._send_goal_future.add_done_callback(self.goal_response_callback)
 
@@ -84,7 +98,14 @@ class GuiClient(Node):
 
     def get_result_callback(self, future):
         result = future.result().result
-        self.get_logger().info("Result: {0}".format(result.result))
+        match result.result:
+            case 0:
+                result = "Success"
+            case 1:
+                result = "Fail"
+            case 2:
+                result = "Fail, uncrecognised OP-code."
+        self.get_logger().info("Result: {0}".format(result))
 
     def feedback_callback(self, feedback_msg):
         feedback = feedback_msg.feedback
@@ -105,9 +126,9 @@ class GUI(Node):
         # alternative place all shader code with string in a python file
         self.dashboard = Dashboard(cams)
 
-        # QR 
+        # QR
         self.last_qr_ = "None"
-        
+
         # Calbration Client
         self.client_ = GuiClient()
 
@@ -115,7 +136,7 @@ class GUI(Node):
         self.elysium_x = "0"
         self.elysium_y = "0"
         self.elysium_z = "0"
-        
+
         # GPS
         self.gps_dist = "0"
 
@@ -136,14 +157,13 @@ class GUI(Node):
         # tof
         self.q_tof = "0"
         self.o_tof = "0"
-        
+
         self.address = ("localhost", port)  # family is deduced to be 'AF_INET'
         self.listener = Listener(self.address, authkey=b"123")
-        
+
         self.conn = self.listener.accept()
         comms_thread = Thread(target=self.qrComms)
         comms_thread.start()
-
 
     def qrComms(self):
         while True:
@@ -168,7 +188,7 @@ class GUI(Node):
                     case "x_vel":
                         self.elysium_x_vel = data
                     case "y_vel":
-                        self.elysium_y_vel = data 
+                        self.elysium_y_vel = data
                     case "z_vel":
                         self.elysium_z_vel = data
                     case "cam_y":
@@ -210,7 +230,7 @@ class GUI(Node):
         if imgui.button("Calibrate IMU"):
             self.client_.send_goal(CALLIBRATE_IMU)
 
-        elif imgui.button("Zero Axis"):
+        elif imgui.button("Zero Axis and Position"):
             self.client_.send_goal(ZERO_AXIS)
 
         imgui.end()
@@ -218,43 +238,43 @@ class GUI(Node):
         imgui.begin("Telemetry")
         imgui.text("All data is in degrees.")
         imgui.text(
-        f"""
+            f"""
         Yaw: {self.elysium_yaw}
         Pitch: {self.elysium_pitch} 
         Roll: {self.elysium_roll}
         """
         )
         imgui.text(
-        f""" 
+            f""" 
         x: {self.elysium_x} 
         y: {self.elysium_y}
         z: {self.elysium_z}
         """
         )
         imgui.text(
-        f"""
+            f"""
         gps-dist: {self.gps_dist}
         """
         )
         imgui.text(
-        f"""
+            f"""
         x_vel: {self.elysium_x_vel}
         y_vel: {self.elysium_y_vel}
         z_vel: {self.elysium_z_vel}
         """
         )
         imgui.text(
-        f"""
+            f"""
         camera-yaw: {self.camera_yaw}
         camera-pitch: {self.camera_pitch}
         """
-                )
+        )
         imgui.text(
-        f"""
+            f"""
         bottom-dist: {self.o_tof}
         camera-dist: {self.q_tof}
         """
-                )
+        )
         imgui.end()
 
         # Display Testing Window
@@ -291,4 +311,3 @@ def main(args=None):
     gui.impl.shutdown()
     glfw.terminate()
     rclpy.shutdown()
-
