@@ -90,7 +90,7 @@ class BatteryMonitorNode(Node):
             fs.write(f"{self.soc}")
 
     def _read_lookup_data(self, path=BMS_LOOKUP_TABLE_PATH):
-        if not Path(path).is_file():  
+        if Path(path).is_file():  
             dataframe = pandas.read_csv(path, sep=",")
 
         dataframe = dataframe.fillna(0)  # fills empty NAN values with 0. 
