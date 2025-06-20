@@ -7,7 +7,13 @@ from pathlib import Path
 import busio, board
 
 import elysium.hardware.adafruit_ina260 as _ina260
-from elysium.config.sensors import BMS_REFRESH_PERIOD, BMS_DELTA_T, BMS_BATTERY_CAPACITY, BMS_SAVE_PATH, BMS_LOOKUP_TABLE_PATH
+from elysium.config.sensors import (BMS_REFRESH_PERIOD, 
+                                    BMS_DELTA_T, 
+                                    BMS_UNDERVOLT_WARN, 
+                                    BMS_UNDERVOLT_SHUTDOWN,
+                                    BMS_BATTERY_CAPACITY, 
+                                    BMS_SAVE_PATH, 
+                                    BMS_LOOKUP_TABLE_PATH)
 from ort_interfaces.msg import BatteryInfo
 
 
@@ -26,6 +32,9 @@ QoS = QoSProfile(
 
 
 # BMS CAPACITY LOGIC DERIVED HERE: https://www.youtube.com/watch?v=rOwcxFErcvQ
+
+# USING A COMBINATION OF SIMPLISTIC COLOUMB COUNTING AND AN 'OCV' LOOKUP TABLE. 
+# SUBSEQUENT YEARS SHOULD LOOK AT KALMANN FILTERS FOR A MORE OPTIMISED ESTIMATION OF THE SOC OF THE BATTERY.  
 
 
 class BatteryMonitorNode(Node):
@@ -89,14 +98,12 @@ class BatteryMonitorNode(Node):
 
         dataframe.fillna(0)  # fills empty NAN values with 0. 
 
-        if dataframe.shape != (1001, 4):
-            file_exists = False
+        if dataframe.shape != (1001, 4):  # create a new dataframe if there doesn't exist one. 
             new_dataframe = pandas.DataFrame(index=_row_range, columns=["soc", "charge", "current", "ocv"])
-            dataframe.fillna(0)  # fills empty NAN values with 0. 
+            new_dataframe.fillna(0)  # fills empty NAN values with 0. 
             new_dataframe.iloc[:, 0] = _soc_values
             dataframe = new_dataframe
         
-        self.get_logger().info(f"{dataframe}")
         return dataframe
 
     def _save_lookup_data(self, path=BMS_LOOKUP_TABLE_PATH):
@@ -121,12 +128,18 @@ class BatteryMonitorNode(Node):
         if tmp_voltage / experimental_ocv_value >= 0.1:
             self.get_logger().warn(f"[{self.get_name()}] The expected OCV value is more than 10% different to what we are expecting of the battery voltage, rebasing SOC.")
             self.soc = self._find_ocv_soc(tmp_voltage)
+            self.current_capacity = self.total_capacity * self.soc
 
     def _find_ocv_soc(self, ocv):
         for i in range(1, 1000):
             if self.lookup_table.iloc[i, 3] > ocv and self.lookup_table.iloc[i+1, 3] < ocv:
                 return self.lookup_table.iloc[i, 3]
-                    
+
+    def _shutdown(self, grace_time=1):
+        import os
+        os.system(f"shutdown --halt +{grace_time}")
+        self.get_logger().warn(f"Queued shutdown for {grace_time} minute(s).")
+
 
     def get_data(self):
         self.measured_voltage = self.bms.voltage  # V
@@ -137,12 +150,19 @@ class BatteryMonitorNode(Node):
         self.current_capacity -= charge_expended
         self.soc = round(self.current_capacity / self.total_capacity, ndigits=3)
         
-        if self.lookup and (self.prev_soc - self.soc) >= 0.001:
+        if self.lookup and (self.prev_soc - self.soc) >= 0.001:  # if the soc value has dropped 0.1%, save the data to the lookup table. 
             self.lookup_table.iloc[int(round(1000*self.soc)), 1:] = [charge_expended, self.measured_current, self.measured_voltage]
             self._save_lookup_data()
-
-        # if self.lookup:
-        #     self._save_lookup_data(BMS_LOOKUP_TABLE_PATH)
+        
+        if self.measured_voltage <= BMS_UNDERVOLT_WARN and self.measured_voltage > 1:  # checking if the voltage isn't around 0, since the Pi could be connected 
+            # to external power supplies, leading to near-zero reading on the INA260.  
+            self.get_logger().warn(f"[{self.get_name()}] The battery is providing {BMS_UNDERVOLT_WARN}V or lower, please charge the battery. Lowest recorded voltage in operation was about 6.7V.")
+        
+        elif self.measured_voltage <= BMS_UNDERVOLT_SHUTDOWN and self.measured_voltage > 1:  # will try to gracefully shutdown the entire system. 
+            for _ in range(3):
+                self.get_logger().error(f"[{self.get_name()}] The battery is providing {BMS_UNDERVOLT_SHUTDOWN}V or lower, the system will summarily power down in 1 minute to preserve data.")
+            
+            self._shutdown(grace_time=1)
 
     def send_data(self):
         msg = BatteryInfo()
