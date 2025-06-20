@@ -44,8 +44,8 @@ signal(SIGINT, handler)
 run = True
 thread = Thread(target=stream.run)
 while run:
-    try:
-        thread.start()
-        thread.join()
-    except:
+    # try:
+        # thread.start()
+        # thread.join()
+    # except:
         pass
