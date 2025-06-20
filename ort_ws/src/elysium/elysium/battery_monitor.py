@@ -100,7 +100,7 @@ class BatteryMonitorNode(Node):
 
         if Path(path).is_file(): 
             try:
-                dataframe = pandas.read_csv(path, sep=",")
+                dataframe = pandas.read_csv(path, sep=",", dtype=pandas.Float64Dtype)
             except pandas.errors.EmptyDataError:
                 pass
         
