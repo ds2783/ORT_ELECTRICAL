@@ -53,13 +53,14 @@ class StreamServer:
             output.write("ERROR", f"Failed to find camera {model}", True)
 
     def handle_client(self, client_socket):
+        self.output.write("INFO", "Requested received.", True)
         pieces = [b""]
         total = 0
         while b"\n" not in pieces[-1] and total < 10_000:
             pieces.append(client_socket.recv(2000))
             total += len(pieces[-1])
         self.data = b"".join(pieces)
-        print(self.data.decode("utf-8"))
+        self.output.write("INFO", self.data.decode("utf-8"), True)
 
         if self.data.decode("utf-8") == "QR":
             if not self.cam is None:
