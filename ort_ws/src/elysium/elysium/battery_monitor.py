@@ -98,12 +98,15 @@ class BatteryMonitorNode(Node):
             self._create_blank_file(path)
 
         dataframe = pandas.read_csv(path, sep=",")
-        _row_range = pandas.array(range(0, 1001)) # 0 to 1000, 0 inclusive which is why we use 1001. 
-        _soc_values = pandas.array(range(0, 1001)) / 1000
-
         dataframe = dataframe.fillna(0)  # fills empty NAN values with 0. 
 
-        if dataframe.shape != (1001, 4):  # create a new dataframe if there doesn't exist one. 
+        cond_1 = dataframe.shape != (1001, 4)
+        cond_2 = (dataframe == 0).sum().sum() > 2500
+        cond_3 = self.lookup
+
+        if cond_1 or (cond_2 and cond_3):  # create a new dataframe if there doesn't exist one. 
+            _row_range = pandas.array(range(0, 1001)) # 0 to 1000, 0 inclusive which is why we use 1001. 
+            _soc_values = pandas.array(range(0, 1001)) / 1000
             new_dataframe = pandas.DataFrame(index=_row_range, columns=["soc", "charge", "current", "ocv"])
             new_dataframe = new_dataframe.fillna(0)  # fills empty NAN values with 0. 
             new_dataframe.iloc[:, 0] = _soc_values
