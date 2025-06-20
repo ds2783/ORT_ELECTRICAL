@@ -3,6 +3,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
 
 import pandas
+import pandas.errors
 from pathlib import Path
 import busio, board
 
@@ -73,7 +74,11 @@ class BatteryMonitorNode(Node):
         
 
     def _read_battery_file(self, path=BMS_SAVE_PATH):
-        if not Path(path).is_file():  # Under the assumption that there isn't a SOC to be had, refer to the lookup table. 
+        if Path(path).is_file():  # Under the assumption that there isn't a SOC to be had, refer to the lookup table. 
+            with open(path, "r") as fs:
+                data = fs.readline()
+            self.soc = float(data)
+        else:
             tmp = self.bms.voltage
             
             if (self.lookup_table == 0).sum().sum() > 2500:  # if the number of zeroes is above 2500, assume that 
@@ -90,8 +95,11 @@ class BatteryMonitorNode(Node):
             fs.write(f"{self.soc}")
 
     def _read_lookup_data(self, path=BMS_LOOKUP_TABLE_PATH):
-        if Path(path).is_file():  
-            dataframe = pandas.read_csv(path, sep=",")
+        if Path(path).is_file(): 
+            try:
+                dataframe = pandas.read_csv(path, sep=",")
+            except pandas.errors.EmptyDataError:
+                dataframe = pandas.DataFrame()
 
         dataframe = dataframe.fillna(0)  # fills empty NAN values with 0. 
 
