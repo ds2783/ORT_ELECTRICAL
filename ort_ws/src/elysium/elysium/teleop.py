@@ -1,10 +1,12 @@
 import rclpy
 from rclpy.node import Node
 import rclpy.executors
+from rclpy.action.server import ActionServer
 
 from std_msgs.msg import Bool
 from sensor_msgs.msg import Joy
 from ort_interfaces.msg import CameraRotation
+from ort_interfaces.action import Calibrate
 
 from elysium.config.mappings import AXES
 from elysium.config.controls import (
@@ -51,6 +53,9 @@ class TelepresenceOperations(Node):
             CameraRotation, "/elysium/cam_angles", 10
         )
 
+        # Action Server
+        self.calibrate_optical_ = ActionServer(self, Calibrate, "/optical_flow/calibrate", self.actionServerCB_) 
+
         # State -
         self.state = twist(0, 0)
         self.target = twist(0, 0)
@@ -70,6 +75,15 @@ class TelepresenceOperations(Node):
         self.offset_ = OFFSET
 
         self.kit_ = ServoKit(channels=16)
+
+    def actionServerCB_(self, goal_handle):
+        self.get_logger().info("Executing goal.")
+       
+        CALIBRATE_OFS = 2
+        if goal_handle.request == CALIBRATE_OFS:
+            pass
+        else:
+            pass
 
     def confirmConnectionCB_(self, msg: Bool):
         self.last_connection_ = time.time_ns()
@@ -161,7 +175,7 @@ def float_to_rad(val):
 def main(args=None):
     rclpy.init(args=args)
 
-    sleep_node = rclpy.create_node("control_sleep_node")  
+    sleep_node = rclpy.create_node("teleop_sleep_node")  
     
     tele = TelepresenceOperations(sleep_node)
    

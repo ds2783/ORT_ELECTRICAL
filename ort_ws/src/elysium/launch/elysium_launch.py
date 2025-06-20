@@ -1,4 +1,5 @@
 from launch import LaunchDescription, actions
+from launch.descriptions import Executable
 from launch_ros.actions import Node
 from launch.actions import EmitEvent, RegisterEventHandler
 from launch.events import matches_action
@@ -17,7 +18,6 @@ def generate_launch_description():
                 package="elysium",
                 executable="teleop",
                 namespace="",
-                name="teleop",
             ),
             Node(
                 package="elysium",
@@ -29,7 +29,6 @@ def generate_launch_description():
                 package="elysium",
                 executable="distance_sensor",
                 namespace="",
-                name="distance_sensor",
             ),
             Node(
                 package="elysium",

@@ -14,7 +14,7 @@ def generate_launch_description():
         name="joy_node",
         parameters=[{"autorepeat_rate": 0.0, "coalesce_interval_ms": 1}],
     )
-    node3 = Node(package="mission_control", executable="control_gui", name="control_gui")
+    node3 = Node(package="mission_control", executable="control_gui")
 
     already_started_nodes = set()
 
