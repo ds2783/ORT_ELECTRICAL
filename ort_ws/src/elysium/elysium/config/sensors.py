@@ -1,6 +1,6 @@
 DISTANCE_SENSOR_REFRESH_PERIOD = 0.2
 BMS_REFRESH_PERIOD = 1
-BMS_DELTA_T = 0.01
+BMS_DELTA_T = 0.02
 BMS_BATTERY_CAPACITY = 5000  # in mAh
 BMS_UNDERVOLT_WARN = 9  # threshold voltage for function. If each cell has 3V or less, the rover should not be moving. 
 BMS_UNDERVOLT_SHUTDOWN = 7.5

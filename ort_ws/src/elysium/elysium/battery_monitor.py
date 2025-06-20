@@ -50,6 +50,7 @@ class BatteryMonitorNode(Node):
         self.bms = _ina260.INA260(i2c, address=i2c_addr)
 
         self.bms.averaging_count = _ina260.AveragingCount.COUNT_4   # averaging out on 4 samples
+        self.bms.voltage_conversion_time = _ina260.ConversionTime.TIME_2_116_ms
 
         self.delta_t = self.create_timer(BMS_DELTA_T, self.get_data)
 
