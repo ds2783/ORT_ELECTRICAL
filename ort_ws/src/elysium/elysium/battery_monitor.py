@@ -138,7 +138,7 @@ class BatteryMonitorNode(Node):
             self.get_logger().error(f"[{self.get_name()}] - OSError: probably given a bad path for the file ({path}).")
 
     def _compare_ocv_soc(self):
-        experimental_ocv_value = self.lookup_table.iloc[self.soc, 3]
+        experimental_ocv_value = self.lookup_table.iloc[int(round(1000*self.soc)), 3]
         tmp_voltage = self.bms.voltage
         if tmp_voltage / experimental_ocv_value >= 0.1:
             self.get_logger().warn(f"[{self.get_name()}] The expected OCV value is more than 10% different to what we are expecting of the battery voltage, rebasing SOC.")
