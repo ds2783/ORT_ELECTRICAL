@@ -39,9 +39,6 @@ QoS = QoSProfile(
 
 
 class BatteryMonitorNode(Node):
-
-    operational_efficiency = 0.33 # Reduce the discharge to fit the OCV graph.
-
     def __init__(self, node_name, topic_name, i2c_addr=0x40, lookup_recording=True):
         super().__init__(node_name)
 
@@ -167,8 +164,8 @@ class BatteryMonitorNode(Node):
         self.measured_current = self.bms.current  # mA 
         self.measured_power = self.bms.power # mW
 
-        charge_expended = self.measured_current * 1e-3 * BMS_DELTA_T  # mW * 0.0001 * dt 
-        self.current_capacity -= self.operational_efficiency * charge_expended
+        charge_expended = self.measured_current * 1e-3 * BMS_DELTA_T  # mA * 0.0001 * dt 
+        self.current_capacity -= 0.27778 * charge_expended # This is a conversion from couloumbs to mAh 
         self.soc = round(self.current_capacity / self.total_capacity, ndigits=3)
         
         if self.lookup and abs(self.prev_soc - self.soc) >= 0.001:  # if the soc value has dropped 0.1%, save the data to the lookup table. 
