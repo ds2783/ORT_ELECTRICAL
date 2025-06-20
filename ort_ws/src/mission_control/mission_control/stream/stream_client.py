@@ -4,6 +4,7 @@ import numpy as np
 import socket 
 import pickle 
 import threading
+import time
 
 NO_CROP = 0
 LEFT_CROP = 1
@@ -17,10 +18,25 @@ class ServerClient:
     def get_picture(self):
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client.connect((self.server_host, self.server_port))
-        client.send("QR".encode())
-        
-        response = client.recv(1_000_000)
-        return pickle.loads(response)
+        client.send("QR\n".encode())
+       
+        timeout = time.monotonic()
+        now = time.monotonic()
+        pieces = [b""]
+        total = 0
+        # up to 20MB file | timout so max wait for data is 2.0 seconds
+        while b"data_end\n" not in pieces[-1] and total < 20_000_000 and (now - timeout) < 2.0:
+            now = time.monotonic()
+            pieces.append(client.recv(2000))
+            total += len(pieces[-1])
+        data = b"".join(pieces)
+
+        try:
+            image = pickle.loads(data[:-9])
+        except:
+            image = None
+
+        return image
 
 class StreamClient:
     thread = None

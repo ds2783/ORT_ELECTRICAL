@@ -4,7 +4,6 @@ from StreamServer import StreamServer
 from Comms.Output import Output
 
 from signal import signal, SIGINT
-from threading import Thread
 
 # Laptop IP
 BASE_IP = '192.168.0.205'
@@ -48,4 +47,3 @@ while run:
         stream.run()
     except:
         pass
-    # time.sleep(1)

@@ -63,15 +63,18 @@ class StreamServer:
         self.data = b"".join(pieces)
         self.output.write("INFO", self.data.decode("utf-8"), True)
 
-        if self.data.decode("utf-8") == "QR":
+        if self.data.decode("utf-8") == "QR\n":
             if not self.cam is None:
                 # Stop and Still configure
                 image = self.cam.switch_mode_and_capture_array(
                     self.capture_config, "main"
                 )
-                data = image.dumps()
-                client_socket.sendall(data)
-                client_socket.close()
+                data = image.dumps() + b"data_end\n"
+            else:
+                data = b"data_end\n"
+            
+            client_socket.sendall(data)
+            client_socket.close()
 
     def scan():
         StreamServer.cam_list = Picamera2.global_camera_info()
