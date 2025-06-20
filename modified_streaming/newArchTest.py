@@ -5,6 +5,7 @@ from Comms.Output import Output
 
 from signal import signal, SIGINT
 from threading import Thread
+import time
 
 BASE_IP = '192.168.0.103'
 PI_IP = '192.168.0.101'
@@ -48,4 +49,4 @@ while run:
         # thread.start()
         # thread.join()
     # except:
-        pass
+    time.sleep(1)
