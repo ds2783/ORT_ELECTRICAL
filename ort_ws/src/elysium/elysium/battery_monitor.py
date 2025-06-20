@@ -62,14 +62,15 @@ class BatteryMonitorNode(Node):
         # discharges while tracking the current integrated SOC. 
 
         # 4.18 max on a 12.6V 1.5A full charge
-        # 2.2 min 
-
+        # 2.2 min
+        
+        self.lookup = lookup_recording  # if this should be a full-discharge lookup table calibration.
+ 
         self.lookup_table = self._read_lookup_data()
         self.soc, self.prev_soc = self._read_battery_file()  # state of charge = capacity remaining / total capacity
 
         self._compare_ocv_soc()  # sanity check the stored SOC values against the 'OCV' values in the lookup table. 
         
-        self.lookup = lookup_recording  # if this should be a full-discharge lookup table calibration.
 
     def _read_battery_file(self, path=BMS_SAVE_PATH):
         if not Path(path).is_file():  # Under the assumption that there isn't a SOC to be had, refer to the lookup table. 
