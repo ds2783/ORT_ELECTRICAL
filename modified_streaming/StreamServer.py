@@ -125,7 +125,7 @@ class StreamServer:
 
     def start_server(self, server_ip, server_port):
         # Setup TCP server
-        self.tcp_sock = socket.socket(socket.IPPROTO_IP, socket.SOCK_STREAM)
+        self.tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.tcp_sock.bind((server_ip, server_port))
 
         # Maximum backlog of connections set to 3
