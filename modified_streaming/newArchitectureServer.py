@@ -40,12 +40,16 @@ stream2.set_bitrate(5000000)
 
 # exit handler
 def handler(signal_received,frame):
+    global run
+    run = False
+
     stream.stop()
     sys.exit()
 
 signal(SIGINT, handler)
 
-while True:
+run = True
+while run:
     try:
         stream.run()
     except:

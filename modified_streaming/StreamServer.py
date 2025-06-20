@@ -160,9 +160,11 @@ class StreamServer:
             False  # set active flag false to unclaim camera
         )
         try:
-            self.cam.stop_recording()
-            self.cam.close()
+            if self.cam is not None:
+                self.cam.stop_recording()
+                self.cam.close()
             self.udp_sock.close()
+            self.tcp_sock.close()
         except Exception as e:
             self.output.write("EXCEPT", e, True)
 
