@@ -74,7 +74,13 @@ class BatteryMonitorNode(Node):
     def _read_battery_file(self, path=BMS_SAVE_PATH):
         if not Path(path).is_file():  # Under the assumption that there isn't a SOC to be had, refer to the lookup table. 
             tmp = self.bms.voltage
-            self.soc = self._find_ocv_soc(tmp)
+            
+            if (self.lookup_table == 0).sum().sum() > 2500:  # if the number of zeroes is above 2500, assume that 
+                # the table has NOT been populated yet. 
+                self.soc = 1
+            else:
+                self.soc = self._find_ocv_soc(tmp)
+    
             self._save_battery_file()
 
         with open(path, "r") as fs:
@@ -95,11 +101,11 @@ class BatteryMonitorNode(Node):
         _row_range = pandas.array(range(0, 1001)) # 0 to 1000, 0 inclusive which is why we use 1001. 
         _soc_values = pandas.array(range(0, 1001)) / 1000
 
-        dataframe.fillna(0)  # fills empty NAN values with 0. 
+        dataframe = dataframe.fillna(0)  # fills empty NAN values with 0. 
 
         if dataframe.shape != (1001, 4):  # create a new dataframe if there doesn't exist one. 
             new_dataframe = pandas.DataFrame(index=_row_range, columns=["soc", "charge", "current", "ocv"])
-            new_dataframe.fillna(0)  # fills empty NAN values with 0. 
+            new_dataframe = new_dataframe.fillna(0)  # fills empty NAN values with 0. 
             new_dataframe.iloc[:, 0] = _soc_values
             dataframe = new_dataframe
         
