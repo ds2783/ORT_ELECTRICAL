@@ -96,11 +96,11 @@ class BatteryMonitorNode(Node):
             fs.write(f"{self.soc}")
 
     def _read_lookup_data(self, path=BMS_LOOKUP_TABLE_PATH):
-        dataframe = pandas.DataFrame(dtype=pandas.Float64Dtype)
+        dataframe = pandas.DataFrame(dtype=pandas.Float64Dtype())
 
         if Path(path).is_file(): 
             try:
-                dataframe = pandas.read_csv(path, sep=",", dtype=pandas.Float64Dtype)
+                dataframe = pandas.read_csv(path, sep=",", dtype=pandas.Float64Dtype())
             except pandas.errors.EmptyDataError:
                 pass
         
@@ -113,7 +113,7 @@ class BatteryMonitorNode(Node):
         if cond_1 or (cond_2 and cond_3):  # create a new dataframe if there doesn't exist one. 
             _row_range = pandas.array(range(0, 1001)) # 0 to 1000, 0 inclusive which is why we use 1001. 
             _soc_values = pandas.array(range(0, 1001)) / 1000
-            new_dataframe = pandas.DataFrame(index=_row_range, columns=["soc", "charge", "current", "ocv"], dtype=pandas.Float64Dtype)
+            new_dataframe = pandas.DataFrame(index=_row_range, columns=["soc", "charge", "current", "ocv"], dtype=pandas.Float64Dtype())
             new_dataframe = new_dataframe.fillna(0)  # fills empty NAN values with 0. 
             new_dataframe.iloc[:, 0] = _soc_values
             dataframe = new_dataframe
