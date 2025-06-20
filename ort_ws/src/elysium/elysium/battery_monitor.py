@@ -88,11 +88,10 @@ class BatteryMonitorNode(Node):
             fs.write(f"{self.soc}")
 
     def _read_lookup_data(self, path=BMS_LOOKUP_TABLE_PATH):
-        try:
-            dataframe = pandas.read_csv(path, sep=",")
-        except FileNotFoundError:
-            self.get_logger().warn("OCV Lookup table does not exists, making a new one...")
-            
+        if not Path(path).is_file():  
+            self._create_blank_file(path)
+
+        dataframe = pandas.read_csv(path, sep=",")
         _row_range = pandas.array(range(0, 1001)) # 0 to 1000, 0 inclusive which is why we use 1001. 
         _soc_values = pandas.array(range(0, 1001)) / 1000
 
@@ -111,16 +110,19 @@ class BatteryMonitorNode(Node):
         # Make sure this path is valid!
 
         if not Path(path).is_file():
-            try:
-                with open(path, "w") as fs:
-                    ...
-            except OSError:
-                self.get_logger().error(f"[{self.get_name()}] - OSError: probably given a bad path for the ocv_lookup.csv file.")
+            self._create_blank_file(path)
 
         self.lookup_table.to_csv(path, sep=",", na_rep=0)
         self.prev_soc = self.soc
 
         self._save_battery_file()
+
+    def _create_blank_file(self, path):
+        try:
+            with open(path, "w") as fs:
+                ...
+        except OSError:
+            self.get_logger().error(f"[{self.get_name()}] - OSError: probably given a bad path for the file ({path}).")
 
     def _compare_ocv_soc(self):
         experimental_ocv_value = self.lookup_table.iloc[self.soc, 3]
