@@ -5,9 +5,9 @@ from Comms.Output import Output
 
 from signal import signal, SIGINT
 from threading import Thread
-import time
 
-BASE_IP = '192.168.0.103'
+# Laptop IP
+BASE_IP = '192.168.0.205'
 PI_IP = '192.168.0.101'
 # config
 MULTICAST=False
@@ -45,8 +45,9 @@ signal(SIGINT, handler)
 run = True
 thread = Thread(target=stream.run)
 while run:
-    # try:
-        # thread.start()
-        # thread.join()
-    # except:
-    time.sleep(1)
+    try:
+        thread.start()
+        thread.join()
+    except:
+        pass
+    # time.sleep(1)
