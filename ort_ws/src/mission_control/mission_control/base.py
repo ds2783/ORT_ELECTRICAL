@@ -108,6 +108,7 @@ class BaseNode(Node):
             self.qr_button_ = True
             image = self.main_cam.get_picture()
             if image is not None:
+                self.get_logger().info("Image sent for processing.")
                 qreader_out = self.qreader_.detect_and_decode(image=image)
 
                 self.last_qr = str(qreader_out)

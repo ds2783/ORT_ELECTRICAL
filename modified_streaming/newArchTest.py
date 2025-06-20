@@ -43,11 +43,9 @@ def handler(signal_received,frame):
 signal(SIGINT, handler)
 
 run = True
-thread = Thread(target=stream.run)
 while run:
     try:
-        thread.start()
-        thread.join()
+        stream.run()
     except:
         pass
     # time.sleep(1)
