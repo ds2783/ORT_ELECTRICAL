@@ -4,6 +4,7 @@ from StreamServer import StreamServer
 from Comms.Output import Output
 
 from signal import signal, SIGINT
+from threading import Thread
 
 BASE_IP = '192.168.0.103'
 PI_IP = '192.168.0.101'
@@ -42,8 +43,10 @@ def handler(signal_received,frame):
 signal(SIGINT, handler)
 
 run = True
+thread = Thread(target=stream.run)
 while run:
     try:
-        stream.run()
+        thread.start()
+        thread.join()
     except:
         pass
