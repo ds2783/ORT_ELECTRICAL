@@ -59,6 +59,7 @@ class StreamServer:
         while b"\n" not in pieces[-1] and total < 10_000:
             pieces.append(client_socket.recv(2000))
             total += len(pieces[-1])
+            self.output.write("INFO", b"".join(pieces).decode("utf-8"), True)
         self.data = b"".join(pieces)
         self.output.write("INFO", self.data.decode("utf-8"), True)
 
