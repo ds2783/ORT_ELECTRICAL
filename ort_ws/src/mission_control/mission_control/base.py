@@ -145,6 +145,10 @@ class BaseNode(Node):
                     writer.writeheader()
                     writer.writerow(self.scanned_codes)
 
+                self.get_logger().info("Image processed and CSV updated.")
+            else:
+                self.get_logger().warn("No image available for processing.")
+
         elif not trigger_pressed and self.qr_button_:
             # Ensure only one capture even per press
             self.qr_button_ = False
