@@ -17,37 +17,31 @@ def generate_launch_description():
                 package="elysium",
                 executable="teleop",
                 namespace="",
-                name="teleop",
             ),
             Node(
                 package="elysium",
                 executable="imu_sensor",
                 namespace="",
-                name="imu_sensor",
             ),
             Node(
                 package="elysium",
                 executable="distance_sensor",
                 namespace="",
-                name="distance_sensor",
             ),
             Node(
                 package="elysium",
                 executable="camera_led",
                 namespace="",
-                name="camera_led",
             ),
             Node(
                 package="elysium",
                 executable="geo_locator",
                 namespace="",
-                name="geo_locator",
                 ),    
             Node(
                 package="elysium",
                 executable="battery_monitor",
                 namespace="",
-                name="battery_monitor",
                 ),              
         ]
     )
