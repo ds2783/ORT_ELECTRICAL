@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.action.server import ActionServer
+from rclpy.qos import qos_profile_sensor_data
 
 from geometry_msgs.msg import Quaternion
 from ort_interfaces.action import Calibrate
@@ -17,22 +18,25 @@ from adafruit_bno08x import BNO_REPORT_ROTATION_VECTOR
 
 
 class Imu(Node):
-    def __init__(self, i2c_addr=0x4b):
+    def __init__(self, i2c_addr=0x4B):
         super().__init__("imu_sensor")
         i2c = busio.I2C(board.SCL, board.SDA)
         self.bno = BNO08X_I2C(i2c, address=i2c_addr)
         self.bno.initialize()
         self.bno.enable_feature(BNO_REPORT_ROTATION_VECTOR)
-        
 
         # Topics -------------
-        self.quaternion_pub_ = self.create_publisher(Quaternion, "/imu/quat", 10)
+        self.quaternion_pub_ = self.create_publisher(
+            Quaternion, "/imu/quat", qos_profile=qos_profile_sensor_data
+        )
         # -------------------
 
         # Action Server ------
-        self.calibrate_action_server_ = ActionServer(self, Calibrate, "/imu/calibrate", self.actionServerCB_) 
+        self.calibrate_action_server_ = ActionServer(
+            self, CalibrateImu, "/imu/calibrate", self.actionServerCB_
+        )
         # --------------------
-        
+
         # Timer -----------
         self.imu_data_timer_ = self.create_timer(IMU_SENSOR_PERIOD, self.sendDataCB_)
         # -----------------
@@ -48,11 +52,10 @@ class Imu(Node):
         self.bno.begin_calibration()
         self.bno.save_calibration_data()
 
-
     def sendDataCB_(self):
         self.q = np.array(self.bno.quaternion)
 
-        corrected_q = quaternion.cross(self.q , self.inverse)
+        corrected_q = quaternion.cross(self.q, self.inverse)
         # Create message
         quat = Quaternion()
         quat.x = corrected_q[1]
@@ -61,10 +64,9 @@ class Imu(Node):
         quat.w = corrected_q[0]
         self.quaternion_pub_.publish(quat)
 
-
     def actionServerCB_(self, goal_handle):
         self.get_logger().info("Executing goal.")
-        
+
         # Accelerometer + Gyrometer calibration.
         if goal_handle.request.code == 0:
             self.calibrate_imu()
@@ -77,8 +79,7 @@ class Imu(Node):
             return result
 
         goal_handle.fail()
-        result = Calibrate.Result()
-        result.result = 2 
+        result.result = 2
         return result
 
 
@@ -89,4 +90,4 @@ def main(args=None):
     rclpy.spin(imu)
 
     # Cleanup After Shutdown
-    rclpy.shutdown() 
+    rclpy.shutdown()

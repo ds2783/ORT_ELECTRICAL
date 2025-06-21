@@ -16,7 +16,7 @@ from geometry_msgs.msg import (
 from std_msgs.msg import Float32, Header
 from ort_interfaces.msg import OpticalFlow, GPSStatus
 
-from elysium.config.sensors import DISTANCE_SENSOR_REFRESH_PERIOD, OPTICAL_CALIBRATION
+from elysium.config.sensors import DISTANCE_SENSOR_REFRESH_PERIOD, OPTICAL_CALIBRATION, tofQoS
 from elysium.config.network import DIAGNOSTIC_PERIOD
 
 import numpy as np
@@ -34,16 +34,16 @@ class GeoLocator(Node):
             Float32,
             "/distance_sensor/optical_flow",
             self.tofCB_,
-            qos_profile=qos_profile_sensor_data,
+            qos_profile=tofQoS,
         )
         self.quaternion_sub_ = self.create_subscription(
-            Quaternion, "/imu/quat", self.imuCB_, qos_profile_sensor_data
+            Quaternion, "/imu/quat", self.imuCB_, qos_profile=qos_profile_sensor_data
         )
         self.optical_sub_ = self.create_subscription(
             OpticalFlow,
             "/optical_flow/increment",
             self.opticalCB_,
-            qos_profile_sensor_data,
+            qos_profile=qos_profile_sensor_data,
         )
         self.reset_pos_ = self.create_subscription(
             Bool, "/elysium/reset_pos", self.resetCB_, 10

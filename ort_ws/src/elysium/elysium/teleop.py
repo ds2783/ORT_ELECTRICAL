@@ -46,7 +46,7 @@ class TelepresenceOperations(Node):
         self.controller_commands_sub_ = self.create_subscription(
             Joy, "joy", self.teleopCB_, 10
         )
-        self.base_poing_sub_ = self.create_subscription(
+        self.base_ping_sub_ = self.create_subscription(
             Bool, "ping", self.confirmConnectionCB_, 10
         )
         self.cam_angles__pub_ = self.create_publisher(

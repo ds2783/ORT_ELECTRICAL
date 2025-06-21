@@ -34,6 +34,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/GPSStatus.msg"
   "msg/SatelliteInfo.msg"
   "msg/Coordinate.msg"
+  "msg/BatteryInfo.msg"
   "srv/SetMode.srv"
   "action/Calibrate.action"
 )

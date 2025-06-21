@@ -41,13 +41,20 @@ def generate_launch_description():
                 executable="geo_locator",
                 namespace="",
                 name="geo_locator",
-            ),
+                ),    
+            Node(
+                package="elysium",
+                executable="battery_monitor",
+                namespace="",
+                name="battery_monitor",
+                ),     
             Node(
                 package="elysium",
                 executable="gps",
                 namespace="",
-                name="gps",
-            ),
+                )    
+            )    
+                     
         ]
     )
     optical_flow_params_path = PathJoinSubstitution(

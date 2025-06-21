@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
 
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Bool, Float32
@@ -18,6 +19,21 @@ from multiprocessing.connection import Client
 import numpy as np
 import csv
 import time
+
+# Should probably create systemwide config for both mission_control and elysium
+tofQoS = QoSProfile(
+    history=HistoryPolicy.KEEP_LAST,  # Keep only up to the last 10 samples
+    depth=10,  # Queue size of 10
+    reliability=ReliabilityPolicy.BEST_EFFORT,  # attempt to deliver samples,
+    # but lose them if the network isn't robust
+    durability=DurabilityPolicy.VOLATILE,  # no attempt to persist samples.
+    # deadline=
+    # lifespan=
+    # liveliness=
+    # liveliness_lease_duration=
+    # refer to QoS ros documentation and
+    # QoSProfile source code for kwargs and what they do
+)
 
 
 class BaseNode(Node):
@@ -50,11 +66,11 @@ class BaseNode(Node):
         self.controller_sub_ = self.create_subscription(Joy, "joy", self.controlCB_, 10)
 
         self.qr_tof_sub_ = self.create_subscription(
-            Float32, "/distance_sensor/qr_code", self.qTofCB_, 10
+            Float32, "/distance_sensor/qr_code", self.qTofCB_, qos_profile=tofQoS
         )
 
         self.bottom_tof_sub_ = self.create_subscription(
-            Float32, "/distance_sensor/optical_flow", self.oTofCB_, 10
+            Float32, "/distance_sensor/optical_flow", self.oTofCB_, qos_profile=tofQoS
         )
 
         self.euler_angles_sub_ = self.create_subscription(

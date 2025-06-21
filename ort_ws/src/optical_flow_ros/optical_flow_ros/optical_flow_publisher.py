@@ -22,6 +22,7 @@ from rclpy.lifecycle import Node, State, TransitionCallbackReturn
 from rclpy.timer import Timer
 from rclpy.executors import ExternalShutdownException
 from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
 from tf2_ros import TransformBroadcaster
 from std_msgs.msg import Float32
 from ort_interfaces.msg import OpticalFlow
@@ -35,6 +36,21 @@ from transforms3d.euler import euler2mat
 FOV_DEG = 42.0
 RES_PIX = 35
 
+tofQoS = QoSProfile(
+    history=HistoryPolicy.KEEP_LAST,  # Keep only up to the last 10 samples
+    depth=10,  # Queue size of 10
+    reliability=ReliabilityPolicy.BEST_EFFORT,  # attempt to deliver samples,
+    # but lose them if the network isn't robust
+    durability=DurabilityPolicy.VOLATILE,  # no attempt to persist samples.
+    # deadline=
+    # lifespan=
+    # liveliness=
+    # liveliness_lease_duration=
+    # refer to QoS ros documentation and
+    # QoSProfile source code for kwargs and what they do
+)
+
+
 class OpticalFlowPublisher(Node):
     def __init__(self, node_name="optical_flow"):
         super().__init__(node_name)
@@ -43,7 +59,7 @@ class OpticalFlowPublisher(Node):
         self._timer: Optional[Timer] = None
         self._diagnostics_pub = None
         self._tof_sub = self.create_subscription(
-            Float32, "/distance_sensor/optical_flow", self._tofCB, qos_profile=qos_profile_sensor_data
+            Float32, "/distance_sensor/optical_flow", self._tofCB, qos_profile=tofQoS
         )
 
         # declare parameters and default values
@@ -102,7 +118,7 @@ class OpticalFlowPublisher(Node):
             elif self.get_parameter("board").value == "pmw3901":
                 # ROS and Sensor frames are assumed to align for PMW3901, to be tested
                 dist_x = cf * dx
-                dist_y = - cf * dy
+                dist_y = -cf * dy
 
             optical_msg = OpticalFlow(dx=dist_x, dy=dist_y, dt=self._dt)
             self._optical_pub.publish(optical_msg)
@@ -176,7 +192,9 @@ class OpticalFlowPublisher(Node):
 
             if self._sensor is not None:
                 self._optical_pub = self.create_lifecycle_publisher(
-                    OpticalFlow, "/optical_flow/increment", qos_profile=qos_profile_sensor_data
+                    OpticalFlow,
+                    "/optical_flow/increment",
+                    qos_profile=qos_profile_sensor_data,
                 )
                 self._diagnostics_pub = self.create_lifecycle_publisher(
                     DiagnosticArray, "diagnostics", qos_profile=qos_profile_sensor_data
