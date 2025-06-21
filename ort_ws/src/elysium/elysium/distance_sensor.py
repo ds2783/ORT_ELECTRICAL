@@ -1,7 +1,5 @@
 import rclpy
-import rclpy.logging
-from rclpy.node import Node 
-from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
+from rclpy.node import Node
 import smbus3 as smbus
 
 import gpiozero as gpio
@@ -11,23 +9,7 @@ from gpiozero.pins.lgpio import LGPIOFactory
 from std_msgs.msg import Float32
 import threading
 import elysium.hardware.adafruit_vl53l4cx as tof
-from elysium.config.sensors import DISTANCE_SENSOR_REFRESH_PERIOD
-
-
-QoS = QoSProfile(
-    history=HistoryPolicy.KEEP_LAST, # Keep only up to the last 10 samples
-    depth=10,  # Queue size of 10
-    reliability=ReliabilityPolicy.BEST_EFFORT,  # attempt to deliver samples, 
-    # but lose them if the network isn't robust
-    durability=DurabilityPolicy.VOLATILE, # no attempt to persist samples. 
-    # deadline=
-    # lifespan=
-    # liveliness=
-    # liveliness_lease_duration=
-
-    # refer to QoS ros documentation and 
-    # QoSProfile source code for kwargs and what they do
-)
+from elysium.config.sensors import DISTANCE_SENSOR_REFRESH_PERIOD, tofQoS
 
 
 class DistanceNode(Node):
@@ -37,36 +19,46 @@ class DistanceNode(Node):
         self.sleep_node = sleep_node
 
         msg_type = Float32
-        self.distance_publisher = self.create_publisher(msg_type=msg_type, topic=topic_name, qos_profile=QoS)
-        
-        refresh_period = DISTANCE_SENSOR_REFRESH_PERIOD  # 200ms data retrieval rate
-        self.poll_data = self.create_timer(refresh_period, self.get_data, autostart=True)
+        self.distance_publisher = self.create_publisher(
+            msg_type=msg_type, topic=topic_name, qos_profile=tofQoS
+        )
 
-        try: 
+        refresh_period = DISTANCE_SENSOR_REFRESH_PERIOD  # 200ms data retrieval rate
+        self.poll_data = self.create_timer(
+            refresh_period, self.get_data, autostart=True
+        )
+
+        try:
             self.bus = smbus.SMBus("/dev/i2c-1")
             self.i2c_addr = i2c_addr
             self.sensor = tof.VL53L4CX(self.bus, self.i2c_addr, sleep_node=sleep_node)
 
         except Exception:
-            self.get_logger().error(f"[{self.get_name()}] Could not open i2c bus/initialise TOF. Falling back onto the original firmware library.")
+            self.get_logger().error(
+                f"[{self.get_name()}] Could not open i2c bus/initialise TOF. Falling back onto the original firmware library."
+            )
             import elysium.hardware.adafruit_vl53l4cd as tof_fallback
+
             self.sensor = tof_fallback.VL53L4CD(address=i2c_addr)
 
     def test_i2c(self):
         try:
             tmp = self.sensor._read_register(0x010F, 2)
         except OSError:
-            self.get_logger().error(f"Node {self.get_name()} I2C address is not accessible.")
+            self.get_logger().error(
+                f"Node {self.get_name()} I2C address is not accessible."
+            )
 
     def get_data(self):
         self.sensor.start_sensor()  # we can't have the TOF sensor initialise fully in the __init__ because the sleep node hasn't spun up yet (it uses rate.sleep)
-        
-        try:
-            self.sensor.start_ranging() # so we start the sensor here proper. It only actually inits once 
-        except OSError:
-            self.get_logger().warn(f"[{self.get_name()}] OSError, probably due to the TOF updating internal addresses.")
-            self.sleep_node.create_rate(5).sleep()
 
+        try:
+            self.sensor.start_ranging()  # so we start the sensor here proper. It only actually inits once
+        except OSError:
+            self.get_logger().warn(
+                f"[{self.get_name()}] OSError, probably due to the TOF updating internal addresses."
+            )
+            self.sleep_node.create_rate(5).sleep()
 
         if self.sensor.data_ready:
             self.sensor.clear_interrupt()
@@ -82,6 +74,7 @@ def __patched_init(self, chip=None):
     self._handle = lgpio.gpiochip_open(chip)
     self._chip = chip
     self.pin_class = gpio.pins.lgpio.LGPIOPin
+
 
 def main(args=None):
     rclpy.init(args=args)
@@ -103,13 +96,20 @@ def main(args=None):
     green_led.on()
 
     import time
-    _distance_sensor_1 = DistanceNode(node_name_1, topic_name_1, i2c_addr=0x29, sleep_node=sleep_node)  
-    time.sleep(0.1)  # we accept the cursed for what it is. It's 100ms each on startup only anyway it's fineeee.
+
+    _distance_sensor_1 = DistanceNode(
+        node_name_1, topic_name_1, i2c_addr=0x29, sleep_node=sleep_node
+    )
+    # we accept the cursed for what it is. It's 100ms each on startup only anyway it's fineeee.
+    time.sleep(0.1) 
+
     _distance_sensor_1.sensor.set_address(0x2A)
     time.sleep(0.1)
     xshut_pin.on()
 
-    _distance_sensor_2 = DistanceNode(node_name_2, topic_name_2, i2c_addr=0x29, sleep_node=sleep_node)
+    _distance_sensor_2 = DistanceNode(
+        node_name_2, topic_name_2, i2c_addr=0x29, sleep_node=sleep_node
+    )
 
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(_distance_sensor_1)
@@ -128,5 +128,5 @@ def main(args=None):
     finally:
         _distance_sensor_1.destroy_node()
         _distance_sensor_2.destroy_node()
-        rclpy.try_shutdown()  
+        rclpy.try_shutdown()
         executor_thread.join()
