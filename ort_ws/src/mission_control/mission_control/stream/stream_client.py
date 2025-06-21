@@ -1,8 +1,9 @@
+from math import log
 import subprocess
 import cv2
 import numpy as np
-import socket 
-import pickle 
+import socket
+import pickle
 import threading
 import time
 
@@ -10,33 +11,51 @@ NO_CROP = 0
 LEFT_CROP = 1
 RIGHT_CROP = 2
 
+
 class ServerClient:
     def __init__(self, server_host, server_port):
         self.server_host = server_host
         self.server_port = server_port
 
-    def get_picture(self):
+    def get_picture(self, logger):
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client.connect((self.server_host, self.server_port))
-        client.send("QR\n".encode())
-       
-        timeout = time.monotonic()
-        now = time.monotonic()
-        pieces = [b""]
-        total = 0
-        # up to 20MB file | timout so max wait for data is 2.0 seconds
-        while b"data_end\n" not in pieces[-1] and total < 20_000_000 and (now - timeout) < 2.0:
-            now = time.monotonic()
-            pieces.append(client.recv(2000))
-            total += len(pieces[-1])
-        data = b"".join(pieces)
-
         try:
-            image = pickle.loads(data[:-9])
+            client.connect((self.server_host, self.server_port))
+            client.send("QR\n".encode())
+
+            timeout = time.monotonic()
+            now = time.monotonic()
+            pieces = [b""]
+            total = 0
+            # up to 20MB file | timout so max wait for data is 2.0 seconds
+            while (
+                b"data_end\n" not in pieces[-1]
+                and total < 20_000_000
+                and (now - timeout) < 2.0
+            ):
+                now = time.monotonic()
+                pieces.append(client.recv(2000))
+                total += len(pieces[-1])
+            data = b"".join(pieces)
+
+            try:
+                image = pickle.loads(data[:-9])
+            except:
+                logger().warn("No image recieved from TCP server.")
+                image = None
+
+        except TimeoutError:
+            logger().warn("Server took too long to respond.")
+            image = None
+        except InterruptedError:
+            logger().warn("Process was interrupted.")
+            image = None
         except:
+            logger().error("Something went wrong with the TCP server.")
             image = None
 
         return image
+
 
 class StreamClient:
     thread = None
@@ -89,17 +108,28 @@ class StreamClient:
         else:
             options = ""
         command = [
-            "ffmpeg","-hide_banner",
-            "-probesize","500000",
-            "-analyzeduration","0",
-            "-flags","low_delay",
-            "-strict","experimental",
-            "-hwaccel","auto",
-            "-i",f"{self.type}://{self.host}:{self.port}{options}",
-            "-vf",f"scale={self.width}:{self.height}",
-            "-fflags","nobuffer",
-            "-f","rawvideo",  # Get rawvideo output format.
-            "-pix_fmt","rgb24",  # Set BGR pixel format
+            "ffmpeg",
+            "-hide_banner",
+            "-probesize",
+            "500000",
+            "-analyzeduration",
+            "0",
+            "-flags",
+            "low_delay",
+            "-strict",
+            "experimental",
+            "-hwaccel",
+            "auto",
+            "-i",
+            f"{self.type}://{self.host}:{self.port}{options}",
+            "-vf",
+            f"scale={self.width}:{self.height}",
+            "-fflags",
+            "nobuffer",
+            "-f",
+            "rawvideo",  # Get rawvideo output format.
+            "-pix_fmt",
+            "rgb24",  # Set BGR pixel format
             "pipe:",
         ]
         try:
@@ -166,4 +196,3 @@ class StreamClient:
         self.process.stdout.close()  # Closing stdout terminates FFmpeg sub-process.
         self.process.kill()
         self.process.terminate()
-

@@ -106,7 +106,7 @@ class BaseNode(Node):
         if trigger_pressed and not self.qr_button_:
             # CAPTURE QR-CODE
             self.qr_button_ = True
-            image = self.main_cam.get_picture()
+            image = self.main_cam.get_picture(self.get_logger)
             if image is not None:
                 self.get_logger().info("Image sent for processing.")
                 qreader_out = self.qreader_.detect_and_decode(image=image)

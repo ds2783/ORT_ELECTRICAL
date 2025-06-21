@@ -1,4 +1,5 @@
 import socket
+import time
 
 from picamera2 import Picamera2
 from picamera2.encoders import H264Encoder, Encoder
@@ -56,25 +57,33 @@ class StreamServer:
         self.output.write("INFO", "Requested received.", True)
         pieces = [b""]
         total = 0
-        while b"\n" not in pieces[-1] and total < 10_000:
+
+        timeout = time.monotonic()
+        now = time.monotonic()
+
+        while b"\n" not in pieces[-1] and total < 10_000 and (now - timeout) < 2.0:
+            now = time.monotonic()
             pieces.append(client_socket.recv(2000))
             total += len(pieces[-1])
-            self.output.write("INFO", b"".join(pieces).decode("utf-8"), True)
         self.data = b"".join(pieces)
-        self.output.write("INFO", self.data.decode("utf-8"), True)
 
-        if self.data.decode("utf-8") == "QR\n":
-            if not self.cam is None:
-                # Stop and Still configure
-                image = self.cam.switch_mode_and_capture_array(
-                    self.capture_config, "main"
-                )
-                data = image.dumps() + b"data_end\n"
-            else:
-                data = b"data_end\n"
-            
-            client_socket.sendall(data)
-            client_socket.close()
+        self.output.write(
+            "INFO", "request received: " + self.data.decode("utf-8"), True
+        )
+
+        if self.data.decode("utf-8") == "QR\n" and not self.cam is None:
+            # Stop and Still configure
+            image = self.cam.switch_mode_and_capture_array(self.capture_config, "main")
+            data = image.dumps() + b"data_end\n"
+        elif self.cam is None:
+            self.output.write("ERROR", "No camera to return image is detected.", True)
+            data = b"data_end\n"
+        else:
+            self.output.write("ERROR", "No valid request was received.", True)
+            data = b"data_end\n"
+
+        client_socket.sendall(data)
+        client_socket.close()
 
     def scan():
         StreamServer.cam_list = Picamera2.global_camera_info()
