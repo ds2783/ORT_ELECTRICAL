@@ -108,28 +108,17 @@ class StreamClient:
         else:
             options = ""
         command = [
-            "ffmpeg",
-            "-hide_banner",
-            "-probesize",
-            "500000",
-            "-analyzeduration",
-            "0",
-            "-flags",
-            "low_delay",
-            "-strict",
-            "experimental",
-            "-hwaccel",
-            "auto",
-            "-i",
-            f"{self.type}://{self.host}:{self.port}{options}",
-            "-vf",
-            f"scale={self.width}:{self.height}",
-            "-fflags",
-            "nobuffer",
-            "-f",
-            "rawvideo",  # Get rawvideo output format.
-            "-pix_fmt",
-            "rgb24",  # Set BGR pixel format
+            "ffmpeg","-hide_banner",
+            "-probesize","500000",
+            "-analyzeduration","0",
+            "-flags","low_delay",
+            "-strict","experimental",
+            "-hwaccel","auto",
+            "-i",f"{self.type}://{self.host}:{self.port}{options}",
+            "-vf",f"scale={self.width}:{self.height}",
+            "-fflags","nobuffer",
+            "-f","rawvideo",  # Get rawvideo output format.
+            "-pix_fmt","rgb24",  # Set BGR pixel format
             "pipe:",
         ]
         try:
