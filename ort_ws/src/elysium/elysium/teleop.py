@@ -37,7 +37,7 @@ class TelepresenceOperations(Node):
         self.controller_commands_sub_ = self.create_subscription(
             Joy, "joy", self.teleopCB_, 10
         )
-        self.base_poing_sub_ = self.create_subscription(
+        self.base_ping_sub_ = self.create_subscription(
             Bool, "ping", self.confirmConnectionCB_, 10
         )
         self.cam_angles__pub_ = self.create_publisher(
@@ -129,8 +129,9 @@ class TelepresenceOperations(Node):
         # )
 
     def camera_rotate(self):
-        self.cam_angles_.z_axis = self.bound_180(float(self.z_increment + self.cam_angles_.z_axis))
-        self.cam_angles_.x_axis = self.bound_180(float(self.x_increment + self.cam_angles_.x_axis))
+        # to fix or not to fix
+        self.cam_angles_.z_axis = self.bound_180(float(-self.z_increment + self.cam_angles_.z_axis))
+        self.cam_angles_.x_axis = self.bound_180(float(-self.x_increment + self.cam_angles_.x_axis))
         # POSITIONAL
         self.kit_.servo[CAMERA_SERVO_Z].angle = self.cam_angles_.z_axis
         # CONTIOUS

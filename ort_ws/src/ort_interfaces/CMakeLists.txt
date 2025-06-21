@@ -31,6 +31,10 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/OpticalFlow.msg"
   "msg/Vec2.msg"
   "msg/CameraRotation.msg"
+  "msg/GPSStatus.msg"
+  "msg/SatelliteInfo.msg"
+  "msg/Coordinate.msg"
+  "msg/BatteryInfo.msg"
   "srv/SetMode.srv"
   "action/CalibrateImu.action"
 )
