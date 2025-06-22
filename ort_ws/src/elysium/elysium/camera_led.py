@@ -38,7 +38,7 @@ class LEDNode(Node):
         self.led_pwm_pin = gpio.PWMOutputDevice(pin=12, initial_value=0, frequency=1000, pin_factory=factory)
 
     def _led_callback(self, msg):
-        float_val = msg.data
+        float_val = msg.data  # This always will be a float since ROS2 typechecks (and complains a lot if it isn't) it before sending data
 
         if float_val < 0 or float_val > 1:
             raise ValueError(f"The LED brightness value must be between 0 and 1.")
@@ -51,7 +51,7 @@ class LEDNode(Node):
         self.led_pwm_pin.value = value
 
     def set_frequency(self, value: int):
-        """Set the frequency of the LED board, value between 1 and 10kHz. 
+        """Set the frequency of the LED board, value between 1 and 10kHz. Limited by the software PWM since the RPi5 has problems with hardware PWM. 
         """
         self.led_pwm_pin.frequency = value
 
