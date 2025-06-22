@@ -24,22 +24,16 @@ QoS = QoSProfile(
     reliability=ReliabilityPolicy.BEST_EFFORT,  # attempt to deliver samples, 
     # but lose them if the network isn't robust
     durability=DurabilityPolicy.VOLATILE, # no attempt to persist samples. 
-    # deadline=
-    # lifespan=
-    # liveliness=
-    # liveliness_lease_duration=
-
 )
-
 
 # BMS CAPACITY LOGIC DERIVED HERE: https://www.youtube.com/watch?v=rOwcxFErcvQ
 
 # USING A COMBINATION OF SIMPLISTIC COLOUMB COUNTING AND AN 'OCV' LOOKUP TABLE. 
-# SUBSEQUENT YEARS SHOULD LOOK AT KALMANN FILTERS FOR A MORE OPTIMISED ESTIMATION OF THE SOC OF THE BATTERY.  
+# SUBSEQUENT TBRO MEMBERS SHOULD LOOK AT KALMANN FILTERS FOR A MORE OPTIMISED ESTIMATION OF THE SOC OF THE BATTERY.  
 
 
 class BatteryMonitorNode(Node):
-    def __init__(self, node_name, topic_name, i2c_addr=0x40, lookup_recording=False):
+    def __init__(self, node_name, topic_name, i2c_addr=0x40, recording_lookup=False):
         """Battery Monitoring Node
 
         :param node_name: node name
@@ -48,9 +42,10 @@ class BatteryMonitorNode(Node):
         :type topic_name: str
         :param i2c_addr: i2c address on the i2c bus, defaults to 0x40
         :type i2c_addr: hexadecimal, optional
-        :param lookup_recording: set to True if you want to create a new OCV lookup table, defaults to False
-        :type lookup_recording: bool, optional
+        :param recording_lookup: set to True if you want to create a new OCV lookup table, defaults to False
+        :type recording_lookup: bool, optional
         """
+
         super().__init__(node_name)
 
         msg_type = BatteryInfo
@@ -74,10 +69,10 @@ class BatteryMonitorNode(Node):
         # We are going to assume we are entering with a full battery. This needs to be backed up by a voltage lookup table I'll generate by running a few 
         # discharges while tracking the current integrated SOC. 
 
-        # 4.18 max on a 12.6V 1.5A full charge
-        # 2.2 min
+        # 4.2 max per cell voltage on a 12.6V 1.5A full charge.
+        # ~2.2 min per cell voltage before the RPi5 succumbed to low voltage. 
         
-        self.lookup = lookup_recording  # if this should be a full-discharge lookup table calibration.
+        self.lookup = recording_lookup  # if this should be a full-discharge lookup table calibration run.
  
         self.lookup_table = self._read_lookup_data()
         self.soc, self.prev_soc = self._read_battery_file()  # state of charge = capacity remaining / total capacity
@@ -100,6 +95,7 @@ class BatteryMonitorNode(Node):
         :return: SOC value 
         :rtype: float
         """
+
         if Path(path).is_file():  # Under the assumption that there isn't a SOC to be had, refer to the lookup table. 
             with open(path, "r") as fs:
                 data = fs.readline()  # for now we are just keeping the data as a string
@@ -168,10 +164,9 @@ class BatteryMonitorNode(Node):
         :param path: path, found in the config.sensors file, defaults to BMS_LOOKUP_TABLE_PATH
         :type path: PathLike, optional
         """
-        # Make sure this path is valid!
 
-        if not Path(path).is_file():
-            self._create_blank_file(path)
+        if not Path(path).is_file():  # validate whether or not the file exists already. 
+            self._create_blank_file(path) 
 
         self.lookup_table.to_csv(path, sep=",", na_rep=0)
         self.prev_soc = self.soc
@@ -216,6 +211,7 @@ class BatteryMonitorNode(Node):
         :return: soc
         :rtype: float
         """
+
         for i in range(1, 1000):
             if self.lookup_table.iloc[i, 3] > ocv and self.lookup_table.iloc[i+1, 3] < ocv:
                 return self.lookup_table.iloc[i, 0]
@@ -251,8 +247,8 @@ class BatteryMonitorNode(Node):
         self.measured_current = self.bms.current  # mA 
         self.measured_power = self.bms.power # mW
 
-        charge_expended = self.measured_current * 1e-3 * BMS_DELTA_T  # mA * 0.0001 * dt 
-        self.current_capacity -= 0.27778 * charge_expended # This is a conversion from couloumbs to mAh 
+        charge_expended = self.measured_current * 1e-3 * BMS_DELTA_T  # mA * 0.0001 * dt, giving charge in coulombs. 
+        self.current_capacity -= charge_expended * (1/3.6) # This is a conversion from couloumbs to mAh (1 mAh = 3.6C, hence 1C = 1/3.6 mAh)
         self.soc = round(self.current_capacity / self.total_capacity, ndigits=3)
         
         if self.lookup and abs(self.prev_soc - self.soc) >= 0.001:  # if the soc value has dropped 0.1%, save the data to the lookup table. 
@@ -274,7 +270,7 @@ class BatteryMonitorNode(Node):
     def send_data(self):
         """Send the data to the ROS2 topic.
         """
-        
+
         msg = BatteryInfo()
 
         msg.voltage = float(self.measured_voltage)
@@ -293,7 +289,7 @@ def main(args=None):
     topic_name = "/battery_monitor"
     node_name  = "battery_monitor"
     
-    _bms_node = BatteryMonitorNode(node_name, topic_name, i2c_addr=0x44, lookup_recording=True)
+    _bms_node = BatteryMonitorNode(node_name, topic_name, i2c_addr=0x44, recording_lookup=True)
 
     try:
         while rclpy.ok():
