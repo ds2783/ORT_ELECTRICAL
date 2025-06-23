@@ -105,6 +105,7 @@ def main(args=None):
     executor_thread = Thread(target=executor.spin, daemon=True)
     executor_thread.start()
 
-    rclpy.spin(imu)
     # Cleanup After Shutdown
     rclpy.try_shutdown()
+    executor_thread.join()
+
