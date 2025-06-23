@@ -253,4 +253,4 @@ def main(args=None):
 
     rclpy.spin(base)
     # Cleanup After Shutdown
-    rclpy.shutdown()
+    rclpy.try_shutdown()

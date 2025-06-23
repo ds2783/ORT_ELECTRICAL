@@ -130,6 +130,8 @@ class TelepresenceOperations(Node):
 
     def camera_rotate(self):
         # to fix or not to fix
+        # that is the question
+
         self.cam_angles_.z_axis = self.bound_180(float(-self.z_increment + self.cam_angles_.z_axis))
         self.cam_angles_.x_axis = self.bound_180(float(-self.x_increment + self.cam_angles_.x_axis))
         # POSITIONAL
@@ -146,4 +148,4 @@ def main(args=None):
     rclpy.init(args=args)
     node = TelepresenceOperations()
     rclpy.spin(node)
-    rclpy.shutdown()
+    rclpy.try_shutdown()

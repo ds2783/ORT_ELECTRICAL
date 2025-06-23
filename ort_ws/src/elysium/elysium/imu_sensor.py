@@ -107,4 +107,4 @@ def main(args=None):
 
     rclpy.spin(imu)
     # Cleanup After Shutdown
-    rclpy.shutdown()
+    rclpy.try_shutdown()

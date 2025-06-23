@@ -34,7 +34,9 @@ QoS = QoSProfile(
 
 class BatteryMonitorNode(Node):
     def __init__(self, node_name, topic_name, i2c_addr=0x40, recording_lookup=False):
-        """Battery Monitoring Node
+        """Battery Monitoring Node using the INA260. 
+        Measures the voltage, current and power going throught INA260, and estimates
+        the SOC (State of Charge) of the battery LiPo cells. 
 
         :param node_name: node name
         :type node_name: str
@@ -77,11 +79,17 @@ class BatteryMonitorNode(Node):
         self.lookup_table = self._read_lookup_data()
         self.soc, self.prev_soc = self._read_battery_file()  # state of charge = capacity remaining / total capacity
 
-        self.current_capacity = self.soc * self.total_capacity
-
         if not self.lookup:
             self._compare_ocv_soc()  # sanity check the stored SOC values against the 'OCV' values in the lookup table. 
         
+    @property
+    def soc(self):
+        return self._soc
+
+    @soc.setter
+    def soc(self, value):
+        self._soc = value
+        self.current_capacity = self._soc * self.total_capacity
 
     def _read_battery_file(self, path=BMS_SAVE_PATH):
         """If the BMS_SAVE_PATH file exists, read and typecast into float. 
@@ -201,7 +209,6 @@ class BatteryMonitorNode(Node):
         if tmp_voltage / experimental_ocv_value >= deviation:
             self.get_logger().warn(f"[{self.get_name()}] The expected OCV value is more than 10% different to what we are expecting of the battery voltage, rebasing SOC.")
             self.soc = self._find_ocv_soc(tmp_voltage)
-            self.current_capacity = self.soc * self.total_capacity
 
     def _find_ocv_soc(self, ocv: float):
         """Find the SOC from the OCV table voltages, needs to iterate through the table from the smallest value upwards. 
@@ -249,7 +256,7 @@ class BatteryMonitorNode(Node):
 
         charge_expended = self.measured_current * 1e-3 * BMS_DELTA_T  # mA * 0.0001 * dt, giving charge in coulombs. 
         self.current_capacity -= charge_expended * (1/3.6) # This is a conversion from couloumbs to mAh (1 mAh = 3.6C, hence 1C = 1/3.6 mAh)
-        self.soc = round(self.current_capacity / self.total_capacity, ndigits=3)
+        self.soc = round(self.current_capacity / self.total_capacity, ndigits=3)  # 3 d.p. precision
         
         if self.lookup and abs(self.prev_soc - self.soc) >= 0.001:  # if the soc value has dropped 0.1%, save the data to the lookup table. 
             self.lookup_table.iloc[int(round(1000*self.soc)), 1:] = [charge_expended, self.measured_current, self.measured_voltage]

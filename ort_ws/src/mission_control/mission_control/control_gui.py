@@ -280,4 +280,4 @@ def main(args=None):
     # Cleanup After Shutdown
     gui.impl.shutdown()
     glfw.terminate()
-    rclpy.shutdown()
+    rclpy.try_shutdown()

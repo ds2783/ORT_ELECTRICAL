@@ -3,7 +3,7 @@ BMS_REFRESH_PERIOD = 1
 BMS_DELTA_T = 0.02
 BMS_BATTERY_CAPACITY = 5000  # in mAh
 BMS_UNDERVOLT_WARN = 9  # threshold voltage for function. If each cell has 3V or less, the rover should not be moving. 
-BMS_UNDERVOLT_SHUTDOWN = 7.5
+BMS_UNDERVOLT_SHUTDOWN = 7.5  # threshold voltage for the Pi to function. Under this voltage the Pi should shut down. 
 BMS_SAVE_PATH = "/ros/battery_save.txt"
 BMS_LOOKUP_TABLE_PATH = "/ros/ocv_lookup.csv"
 IMU_SENSOR_PERIOD = 0.2
@@ -11,6 +11,7 @@ OPTICAL_CALIBRATION = 1
 
 
 from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
+
 tofQoS = QoSProfile(
     history=HistoryPolicy.KEEP_LAST, # Keep only up to the last 10 samples
     depth=10,  # Queue size of 10

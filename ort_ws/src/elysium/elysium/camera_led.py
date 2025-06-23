@@ -28,6 +28,17 @@ QoS = QoSProfile(
 
 class LEDNode(Node):
     def __init__(self, node_name, topic_name, factory):
+        """
+        Node that handles the infrared LED panel for the upper camera on the rover. 
+        
+        :param node_name: node name
+        :type node_name: str
+        :param topic_name: topic name
+        :type topic_name: str
+        :param factory: gpiozero pin factory for the pin 
+        :type factory: gpiozero pin factory
+        """
+
         super().__init__(node_name)
 
         msg_type = Float32
@@ -56,7 +67,12 @@ class LEDNode(Node):
         self.led_pwm_pin.frequency = value
 
 
-def __patched_init(self, chip=None):
+def __patched_init(self, chip=None):  
+    
+    # This is necessary because LGPIO assumes the Pi5 uses gpiochip4, but in a shadow kernel
+    # update, Team RPi has refactored it so that gpiochip0 is used like the rest of them. The issue is that LGPIO has not caught on
+    # and locks you into gpiochip4 even if you pass a param to say its 0. 
+
     gpio.pins.lgpio.LGPIOFactory.__bases__[0].__init__(self)
     chip = 0
     self._handle = lgpio.gpiochip_open(chip)

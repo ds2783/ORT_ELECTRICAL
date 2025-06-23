@@ -14,6 +14,19 @@ from elysium.config.sensors import DISTANCE_SENSOR_REFRESH_PERIOD, tofQoS
 
 class DistanceNode(Node):
     def __init__(self, node_name, topic_name, i2c_addr, sleep_node):
+        """Time of Flight Node using the VL53L4CX. 
+        Measures the distance off the sensor and returns the value.
+
+        :param node_name: node name
+        :type node_name: str
+        :param topic_name: topic name
+        :type topic_name: str
+        :param i2c_addr: i2c address on the i2c bus
+        :type i2c_addr: hexadecimal, optional
+        :param sleep_node: sleep node for Rates
+        :type sleep_node: Node
+        """
+
         super().__init__(node_name)
 
         self.sleep_node = sleep_node
@@ -50,6 +63,9 @@ class DistanceNode(Node):
             )
 
     def get_data(self):
+        """Get the data from the ToF sensors.
+        """
+        
         self.sensor.start_sensor()  # we can't have the TOF sensor initialise fully in the __init__ because the sleep node hasn't spun up yet (it uses rate.sleep)
 
         try:

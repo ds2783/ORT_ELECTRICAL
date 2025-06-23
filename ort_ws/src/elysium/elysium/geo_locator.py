@@ -150,4 +150,4 @@ def main(args=None):
 
     location_node = GeoLocator("location_service")
     rclpy.spin(location_node)
-    rclpy.shutdown()
+    rclpy.try_shutdown()
