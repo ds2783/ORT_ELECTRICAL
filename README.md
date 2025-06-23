@@ -1,2 +1,5 @@
-This repo has been abused. 
-It's a testing platform for a rover, and is used to add new code, as well as upload minor edits directly to the rover for testing.
+##Olympus Rover Trials 2024/2025 submission repository
+
+Git-hosted ROS2 code for the ORT rover, includes packages for the base station controls as well. 
+
+
