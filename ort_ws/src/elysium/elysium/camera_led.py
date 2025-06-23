@@ -41,7 +41,7 @@ class LEDNode(Node):
         float_val = msg.data  # This always will be a float since ROS2 typechecks (and complains a lot if it isn't) it before sending data
 
         if float_val < 0 or float_val > 1:
-            raise ValueError(f"The LED brightness value must be between 0 and 1.")
+            raise ValueError(f"The LED brightness value must be between 0 and 1. Given: {float_val}")
         
         self.set_brightness(float_val)
     
