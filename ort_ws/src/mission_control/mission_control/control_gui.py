@@ -265,8 +265,8 @@ class GUI(Node):
         )
         imgui.text("Changed: %s, Value: %s" % (changed, self.current_value))
         if self.led != self.current_value:
-            self.client_.publish_led(self.led/100)
             self.led = self.current_value
+            self.client_.publish_led(self.led/100)
             
         imgui.end()
 
