@@ -74,7 +74,9 @@ class StreamServer:
         if self.data.decode("utf-8") == "QR\n" and not self.cam is None:
             # Stop and Still configure
             self.cam.stop_recording()
-            image = self.cam.switch_mode_and_capture_array(self.capture_config, "main")
+            image = self.cam.switch_mode_and_capture_array(
+                self.capture_config, "main", delay=5
+            )
             self.cam.start_recording(self.encoder, FileOutput(self.stream))
             data = image.dumps() + b"data_end\n"
         elif self.cam is None:
