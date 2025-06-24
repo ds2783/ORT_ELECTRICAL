@@ -83,7 +83,7 @@ class StreamServer:
 
             image = Image.fromarray(array)
             _bytes = BytesIO()
-            image.save(_bytes, "PNG")
+            image.save(_bytes, "JPEG", quality=60)
 
             data = _bytes.getvalue() + b"data_end\n"
             self.output.write(
