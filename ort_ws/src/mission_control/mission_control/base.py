@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
 
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Bool, Float32
@@ -9,34 +8,15 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Vector3
 from ort_interfaces.msg import CameraRotation
 
-from mission_control.stream.stream_client import ServerClient, StreamClient
-from mission_control.config.mappings import AXES, BUTTONS
-from mission_control.stream.stream_client import StreamClient
-from mission_control.config.mappings import AXES, BUTTONS
-from mission_control.stream.stream_client import StreamClient
-from mission_control.config.mappings import  BUTTONS
-from mission_control.config.network import COMM_PORT, PORT_MAIN_BASE, PI_IP
+from mission_control.stream.stream_client import ServerClient
+from mission_control.config.mappings import BUTTONS
+from mission_control.config.network import COMM_PORT, PORT_MAIN_BASE, PI_IP, tofQoS
 
 from qreader import QReader
 from multiprocessing.connection import Client
 
 import numpy as np
 import csv
-
-# Should probably create systemwide config for both mission_control and elysium
-tofQoS = QoSProfile(
-    history=HistoryPolicy.KEEP_LAST,  # Keep only up to the last 10 samples
-    depth=10,  # Queue size of 10
-    reliability=ReliabilityPolicy.BEST_EFFORT,  # attempt to deliver samples,
-    # but lose them if the network isn't robust
-    durability=DurabilityPolicy.VOLATILE,  # no attempt to persist samples.
-    # deadline=
-    # lifespan=
-    # liveliness=
-    # liveliness_lease_duration=
-    # refer to QoS ros documentation and
-    # QoSProfile source code for kwargs and what they do
-)
 
 
 class BaseNode(Node):

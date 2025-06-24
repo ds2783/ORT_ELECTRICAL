@@ -83,6 +83,7 @@ class StreamServer:
 
             image = Image.fromarray(array)
             _bytes = BytesIO()
+            # Setting quality to 60/95
             image.save(_bytes, "JPEG", quality=60)
 
             data = _bytes.getvalue() + b"data_end\n"

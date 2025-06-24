@@ -12,7 +12,7 @@ from imgui.integrations.glfw import GlfwRenderer
 
 from mission_control.gui.dashboard import Dashboard
 from mission_control.stream.stream_client import StreamClient
-from mission_control.config.network import COMM_PORT, PORT_MAIN, PORT_SECONDARY, PI_IP
+from mission_control.config.network import COMM_PORT, PORT_MAIN, PORT_SECONDARY, PI_IP, tofQoS
 from mission_control.config.gui import CALLIBRATE_IMU, WIDTH, HEIGHT, CALLIBRATE_IMU, ZERO_AXIS 
 
 from threading import Thread
@@ -20,7 +20,7 @@ from multiprocessing.connection import Listener
 
 # Messages ---
 from ort_interfaces.action import CalibrateImu
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, Float32
 
 
 
@@ -56,6 +56,12 @@ class GuiClient(Node):
         self.current_step = None
 
         self.reset_pos_pub_ = self.create_publisher(Bool, "/elysium/reset_pos", 10)
+        self.led_pub_ = self.create_publisher(Float32, "/led", tofQoS)
+    
+    def publish_led(self, slider_float: float):
+        msg = Float32()
+        msg.data = slider_float
+        self.led_pub_.publish(msg)
 
     def send_goal(self, code):
         goal_msg = CalibrateImu.Goal()
@@ -133,6 +139,9 @@ class GUI(Node):
         # tof
         self.q_tof = "0"
         self.o_tof = "0"
+
+        # IR LED
+        self.led = 0.0
         
         self.address = ("localhost", port)  # family is deduced to be 'AF_INET'
         self.listener = Listener(self.address, authkey=b"123")
@@ -245,6 +254,20 @@ class GUI(Node):
         camera-dist: {self.q_tof}
         """
                 )
+        imgui.end()
+        
+        imgui.begin()
+        value = 0.0
+        changed, value = imgui.slider_float(
+        "IR Cam", value,
+        min_value=0.0, max_value=1.0,
+        format="%.0f"
+        )
+        imgui.text("Changed: %s, Value: %s" % (changed, value))
+        if self.led != value:
+            self.client_.publish_led(self.led)
+            self.led = value
+            
         imgui.end()
 
         # Display Testing Window
