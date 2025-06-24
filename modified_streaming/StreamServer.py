@@ -77,6 +77,9 @@ class StreamServer:
             image = self.cam.switch_mode_and_capture_array(
                 self.capture_config, "main", delay=5
             )
+            self.output.write(
+                    "INFO", "Image size in bytes: " + str(image.nbytes), True
+                    )
             self.cam.start_recording(self.encoder, FileOutput(self.stream))
             data = image.dumps() + b"data_end\n"
         elif self.cam is None:
