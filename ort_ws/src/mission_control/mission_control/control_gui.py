@@ -142,6 +142,7 @@ class GUI(Node):
 
         # IR LED
         self.led = 0.0
+        self.current_value = 0.0
         
         self.address = ("localhost", port)  # family is deduced to be 'AF_INET'
         self.listener = Listener(self.address, authkey=b"123")
@@ -257,16 +258,15 @@ class GUI(Node):
         imgui.end()
         
         imgui.begin("IR Cam")
-        value = 0.0
-        changed, value = imgui.slider_float(
-        "IR Cam", value,
-        min_value=0.0, max_value=1.0,
+        changed, self.current_value = imgui.slider_float(
+        "IR Cam", self.current_value,
+        min_value=0.0, max_value=100.0,
         format="%.0f"
         )
-        imgui.text("Changed: %s, Value: %s" % (changed, value))
-        if self.led != value:
-            self.client_.publish_led(self.led)
-            self.led = value
+        imgui.text("Changed: %s, Value: %s" % (changed, self.current_value))
+        if self.led != self.current_value:
+            self.client_.publish_led(self.led/100)
+            self.led = self.current_value
             
         imgui.end()
 

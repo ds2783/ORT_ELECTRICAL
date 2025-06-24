@@ -4,7 +4,6 @@ import subprocess
 import cv2
 import numpy as np
 import socket
-import pickle
 import threading
 import time
 
@@ -57,7 +56,6 @@ class ServerClient:
                 elif b"data_end\n" not in data:
                     logger().error("Logic error. End of Array: " + str(data[-9:]))
                 else:
-                    logger().error("Temp: " + str(data[-9:]))
                     logger().warn("Image array corrupted, or incorrect format.")
 
                 image = None
