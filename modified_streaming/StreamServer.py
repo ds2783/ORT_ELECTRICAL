@@ -82,10 +82,10 @@ class StreamServer:
             )
 
             image = Image.fromarray(array)
-            bytes = BytesIO()
-            image.save(bytes, "PNG")
+            _bytes = BytesIO()
+            image.save(_bytes, "PNG")
 
-            data = bytes.read() + b"data_end\n"
+            data = _bytes.getvalue() + b"data_end\n"
             self.output.write(
                     "INFO", "Image size in bytes: " + str(sys.getsizeof(data)), True
                     )
