@@ -70,10 +70,11 @@ class DistanceNode(Node):
 
         try:
             self.sensor.start_ranging()  # so we start the sensor here proper. It only actually inits once
-        except OSError:
+        except OSError as err:
             self.get_logger().warn(
-                f"[{self.get_name()}] OSError, probably due to the TOF updating internal addresses."
+                f"[{self.get_name()}] OSError, probably due to the TOF updating internal addresses. Error: {err}"
             )
+
             self.sleep_node.create_rate(5).sleep()
 
         if self.sensor.data_ready:
