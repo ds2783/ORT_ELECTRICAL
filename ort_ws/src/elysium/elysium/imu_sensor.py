@@ -7,7 +7,6 @@ from rclpy.qos import qos_profile_sensor_data
 from geometry_msgs.msg import Quaternion
 from ort_interfaces.action import CalibrateImu
 
-import time
 import numpy as np
 from pyrr import quaternion
 from threading import Thread
