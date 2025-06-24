@@ -1,7 +1,7 @@
 import rclpy
-import rclpy.logging
 from rclpy.node import Node 
 from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
+import rclpy.utilities
 
 import gpiozero as gpio
 import lgpio
@@ -90,11 +90,11 @@ def main(args=None):
     _led_node = LEDNode(node_name, topic_name, factory)
 
     try:
-        while rclpy.ok():
+        while rclpy.utilities.ok():
             rclpy.spin(_led_node)
     except KeyboardInterrupt:
         _led_node.get_logger().warn(f"KeyboardInterrupt triggered.")
     finally:
         _led_node.destroy_node()
-        rclpy.try_shutdown()  
+        rclpy.utilities.try_shutdown()  
 

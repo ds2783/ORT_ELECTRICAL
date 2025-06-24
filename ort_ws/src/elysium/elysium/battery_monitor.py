@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node 
 from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
+import rclpy.utilities
 
 import pandas
 import pandas.errors
@@ -299,11 +300,11 @@ def main(args=None):
     _bms_node = BatteryMonitorNode(node_name, topic_name, i2c_addr=0x44, recording_lookup=True)
 
     try:
-        while rclpy.ok():
+        while rclpy.utilities.ok():
             rclpy.spin(_bms_node)
     except KeyboardInterrupt:
         _bms_node.get_logger().warn(f"KeyboardInterrupt triggered.")
     finally:
         _bms_node.destroy_node()
-        rclpy.try_shutdown()  
+        rclpy.utilities.try_shutdown()  
 

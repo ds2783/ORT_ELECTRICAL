@@ -1,7 +1,8 @@
 import rclpy
 from rclpy.node import Node
-import smbus3 as smbus
+import rclpy.utilities
 
+import smbus3 as smbus
 import gpiozero as gpio
 import lgpio
 from gpiozero.pins.lgpio import LGPIOFactory
@@ -136,7 +137,7 @@ def main(args=None):
     executor_thread.start()
 
     try:
-        while rclpy.ok():
+        while rclpy.utilities.ok():
             pass
     except KeyboardInterrupt:
         _distance_sensor_1.get_logger().warn(f"KeyboardInterrupt triggered.")
@@ -144,5 +145,5 @@ def main(args=None):
     finally:
         _distance_sensor_1.destroy_node()
         _distance_sensor_2.destroy_node()
-        rclpy.try_shutdown()
+        rclpy.utilities.try_shutdown()
         executor_thread.join()

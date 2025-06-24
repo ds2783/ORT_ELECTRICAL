@@ -1,6 +1,6 @@
-from os import wait
 import rclpy
 from rclpy.node import Node
+import rclpy.utilities
 
 from std_msgs.msg import Bool
 from sensor_msgs.msg import Joy
@@ -147,5 +147,12 @@ class TelepresenceOperations(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = TelepresenceOperations()
-    rclpy.spin(node)
-    rclpy.try_shutdown()
+    try:
+        while rclpy.utilities.ok():
+            rclpy.spin(node)
+    except KeyboardInterrupt:
+        node.get_logger().warn(f"KeyboardInterrupt triggered.")
+    finally:
+        node.destroy_node()
+        rclpy.utilities.try_shutdown()  
+

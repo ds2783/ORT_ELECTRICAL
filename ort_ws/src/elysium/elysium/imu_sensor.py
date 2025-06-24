@@ -3,6 +3,7 @@ import rclpy.executors
 from rclpy.node import Node
 from rclpy.action.server import ActionServer
 from rclpy.qos import qos_profile_sensor_data
+import rclpy.utilities
 
 from geometry_msgs.msg import Quaternion
 from ort_interfaces.action import CalibrateImu
@@ -106,11 +107,11 @@ def main(args=None):
 
     # Cleanup After Shutdown
     try:
-        while rclpy.ok():
+        while rclpy.utilities.ok():
             pass
     except KeyboardInterrupt:
         imu.get_logger().warn(f"KeyboardInterrupt triggered.")
     finally:
         imu.destroy_node()
-        rclpy.try_shutdown()  
+        rclpy.utilities.try_shutdown()  
         executor_thread.join()
