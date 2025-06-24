@@ -85,7 +85,7 @@ class BatteryMonitorNode(Node):
         
     @property
     def soc(self):
-        return self._soc
+        return round(self._soc, ndigits=3)
 
     @soc.setter
     def soc(self, value):
@@ -256,8 +256,7 @@ class BatteryMonitorNode(Node):
         self.measured_power = self.bms.power # mW
 
         charge_expended = self.measured_current * 1e-3 * BMS_DELTA_T  # mA * 0.0001 * dt, giving charge in coulombs. 
-        self.current_capacity -= charge_expended * (1/3.6) # This is a conversion from couloumbs to mAh (1 mAh = 3.6C, hence 1C = 1/3.6 mAh)
-        self.soc = round(self.current_capacity / self.total_capacity, ndigits=3)  # 3 d.p. precision
+        self.soc = (self.current_capacity - charge_expended * (1/3.6)) / self.total_capacity # This is a conversion from couloumbs to mAh (1 mAh = 3.6C, hence 1C = 1/3.6 mAh)
         
         if self.lookup and abs(self.prev_soc - self.soc) >= 0.001:  # if the soc value has dropped 0.1%, save the data to the lookup table. 
             self.lookup_table.iloc[int(round(1000*self.soc)), 1:] = [charge_expended, self.measured_current, self.measured_voltage]
