@@ -106,6 +106,12 @@ def main(args=None):
     executor_thread.start()
 
     # Cleanup After Shutdown
-    rclpy.try_shutdown()
-    executor_thread.join()
-
+    try:
+        while rclpy.ok():
+            pass
+    except KeyboardInterrupt:
+        imu.get_logger().warn(f"KeyboardInterrupt triggered.")
+    finally:
+        imu.destroy_node()
+        rclpy.try_shutdown()  
+        executor_thread.join()
