@@ -256,7 +256,7 @@ class GUI(Node):
                 )
         imgui.end()
         
-        imgui.begin()
+        imgui.begin("IR Cam")
         value = 0.0
         changed, value = imgui.slider_float(
         "IR Cam", value,
