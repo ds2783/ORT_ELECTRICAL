@@ -47,7 +47,7 @@ class ServerClient:
 
                 if total > 20_000_000:
                     logger().warn("Image file sent is too large")
-                elif b"data_end\n" not in pieces[-1]:
+                elif b"data_end\n" not in data:
                     logger().warn("No transmission end signal recieved before timeout.")
                 else:
                     logger().warn("Image array corrupted, or incorrect format.")
