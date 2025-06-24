@@ -25,16 +25,19 @@ class ServerClient:
             timeout = time.monotonic()
             now = time.monotonic()
             pieces = [b""]
+            data = b""
             total = 0
             # up to 20MB file | timout so max wait for data is 2.0 seconds
             while (
-                b"data_end\n" not in pieces[-1]
+                b"data_end\n" not in data
                 and total < 20_000_000
                 and (now - timeout) > 10.0
             ):
                 now = time.monotonic()
                 pieces.append(client.recv(2000))
                 total += len(pieces[-1])
+                data = b"".join(pieces)
+
             data = b"".join(pieces)
 
             try:
