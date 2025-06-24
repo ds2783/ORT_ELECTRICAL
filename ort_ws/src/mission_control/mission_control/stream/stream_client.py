@@ -31,7 +31,7 @@ class ServerClient:
             while (
                 b"data_end\n" not in data
                 and total < 20_000_000
-                and (now - timeout) < 10.0
+                # and (now - timeout) < 10.0
             ):
                 now = time.monotonic()
                 pieces.append(client.recv(2000))
