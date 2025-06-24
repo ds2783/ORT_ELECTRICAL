@@ -38,14 +38,18 @@ class ServerClient:
                 total += len(pieces[-1])
             data = b"".join(pieces)
 
-            if total > 20_000_000:
-                logger().warn("Image file sent is too large")
-            if b"data_end\n" not in pieces[-1]:
-                logger().warn("No transmission end signal recieved before timeout.")
             try:
                 image = pickle.loads(data[:-9])
             except:
                 logger().warn("No image recieved from TCP server.")
+
+                if total > 20_000_000:
+                    logger().warn("Image file sent is too large")
+                elif b"data_end\n" not in pieces[-1]:
+                    logger().warn("No transmission end signal recieved before timeout.")
+                else:
+                    logger().warn("Image array corrupted, or incorrect format.")
+
                 image = None
 
         except TimeoutError:
