@@ -9,16 +9,12 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Vector3
 from ort_interfaces.msg import CameraRotation
 
-<<<<<<< HEAD
 from mission_control.stream.stream_client import ServerClient, StreamClient
 from mission_control.config.mappings import AXES, BUTTONS
-||||||| b37d5eb
 from mission_control.stream.stream_client import StreamClient
 from mission_control.config.mappings import AXES, BUTTONS
-=======
 from mission_control.stream.stream_client import StreamClient
 from mission_control.config.mappings import  BUTTONS
->>>>>>> main
 from mission_control.config.network import COMM_PORT, PORT_MAIN_BASE, PI_IP
 
 from qreader import QReader
