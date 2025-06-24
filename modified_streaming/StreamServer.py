@@ -73,7 +73,9 @@ class StreamServer:
 
         if self.data.decode("utf-8") == "QR\n" and not self.cam is None:
             # Stop and Still configure
+            self.cam.stop_recording()
             image = self.cam.switch_mode_and_capture_array(self.capture_config, "main")
+            self.cam.start_recording(self.encoder, FileOutput(self.stream))
             data = image.dumps() + b"data_end\n"
         elif self.cam is None:
             self.output.write("ERROR", "No camera to return image is detected.", True)
@@ -105,8 +107,9 @@ class StreamServer:
 
             # for now use default config
             self.capture_config = self.cam.create_still_configuration()
+            self.video_config = self.cam.create_video_configuration(config)
 
-            self.cam.configure(self.cam.create_video_configuration(config))
+            self.cam.configure(self.video_config)
             self.output.write("INFO", f"Applied config to camera {self.model}", True)
 
     def start_stream(self, connection_ip, connection_port, multicast=True):
