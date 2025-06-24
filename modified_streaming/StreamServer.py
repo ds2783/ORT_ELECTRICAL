@@ -1,5 +1,8 @@
 import socket
 import time
+import sys
+from PIL import Image
+from io import BytesIO
 
 from picamera2 import Picamera2
 from picamera2.encoders import H264Encoder, Encoder
@@ -74,14 +77,20 @@ class StreamServer:
         if self.data.decode("utf-8") == "QR\n" and not self.cam is None:
             # Stop and Still configure
             self.cam.stop_recording()
-            image = self.cam.switch_mode_and_capture_array(
+            array = self.cam.switch_mode_and_capture_array(
                 self.capture_config, "main", delay=5
             )
+
+            image = Image.fromarray(array)
+            bytes = BytesIO()
+            image.save(bytes, "PNG")
+
+            data = bytes.read() + b"data_end\n"
             self.output.write(
-                    "INFO", "Image size in bytes: " + str(image.nbytes), True
+                    "INFO", "Image size in bytes: " + str(sys.getsizeof(data)), True
                     )
             self.cam.start_recording(self.encoder, FileOutput(self.stream))
-            data = image.dumps() + b"data_end\n"
+            
         elif self.cam is None:
             self.output.write("ERROR", "No camera to return image is detected.", True)
             data = b"data_end\n"

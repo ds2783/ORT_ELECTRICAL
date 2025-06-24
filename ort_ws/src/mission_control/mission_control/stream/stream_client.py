@@ -1,3 +1,5 @@
+from io import BytesIO
+from PIL import Image
 import subprocess
 import cv2
 import numpy as np
@@ -41,7 +43,10 @@ class ServerClient:
             data = b"".join(pieces)
 
             try:
-                image = pickle.loads(data[:-9])
+                bytes = BytesIO(data[:-9])
+                img = Image.open(bytes)
+                image = np.array(img)
+
             except:
                 logger().warn("No image recieved from TCP server.")
 
