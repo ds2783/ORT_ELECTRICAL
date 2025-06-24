@@ -378,9 +378,6 @@ class VL53L4CX:
         clock_pll &= 0x3FF
         clock_pll = int(1.065 * clock_pll)
 
-        if clock_pll == 0:
-            return 100
-
         return int(reg_val / clock_pll)
 
     @inter_measurement.setter
