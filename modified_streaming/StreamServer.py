@@ -61,7 +61,7 @@ class StreamServer:
         timeout = time.monotonic()
         now = time.monotonic()
 
-        while b"\n" not in pieces[-1] and total < 10_000 and (now - timeout) > 5.0:
+        while b"\n" not in pieces[-1] and total < 10_000 and (now - timeout) < 5.0:
             now = time.monotonic()
             pieces.append(client_socket.recv(2000))
             total += len(pieces[-1])
