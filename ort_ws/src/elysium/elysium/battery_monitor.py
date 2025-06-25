@@ -101,6 +101,9 @@ class BatteryMonitorNode(Node):
 
     @soc.setter
     def soc(self, value):
+        if value < 0:  # bound the soc to 0
+            value = 0
+
         self._soc = value
         self.current_capacity = self._soc * self.total_capacity
 
