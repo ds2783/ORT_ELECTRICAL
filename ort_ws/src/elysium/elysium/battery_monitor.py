@@ -5,6 +5,7 @@ import rclpy.utilities
 
 import pandas
 import pandas.errors
+import numpy as np
 from pathlib import Path
 import busio, board
 
@@ -101,9 +102,6 @@ class BatteryMonitorNode(Node):
 
     @soc.setter
     def soc(self, value):
-        if value < 0:  # bound the soc to 0
-            value = 0
-
         self._soc = value
         self.current_capacity = self._soc * self.total_capacity
 
@@ -252,14 +250,19 @@ class BatteryMonitorNode(Node):
         :return: soc
         :rtype: float
         """
-        
-        for i in range(1, OCV_ARRAY_SIZE):
-            compare_value = self.lookup_table.iloc[i, 3]
-            if ocv > compare_value:
-                return self.lookup_table.iloc[i, 0]
- 
 
+        voltage = self.lookup_table["ocv"]
+        soc = self.lookup_table["soc"]
+       
+        try:
+            lookupval = np.interp(ocv, voltage, soc)
+            if lookupval is None:
+                self.get_logger().warn("Interpolation returned None, invalid Interpolation.")
+            else:
+                return float(lookupval)
 
+        except:
+            self.get_logger().warn("Could not interpolate lookup OCV.")
 
     def _shutdown(self, grace_time=1):
         """Shutdown the system due to critically low voltages. The grace time is measured in minutes.
