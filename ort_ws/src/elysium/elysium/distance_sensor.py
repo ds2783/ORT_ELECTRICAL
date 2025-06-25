@@ -75,8 +75,7 @@ class DistanceNode(Node):
             self.get_logger().warn(
                 f"[{self.get_name()}] OSError, probably due to the TOF updating internal addresses. Error: {err}"
             )
-
-            self.sleep_node.create_rate(5).sleep()
+            _wait(0.2)
 
         if self.sensor.data_ready:
             self.sensor.clear_interrupt()
@@ -85,6 +84,10 @@ class DistanceNode(Node):
         msg.data = self.sensor.distance
         self.distance_publisher.publish(msg)
 
+    def _wait(self, seconds):
+        rate = self.sleep_node.create_rate(1/seconds)
+        rate.sleep()
+        self.sleep_node.destroy_rate(rate)
 
 def __patched_init(self, chip=None):
     gpio.pins.lgpio.LGPIOFactory.__bases__[0].__init__(self)

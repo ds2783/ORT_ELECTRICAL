@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
 
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Bool, Float32
@@ -9,30 +8,15 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Vector3
 from ort_interfaces.msg import CameraRotation
 
-from mission_control.stream.stream_client import StreamClient
-from mission_control.config.mappings import  BUTTONS
-from mission_control.config.network import COMM_PORT, PORT_MAIN_BASE, PI_IP
+from mission_control.stream.stream_client import ServerClient
+from mission_control.config.mappings import BUTTONS
+from mission_control.config.network import COMM_PORT, PORT_MAIN_BASE, PI_IP, tofQoS
 
 from qreader import QReader
 from multiprocessing.connection import Client
 
 import numpy as np
 import csv
-
-# Should probably create systemwide config for both mission_control and elysium
-tofQoS = QoSProfile(
-    history=HistoryPolicy.KEEP_LAST,  # Keep only up to the last 10 samples
-    depth=10,  # Queue size of 10
-    reliability=ReliabilityPolicy.BEST_EFFORT,  # attempt to deliver samples,
-    # but lose them if the network isn't robust
-    durability=DurabilityPolicy.VOLATILE,  # no attempt to persist samples.
-    # deadline=
-    # lifespan=
-    # liveliness=
-    # liveliness_lease_duration=
-    # refer to QoS ros documentation and
-    # QoSProfile source code for kwargs and what they do
-)
 
 
 class BaseNode(Node):
@@ -42,9 +26,7 @@ class BaseNode(Node):
         # ---
 
         # STATE OBJECTS
-        self.main_cam = StreamClient(
-            "Stereo", PI_IP, "udp", PORT_MAIN_BASE, 640, 480, stereo=False
-        )
+        self.main_cam = ServerClient(PI_IP, PORT_MAIN_BASE)
         self.qreader_ = QReader()
 
         self.address = ("localhost", port)
@@ -124,8 +106,9 @@ class BaseNode(Node):
         if trigger_pressed and not self.qr_button_:
             # CAPTURE QR-CODE
             self.qr_button_ = True
-            image = self.main_cam.fetch_frame()
+            image = self.main_cam.get_picture(self.get_logger)
             if image is not None:
+                self.get_logger().info("Image sent for processing.")
                 qreader_out = self.qreader_.detect_and_decode(image=image)
 
                 self.last_qr = str(qreader_out)
@@ -161,6 +144,10 @@ class BaseNode(Node):
                     )
                     writer.writeheader()
                     writer.writerow(self.scanned_codes)
+
+                self.get_logger().info("Image processed and CSV updated.")
+            else:
+                self.get_logger().warn("No image available for processing.")
 
         elif not trigger_pressed and self.qr_button_:
             # Ensure only one capture even per press
@@ -254,3 +241,4 @@ def main(args=None):
     rclpy.spin(base)
     # Cleanup After Shutdown
     rclpy.try_shutdown()
+
