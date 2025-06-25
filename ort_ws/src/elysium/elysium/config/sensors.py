@@ -1,3 +1,6 @@
+from elysium.battery_monitor import OCV_ARRAY_SIZE
+
+
 DISTANCE_SENSOR_REFRESH_PERIOD = 0.2
 BMS_REFRESH_PERIOD = 1
 BMS_DELTA_T = 0.02
@@ -8,7 +11,7 @@ BMS_SAVE_PATH = "/ros/battery_save.txt"
 BMS_LOOKUP_TABLE_PATH = "/ros/ocv_lookup.csv"
 IMU_SENSOR_PERIOD = 0.2
 OPTICAL_CALIBRATION = 1
-
+OCV_ARRAY_SIZE = 1000
 
 from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
 
