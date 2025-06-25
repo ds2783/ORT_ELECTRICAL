@@ -347,7 +347,7 @@ def main(args=None):
     node_name = "battery_monitor"
 
     _bms_node = BatteryMonitorNode(
-        node_name, topic_name, i2c_addr=0x44, recording_lookup=True
+        node_name, topic_name, i2c_addr=0x44, recording_lookup=False
     )
 
     try:
