@@ -210,9 +210,7 @@ class BatteryMonitorNode(Node):
             self._create_blank_file(path)
 
         self.lookup_table.to_csv(path, sep=",", na_rep=0)
-        self.prev_soc = self.soc
-
-        self._save_battery_file()
+        
 
     def _create_blank_file(self, path):
         """Create a blank file.
@@ -311,15 +309,18 @@ class BatteryMonitorNode(Node):
             self.current_capacity - charge_expended * (1 / 3.6)
         ) / self.total_capacity  # This is a conversion from couloumbs to mAh (1 mAh = 3.6C, hence 1C = 1/3.6 mAh)
 
-        if (
-            self.lookup and abs(self.prev_soc - self.soc) >= 0.001
-        ):  # if the soc value has dropped 0.1%, save the data to the lookup table.
-            self.lookup_table.iloc[int(round(OCV_ARRAY_SIZE * self.soc)), 1:] = [
-                charge_expended,
-                self.measured_current,
-                self.measured_voltage,
-            ]
-            self._save_lookup_data()
+        if (abs(self.prev_soc - self.soc) >= 0.001
+        ):  # if the soc value has dropped 0.1%, check and save the data to the lookup table.
+            self.prev_soc = self.soc
+            self._save_battery_file()
+
+            if self.lookup:
+                self.lookup_table.iloc[int(round(OCV_ARRAY_SIZE * self.soc)), 1:] = [
+                    charge_expended,
+                    self.measured_current,
+                    self.measured_voltage,
+                ]
+                self._save_lookup_data()
 
         if (
             self.measured_voltage <= BMS_UNDERVOLT_WARN and self.measured_voltage > 1
