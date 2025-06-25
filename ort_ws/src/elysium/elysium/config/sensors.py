@@ -1,6 +1,3 @@
-from elysium.battery_monitor import OCV_ARRAY_SIZE
-
-
 DISTANCE_SENSOR_REFRESH_PERIOD = 0.2
 BMS_REFRESH_PERIOD = 1
 BMS_DELTA_T = 0.02
