@@ -1,5 +1,4 @@
 import rclpy
-import rclpy.executors
 from rclpy.node import Node
 from rclpy.action.server import ActionServer
 from rclpy.qos import qos_profile_sensor_data
@@ -10,9 +9,6 @@ from ort_interfaces.action import CalibrateImu
 
 import numpy as np
 from pyrr import quaternion
-from threading import Thread
-
-from elysium.hardware.icm20948 import ICM20948
 
 from elysium.config.sensors import IMU_SENSOR_PERIOD
 
@@ -23,7 +19,7 @@ from adafruit_bno08x import BNO_REPORT_ACCELEROMETER, BNO_REPORT_ROTATION_VECTOR
 
 
 class Imu(Node):
-    def __init__(self, sleep_node, i2c_addr=0x4B):
+    def __init__(self, i2c_addr=0x4B):
         super().__init__("imu_sensor")
         i2c = busio.I2C(board.SCL, board.SDA)
         self.bno = BNO08X_I2C(i2c, address=i2c_addr)
@@ -47,8 +43,6 @@ class Imu(Node):
         # -----------------
 
         # Variables ---------
-        self.sleep_node = sleep_node
-        self.rate = self.sleep_node.create_rate(1)
 
         self.q = np.array([0.0, 0.0, 0.0, 1.0])  # Initial quaternion
         self.inverse = np.array([0.0, 0.0, 0.0, 1.0])
@@ -94,24 +88,15 @@ class Imu(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-
-    sleep_node = rclpy.create_node("control_sleep_node")
-    imu = Imu(sleep_node=sleep_node)
-
-    executor = rclpy.executors.MultiThreadedExecutor()
-    executor.add_node(imu)
-    executor.add_node(sleep_node)
-
-    executor_thread = Thread(target=executor.spin, daemon=True)
-    executor_thread.start()
+    imu = Imu()
 
     # Cleanup After Shutdown
     try:
         while rclpy.utilities.ok():
-            pass
+            rclpy.spin(imu)
     except KeyboardInterrupt:
         imu.get_logger().warn(f"KeyboardInterrupt triggered.")
     finally:
         imu.destroy_node()
         rclpy.utilities.try_shutdown()  
-        executor_thread.join()
+
