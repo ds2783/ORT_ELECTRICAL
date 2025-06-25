@@ -50,7 +50,7 @@ class TelepresenceOperations(Node):
 
         self.z_increment = 0
         self.x_increment = 0
-        
+
         # Setting Zeroed rotation for camera servos
         self.cam_angles_ = rotation2D(90.0, 90.0)
 
@@ -89,7 +89,8 @@ class TelepresenceOperations(Node):
 
         # publish camera rotation, note 90degrees servo rotation -> 0degrees around the axis
         camera_rotation_msg = CameraRotation(
-            z_axis=float(self.cam_angles_.z_axis - 90), x_axis=float(self.cam_angles_.x_axis - 90)
+            z_axis=float(self.cam_angles_.z_axis - 90),
+            x_axis=float(self.cam_angles_.x_axis - 90),
         )
         self.cam_angles__pub_.publish(camera_rotation_msg)
 
@@ -132,16 +133,23 @@ class TelepresenceOperations(Node):
         # to fix or not to fix
         # that is the question
 
-        self.cam_angles_.z_axis = self.bound_180(float(-self.z_increment + self.cam_angles_.z_axis))
-        self.cam_angles_.x_axis = self.bound_180(float(-self.x_increment + self.cam_angles_.x_axis))
+        self.cam_angles_.z_axis = self.bound_180(
+            float(self.z_increment + self.cam_angles_.z_axis)
+        )
+        self.cam_angles_.x_axis = self.bound_180(
+            float(self.x_increment + self.cam_angles_.x_axis)
+        )
         # POSITIONAL
         self.kit_.servo[CAMERA_SERVO_Z].angle = self.cam_angles_.z_axis
         # CONTIOUS
         self.kit_.servo[CAMERA_SERVO_X].angle = self.cam_angles_.x_axis
 
-        # self.get_logger().info(
-        #     "z_axis: " + str(self.cam_angles_.z_axis) + " x_axis: " + str(self.cam_angles_.x_axis)
-        # )
+        self.get_logger().info(
+            "z_axis: "
+            + str(self.cam_angles_.z_axis)
+            + " x_axis: "
+            + str(self.cam_angles_.x_axis)
+        )
 
 
 def main(args=None):
@@ -154,5 +162,4 @@ def main(args=None):
         node.get_logger().warn(f"KeyboardInterrupt triggered.")
     finally:
         node.destroy_node()
-        rclpy.utilities.try_shutdown()  
-
+        rclpy.utilities.try_shutdown()
