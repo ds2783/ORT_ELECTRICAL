@@ -238,9 +238,13 @@ class BatteryMonitorNode(Node):
 
         if tmp_voltage / experimental_ocv_value >= deviation:
             self.get_logger().warn(
-                f"[{self.get_name()}] The expected OCV value is more than 10% different to what we are expecting of the battery voltage, rebasing SOC."
+                f"[{self.get_name()}] The expected OCV value is more than 10% different to what we are expecting of the battery voltage, \
+                      rebasing SOC."
             )
+            tmp = self.soc
             self.soc = self._find_ocv_soc(tmp_voltage)
+
+            self.get_logger().warn(f"Old value: {tmp}, new value: {self.soc}, measured voltage: {tmp_voltage}")
 
     def _find_ocv_soc(self, ocv: float):
         """Find the SOC from the OCV table voltages, needs to iterate through the table from the smallest value upwards.
