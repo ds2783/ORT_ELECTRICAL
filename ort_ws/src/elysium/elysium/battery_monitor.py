@@ -254,10 +254,12 @@ class BatteryMonitorNode(Node):
         """
         
         for i in range(1, OCV_ARRAY_SIZE):
-            first = self.lookup_table.iloc[i, 3]
-            second = self.lookup_table.iloc[i + 1, 3]
-            if first > ocv and second < ocv:
-                return (first + second) / 2
+            compare_value = self.lookup_table.iloc[i, 3]
+            if ocv > compare_value:
+                return self.lookup_table.iloc[i, 0]
+ 
+
+
 
     def _shutdown(self, grace_time=1):
         """Shutdown the system due to critically low voltages. The grace time is measured in minutes.
