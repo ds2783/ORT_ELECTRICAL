@@ -169,7 +169,6 @@ class BatteryMonitorNode(Node):
         if Path(path).is_file():
             try:
                 dataframe = pandas.read_csv(path, sep=",", index_col=0, dtype=pandas.Float64Dtype())
-                self.get_logger().info(f"DATAFRAME: {dataframe}")
             except pandas.errors.EmptyDataError:
                 pass
 
@@ -210,7 +209,7 @@ class BatteryMonitorNode(Node):
             self._create_blank_file(path)
 
         self.lookup_table.to_csv(path, sep=",", na_rep=0)
-        
+
 
     def _create_blank_file(self, path):
         """Create a blank file.
