@@ -58,7 +58,7 @@ class BatteryMonitorNode(Node):
         i2c = busio.I2C(board.SCL, board.SDA)
         self.bms = _ina260.INA260(i2c, address=i2c_addr)
 
-        self.bms.averaging_count = _ina260.AveragingCount.COUNT_4   # averaging out on 4 samples
+        self.bms.averaging_count = _ina260.AveragingCount.COUNT_16  # averaging out on 16 samples
         self.bms.voltage_conversion_time = _ina260.ConversionTime.TIME_2_116_ms
 
         self.delta_t = self.create_timer(BMS_DELTA_T, self.get_data)
@@ -73,7 +73,7 @@ class BatteryMonitorNode(Node):
         # discharges while tracking the current integrated SOC. 
 
         # 4.2 max per cell voltage on a 12.6V 1.5A full charge.
-        # ~2.2 min per cell voltage before the RPi5 succumbed to low voltage. 
+        # ~8.8/3 min per cell voltage before the RPi5 succumbed to low voltage. 
         
         self.lookup = recording_lookup  # if this should be a full-discharge lookup table calibration run.
  
