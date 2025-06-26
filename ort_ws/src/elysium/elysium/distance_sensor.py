@@ -75,7 +75,7 @@ class DistanceNode(Node):
             self.get_logger().warn(
                 f"[{self.get_name()}] OSError, probably due to the TOF updating internal addresses. Error: {err}"
             )
-            _wait(0.2)
+            self._wait(0.2)
 
         if self.sensor.data_ready:
             self.sensor.clear_interrupt()
