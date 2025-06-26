@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
+import rclpy.utilities
 
-from sensor_msgs.msg import Joy
+from sensor_msgs.msg import BatteryState, Joy
 from std_msgs.msg import Bool, Float32
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Vector3
-from ort_interfaces.msg import CameraRotation
+from ort_interfaces.msg import CameraRotation, BatteryInfo
 
 from mission_control.stream.stream_client import ServerClient
 from mission_control.config.mappings import BUTTONS
@@ -65,6 +66,10 @@ class BaseNode(Node):
             CameraRotation, "/elysium/cam_angles", self.camCB_, 10
         )
 
+        self.battery_sub_ = self.create_subscription(
+            BatteryInfo, "/battery_monitor", self.battCB_, qos_profile=tofQoS
+        )
+
         # Publishers
         self.connection_pub_ = self.create_publisher(Bool, "ping", 10)
         # ----------------------------
@@ -80,9 +85,12 @@ class BaseNode(Node):
         self.cam_rotation = CameraRotation(z_axis=0.0, x_axis=0.0)
 
         # Elysium Position
-        self.elysium_x = 0
-        self.elysium_y = 0
-        self.elysium_z = 0
+        self.elysium_x = 0.0
+        self.elysium_y = 0.0
+        self.elysium_z = 0.0
+
+        # Elysium Battery
+        self.soc = 0.0
 
         # Recover Old Codes
         self.scanned_codes = {}
@@ -208,6 +216,10 @@ class BaseNode(Node):
         self.sendComms("cam_y:" + f"{self.cam_rotation.z_axis:2f}")
         self.sendComms("cam_p:" + f"{self.cam_rotation.x_axis:2f}")
 
+    def battCB_(self, msg: BatteryInfo):
+        self.soc = msg.soc
+        self.sendComms("soc--:" + f"{self.soc:2f}")
+
     def sendComms(self, msg):
         if self.try_again == False:
             try:
@@ -237,8 +249,9 @@ def main(args=None):
 
     # has to be initialised this way round!
     base = BaseNode(COMM_PORT)
-
-    rclpy.spin(base)
+    try:
+        rclpy.spin(base)
     # Cleanup After Shutdown
-    rclpy.try_shutdown()
-
+    except:
+        base.destroy_node()
+        rclpy.utilities.try_shutdown()

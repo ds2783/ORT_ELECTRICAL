@@ -1,12 +1,12 @@
 # MapSize is 100x100meters
-import numpy as np
 import OpenGL.GL as gl
-
 from ctypes import c_void_p
+
+import numpy as np
+from qreader import QReader
 
 from mission_control.gui.data_structures import shaders, EBO, VBO, VAO
 
-from qreader import QReader
 
 vertexSource = """
 #version 330 core
@@ -54,7 +54,7 @@ void main()
 
 
 class Dashboard:
-    def __init__(self, cams):
+    def __init__(self, cams, logger):
         self.cam_texID = gl.glGenTextures(2)
 
         self.cams = cams
@@ -80,7 +80,7 @@ class Dashboard:
             # fix to use the ROS2 logger
             print("ERROR, incorrect dimensions of Cams passed.")
         self.generateEBO()
-
+        
     def generateVAO(self, coords):
         formatted_coords = np.array(coords, dtype=np.float32)
         vbo = VBO.staticArrayVBO(formatted_coords)
@@ -110,7 +110,7 @@ class Dashboard:
     def draw_main(self):
         for index, cam in enumerate(self.cams):
             temp = cam.fetch_frame()
-            # Disabled for TRR
+            # Optimise this shit
             if index == 0 and False:
                 image = self.draw_boxes(temp, (255, 255, 0))
             else:

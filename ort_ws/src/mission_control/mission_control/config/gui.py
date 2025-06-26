@@ -1,4 +1,5 @@
 WIDTH = 1200
 HEIGHT = 900
+# WIDTH 2000, HEIGHT 1340 - Animus Laptop Competition Day
 CALLIBRATE_IMU = 0
 ZERO_AXIS = 1

@@ -1,6 +1,5 @@
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
 import rclpy.utilities
 
 import pandas
@@ -19,17 +18,10 @@ from elysium.config.sensors import (
     BMS_SAVE_PATH,
     BMS_LOOKUP_TABLE_PATH,
     OCV_ARRAY_SIZE,
+    tofQoS,
 )
 from ort_interfaces.msg import BatteryInfo
 
-
-QoS = QoSProfile(
-    history=HistoryPolicy.KEEP_LAST,  # Keep only up to the last 10 samples
-    depth=10,  # Queue size of 10
-    reliability=ReliabilityPolicy.BEST_EFFORT,  # attempt to deliver samples,
-    # but lose them if the network isn't robust
-    durability=DurabilityPolicy.VOLATILE,  # no attempt to persist samples.
-)
 
 # BMS CAPACITY LOGIC DERIVED HERE: https://www.youtube.com/watch?v=rOwcxFErcvQ
 
@@ -57,7 +49,7 @@ class BatteryMonitorNode(Node):
 
         msg_type = BatteryInfo
         self.bms_publisher = self.create_publisher(
-            msg_type=msg_type, topic=topic_name, qos_profile=QoS
+            msg_type=msg_type, topic=topic_name, qos_profile=tofQoS
         )
         self.publisher_timer = self.create_timer(BMS_REFRESH_PERIOD, self.send_data)
 
