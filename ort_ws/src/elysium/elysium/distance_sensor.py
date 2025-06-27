@@ -99,8 +99,6 @@ def main(args=None):
     topic_name_2 = "/distance_sensor/optical_flow"
     node_name_2 = "distance_node_optical_flow"
 
-    sleep_node = rclpy.create_node("dist_sleep_node")
-
     i2c_bus = smbus.SMBus("/dev/i2c-1")
 
     gpio.pins.lgpio.LGPIOFactory.__init__ = __patched_init   # setup the XSHUT pin and the green LED pins. 
@@ -115,8 +113,8 @@ def main(args=None):
         both_on = True  # The i2c addresses have already been set properly and are returning correct model id 
         # values. 
     except OSError as err:
-        sleep_node.get_logger().info(f"""[distance node] the i2c addresses of the sleep node have not been set yet, 
-                                      (to be expected after a reboot) and will be set accordingly.""")
+        # sleep_node.get_logger().info(f"""[distance node] the i2c addresses of the sleep node have not been set yet, 
+        #                               (to be expected after a reboot) and will be set accordingly.""")
         both_on = False  # They are not both set to the correct addresses, and have to be set accordingly. 
 
     if both_on:
@@ -145,8 +143,7 @@ def main(args=None):
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(_distance_sensor_1)
     executor.add_node(_distance_sensor_2)
-    executor.add_node(sleep_node)
-
+    
     executor_thread = threading.Thread(target=executor.spin, daemon=True)
     executor_thread.start()
 
