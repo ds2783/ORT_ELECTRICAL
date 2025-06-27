@@ -136,6 +136,7 @@ class TelepresenceOperations(Node):
                     goal_handle.succeed()
                     result = Calibrate.Result()
                     result.result = 0
+                    self.allow_teleop = True
                     return result
             
             
@@ -143,13 +144,14 @@ class TelepresenceOperations(Node):
             
             if (resp1 == CODE_TERMINATE or resp2 == CODE_TERMINATE):
                 self.get_logger().warn("No calibration has been completed.")
-                goal_handle.fail()
+                goal_handle.succeed()
                 result = Calibrate.Result()
                 result.result = 1
+                self.allow_teleop = True
                 return result
 
         else:
-            goal_handle.fail()
+            goal_handle.succeed()
             result = Calibrate.Result()
             result.result = 2
             self.get_logger().warn(
@@ -273,12 +275,12 @@ class TelepresenceOperations(Node):
         # CONTIOUS
         self.kit_.servo[CAMERA_SERVO_X].angle = self.cam_angles_.x_axis
 
-        self.get_logger().info(
-            "z_axis: "
-            + str(self.cam_angles_.z_axis)
-            + " x_axis: "
-            + str(self.cam_angles_.x_axis)
-        )
+        # self.get_logger().info(
+        #     "z_axis: "
+        #     + str(self.cam_angles_.z_axis)
+        #     + " x_axis: "
+        #     + str(self.cam_angles_.x_axis)
+        # )
 
 
 def float_to_rad(val):
