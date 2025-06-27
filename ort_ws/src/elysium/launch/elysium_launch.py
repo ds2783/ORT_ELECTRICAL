@@ -38,18 +38,17 @@ def generate_launch_description():
                 package="elysium",
                 executable="geo_locator",
                 namespace="",
-                ),    
+            ),    
             Node(
                 package="elysium",
                 executable="battery_monitor",
                 namespace="",
-                ),     
+            ),     
             Node(
                 package="elysium",
                 executable="gps",
                 namespace="",
-                )    
-            )    
+            ),   
                      
         ]
     )
