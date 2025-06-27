@@ -232,7 +232,6 @@ class BatteryMonitorNode(Node):
         for i in range(10):
             test_samples.append(self.bms.voltage)
             
-
         tmp_voltage = sum(test_samples)/len(test_samples)
 
         self.get_logger().info(f"LOGGED BATTERY VOLTAGES: {test_samples}, AVG: {tmp_voltage}")
