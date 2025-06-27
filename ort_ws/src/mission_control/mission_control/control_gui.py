@@ -187,7 +187,7 @@ class GUI(Node):
 
         offset = self.width / 40
         imgui.set_window_size_named(
-            "Dashboard", self.width - offset, self.height * 3 / 4
+            "Dashboard", self.width/2 - offset, self.height * 3 / 4
         )
 
     def shutdown(self):

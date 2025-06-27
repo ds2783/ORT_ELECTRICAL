@@ -57,7 +57,6 @@ nav-msgs==5.3.6
 networkx==3.5
 numpy==2.2.6
 opencv-python==4.11.0.86
-glsvg==0.4
 # Editable install with no version control (optical-flow-ros==0.0.0)
 -e /ros/ORT_ELECTRICAL/ort_ws/build/optical_flow_ros
 ort_interfaces==0.0.0
