@@ -130,17 +130,16 @@ def main(args=None):
 
     if both_on:
         _distance_sensor_1 = DistanceNode(
-        node_name_1, topic_name_1, i2c_bus, i2c_addr=0x2A, sleep_node=sleep_node
+        node_name_1, topic_name_1, i2c_bus, i2c_addr=0x2A
         )
         _distance_sensor_2 = DistanceNode(
-        node_name_2, topic_name_2, i2c_bus, i2c_addr=0x29, sleep_node=sleep_node
+        node_name_2, topic_name_2, i2c_bus, i2c_addr=0x29 
         )
     else:
         xshut_pin.off()
 
         _distance_sensor_1 = DistanceNode(
-            node_name_1, topic_name_1, i2c_bus, i2c_addr=0x29, sleep_node=sleep_node
-        )
+            node_name_1, topic_name_1, i2c_bus, i2c_addr=0x29)
         # we accept the cursed for what it is. It's 100ms each on startup only anyway it's fineeee.
         time.sleep(0.3) 
 
@@ -149,8 +148,8 @@ def main(args=None):
         xshut_pin.on()
 
         _distance_sensor_2 = DistanceNode(
-            node_name_2, topic_name_2, i2c_bus, i2c_addr=0x29, sleep_node=sleep_node
-        )
+            node_name_2, topic_name_2, i2c_bus, i2c_addr=0x29
+            )
 
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(_distance_sensor_1)
