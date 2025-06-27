@@ -139,7 +139,6 @@ class TelepresenceOperations(Node):
                     self.allow_teleop = True
                     return result
             
-            
             self.sleep_node.destroy_rate(rate)
             
             if (resp1 == CODE_TERMINATE or resp2 == CODE_TERMINATE):
@@ -208,6 +207,7 @@ class TelepresenceOperations(Node):
             self.drive()
 
     def teleopCB_(self, msg: Joy):
+        self.allow_teleop = True
         if self.allow_teleop:
             # DRIVE -----------------
             self.target.linear = msg.axes[AXES["TRIGGERRIGHT"]]
