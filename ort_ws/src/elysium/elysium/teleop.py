@@ -2,6 +2,7 @@ import rclpy
 from rclpy.node import Node
 import rclpy.utilities
 import rclpy.executors
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.action.server import ActionServer
 
 from std_msgs.msg import Bool, Float32
@@ -21,7 +22,7 @@ from elysium.config.controls import (
 import time
 from threading import Thread
 from functools import partial
-from numpy import pi
+from numpy import info, pi
 from dataclasses import dataclass
 from adafruit_servokit import ServoKit
 
@@ -46,6 +47,8 @@ class TelepresenceOperations(Node):
         super().__init__("teleop")
 
         self.allow_teleop = True
+        node_cb_group = MutuallyExclusiveCallbackGroup()
+        service_cb_group = MutuallyExclusiveCallbackGroup()
 
         # Topics
         self.controller_commands_sub_ = self.create_subscription(
@@ -64,11 +67,17 @@ class TelepresenceOperations(Node):
         )
 
         # Services
-        self.optical_client_ = self.create_client(Vec2Pos, "/elysium/srv/position")
+        self.optical_client_ = self.create_client(
+            Vec2Pos, "/elysium/srv/position", callback_group=service_cb_group
+        )
 
         # Action Server
         self.calibrate_optical_ = ActionServer(
-            self, Calibrate, "/optical_flow/calibrate", self.actionServerCB_
+            self,
+            Calibrate,
+            "/optical_flow/calibrate",
+            self.actionServerCB_,
+            callback_group=node_cb_group,
         )
 
         # State -
@@ -83,8 +92,8 @@ class TelepresenceOperations(Node):
 
         # Connection timer
         self.last_connection_ = time.time_ns()
-        self.connection_timer_ = self.create_timer(0.4, self.shutdownCB_)
-        self.driver_timer_ = self.create_timer(0.02, self.driveCB_)
+        self.connection_timer_ = self.create_timer(0.4, self.shutdownCB_, node_cb_group)
+        self.driver_timer_ = self.create_timer(0.02, self.driveCB_, node_cb_group)
 
         # Servo Offset control
         self.offset_ = OFFSET
@@ -93,6 +102,9 @@ class TelepresenceOperations(Node):
         # Optical Calibration
         self.opt_x = 0
         self.opt_y = 0
+
+        sleep_seconds = 2
+        self.rate = self.create_rate(sleep_seconds)
 
     def actionServerCB_(self, goal_handle):
         self.get_logger().info("Executing goal.")
@@ -115,8 +127,7 @@ class TelepresenceOperations(Node):
                 self.target.linear = 1
                 self.drive()
 
-                sleep_seconds = 2
-                time.sleep(sleep_seconds)
+                self.rate.sleep()
 
                 self.target.linear = 0
                 self.drive()
@@ -124,23 +135,25 @@ class TelepresenceOperations(Node):
                 self.request_optical_pos()
 
                 resp2 = self.wait_for_response()
-                self.get_logger().info("x: " + str(self.opt_x) + " y: " + str(self.opt_y))
+                self.get_logger().info(
+                    "x: " + str(self.opt_x) + " y: " + str(self.opt_y)
+                )
                 self.get_logger().info("Second response is: " + str(resp2))
                 if resp2 == CODE_CONTINUE:
                     x2, y2 = self.opt_x, self.opt_y
 
                     y_dist = y2 - y1
-                    
-                    factor = Float32(data=1/y_dist)
+
+                    factor = Float32(data=1 / y_dist)
                     self.optical_factor_pub_.publish(factor)
-                    
+
                     goal_handle.succeed()
                     result = Calibrate.Result()
                     result.result = 0
                     self.allow_teleop = True
                     return result
-            
-            if (resp1 == CODE_TERMINATE or resp2 == CODE_TERMINATE):
+
+            if resp1 == CODE_TERMINATE or resp2 == CODE_TERMINATE:
                 self.get_logger().warn("No calibration has been completed.")
                 goal_handle.succeed()
                 result = Calibrate.Result()
@@ -292,9 +305,10 @@ def main(args=None):
     rclpy.init(args=args)
 
     tele = TelepresenceOperations()
-
+    executor = rclpy.executors.MultiThreadedExecutor()
+    executor.add_node(tele)
     try:
-        rclpy.spin(tele)
+        executor.spin()
     except KeyboardInterrupt:
         tele.get_logger().warn(f"KeyboardInterrupt triggered.")
     finally:
