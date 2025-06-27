@@ -16,7 +16,7 @@ from elysium.config.sensors import DISTANCE_SENSOR_REFRESH_PERIOD, tofQoS
 
 
 class DistanceNode(Node):
-    def __init__(self, node_name, topic_name, i2c_bus, i2c_addr, sleep_node):
+    def __init__(self, node_name, topic_name, i2c_bus, i2c_addr):
         """Time of Flight Node using the VL53L4CX. 
         Measures the distance off the sensor and returns the value.
 
@@ -26,13 +26,9 @@ class DistanceNode(Node):
         :type topic_name: str
         :param i2c_addr: i2c address on the i2c bus
         :type i2c_addr: hexadecimal, optional
-        :param sleep_node: sleep node for Rates
-        :type sleep_node: Node
         """
 
         super().__init__(node_name)
-
-        self.sleep_node = sleep_node
 
         msg_type = Float32
         self.distance_publisher = self.create_publisher(
@@ -86,11 +82,6 @@ class DistanceNode(Node):
         msg = Float32()
         msg.data = self.data
         self.distance_publisher.publish(msg)
-
-    def _wait(self, seconds):
-        rate = self.sleep_node.create_rate(1/seconds)
-        rate.sleep()
-        self.sleep_node.destroy_rate(rate)
 
 def __patched_init(self, chip=None):
     gpio.pins.lgpio.LGPIOFactory.__bases__[0].__init__(self)
