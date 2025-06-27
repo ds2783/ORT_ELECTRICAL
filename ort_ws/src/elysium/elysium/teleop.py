@@ -42,10 +42,9 @@ class rotation2D:
 
 
 class TelepresenceOperations(Node):
-    def __init__(self, sleep_node):
+    def __init__(self):
         super().__init__("teleop")
 
-        self.sleep_node = sleep_node
         self.allow_teleop = True
 
         # Topics
@@ -106,10 +105,6 @@ class TelepresenceOperations(Node):
             self.drive()
             self.request_optical_pos()
 
-            # create rate in (frequency)
-            sleep_seconds = 2
-            rate = self.sleep_node.create_rate(1 / sleep_seconds)
-
             resp1 = self.wait_for_response()
             resp2 = None
             self.get_logger().info("x: " + str(self.opt_x) + " y: " + str(self.opt_y))
@@ -120,7 +115,8 @@ class TelepresenceOperations(Node):
                 self.target.linear = 1
                 self.drive()
 
-                rate.sleep()
+                sleep_seconds = 2
+                time.sleep(sleep_seconds)
 
                 self.target.linear = 0
                 self.drive()
@@ -143,8 +139,6 @@ class TelepresenceOperations(Node):
                     result.result = 0
                     self.allow_teleop = True
                     return result
-            
-            self.sleep_node.destroy_rate(rate)
             
             if (resp1 == CODE_TERMINATE or resp2 == CODE_TERMINATE):
                 self.get_logger().warn("No calibration has been completed.")
@@ -214,7 +208,6 @@ class TelepresenceOperations(Node):
             self.drive()
 
     def teleopCB_(self, msg: Joy):
-        self.allow_teleop = True
         if self.allow_teleop:
             self.get_logger().info("Attempting to Drive.")
             # DRIVE -----------------
@@ -298,24 +291,12 @@ def float_to_rad(val):
 def main(args=None):
     rclpy.init(args=args)
 
-    sleep_node = rclpy.create_node("teleop_sleep_node")
-
-    tele = TelepresenceOperations(sleep_node)
-
-    executor = rclpy.executors.MultiThreadedExecutor()
-    executor.add_node(tele)
-    executor.add_node(sleep_node)
-
-    executor_thread = Thread(target=executor.spin, daemon=True)
-    executor_thread.start()
+    tele = TelepresenceOperations()
 
     try:
-        while rclpy.utilities.ok():
-            pass
+        rclpy.spin(tele)
     except KeyboardInterrupt:
         tele.get_logger().warn(f"KeyboardInterrupt triggered.")
     finally:
-        sleep_node.destroy_node()
         tele.destroy_node()
         rclpy.utilities.try_shutdown()
-        executor_thread.join()
