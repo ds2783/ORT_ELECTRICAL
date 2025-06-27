@@ -45,7 +45,7 @@ class DistanceNode(Node):
         )
 
         poll_period = DISTANCE_SENSOR_POLL_PERIOD = 0.1
-        self.poll_data = self.create_timer(poll_period, self._poll_data, auto_start=False)
+        self.poll_data = self.create_timer(poll_period, self._poll_data, autostart=False)
 
         self.data = .0
 
