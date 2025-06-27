@@ -28,6 +28,7 @@ Disclaimer: not responsible for whatever happens to the machine this code runs o
 import struct
 import ctypes
 import smbus3 as smbus
+import time
 
 __version__ = "0.0.0+auto.0"
 __repo__ = "https://github.com/adafruit/Adafruit_CircuitPython_VL53L4CX.git"
@@ -404,7 +405,7 @@ class VL53L4CX:
             if self.data_ready:
                 timed_out = False
                 break
-            self._wait()
+            time.sleep(0.001)
         if timed_out:
             raise TimeoutError("Time out waiting for data ready.")
 
@@ -437,7 +438,7 @@ class VL53L4CX:
         for _ in range(1000):
             if self._read_register(_VL53L4CX_FIRMWARE_SYSTEM_STATUS)[0] == 0x03:
                 return
-            self._wait()
+            time.sleep(0.001)
         raise TimeoutError("Time out waiting for system boot.")
 
     def _start_vhv(self):
@@ -445,7 +446,7 @@ class VL53L4CX:
         for _ in range(1000):
             if self.data_ready:
                 return
-            self._wait()
+            time.sleep(0.001)
         raise TimeoutError("Time out starting VHV.")
 
     def _write_register(self, register, data, debug=False):
@@ -498,15 +499,15 @@ class VL53L4CX:
 
         return bytes(buf)
 
-    def _wait(self, freq=1e3):
-        """Waits for 1/frequency seconds.
+    # def _wait(self, freq=1e3):
+    #     """Waits for 1/frequency seconds.
 
-        :param freq: frequency, defaults to 1e3
-        :type freq: int, optional
-        """
-        rate = self.sleep_node.create_rate(freq)
-        rate.sleep()
-        self.sleep_node.destroy_rate(rate)
+    #     :param freq: frequency, defaults to 1e3
+    #     :type freq: int, optional
+    #     """
+    #     rate = self.sleep_node.create_rate(freq)
+    #     rate.sleep()
+    #     self.sleep_node.destroy_rate(rate)
 
     def set_address(self, new_address):
         """
