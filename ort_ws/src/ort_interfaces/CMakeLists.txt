@@ -33,6 +33,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/CameraRotation.msg"
   "msg/BatteryInfo.msg"
   "srv/SetMode.srv"
+  "srv/Vec2Pos.srv"
   "action/Calibrate.action"
 )
 

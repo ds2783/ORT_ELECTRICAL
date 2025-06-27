@@ -15,3 +15,6 @@ uint8 FAIL_UNRECOGNISED_OP_CODE=2
 # Returns diagnostic information about change of state.
 uint8 diagnostic
 
+---
+# seconds until completion
+uint32 seconds

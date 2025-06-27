@@ -16,8 +16,13 @@ from geometry_msgs.msg import (
 )
 from std_msgs.msg import Float32, Header
 from ort_interfaces.msg import OpticalFlow, GPSStatus
+from ort_interfaces.srv import Vec2Pos
 
-from elysium.config.sensors import DISTANCE_SENSOR_REFRESH_PERIOD, OPTICAL_CALIBRATION, tofQoS
+from elysium.config.sensors import (
+    DISTANCE_SENSOR_REFRESH_PERIOD,
+    OPTICAL_CALIBRATION,
+    tofQoS,
+)
 from elysium.config.network import DIAGNOSTIC_PERIOD
 
 import numpy as np
@@ -25,6 +30,7 @@ from scipy.spatial.transform import Rotation as R
 
 
 # TO DO: Integrate GPS, OpticalFlow and IMU to all use the same coordinate system.
+
 
 class GeoLocator(Node):
     def __init__(self, node_name):
@@ -53,6 +59,10 @@ class GeoLocator(Node):
         self.gps_sub_ = self.create_subscription(
             GPSStatus, "/elysium/gps_data", self.gpsCB_, 10
         )
+
+        self.optical_calibration_ = self.create_subscription(
+            Float32, "/elysium/ofs_calibration", self.ofs_calCB_, 10
+        )
         # ----------------------
 
         # Publishers -----------
@@ -63,6 +73,10 @@ class GeoLocator(Node):
 
         self.gps_dist_pub_ = self.create_publisher(Float32, "/elysium/gps_dist", 10)
         # ----------------------
+
+        self.position_service_ = self.create_service(
+            Vec2Pos, "/elysium/srv/position", self.positionCB_
+        )
 
         # Timers ----------------
         self.create_timer(DIAGNOSTIC_PERIOD, self.publish_)
@@ -86,6 +100,12 @@ class GeoLocator(Node):
         # avoids division by zero error
         self.dt = 0.0001
 
+        # Calibration
+        self.calibration_y_move = 0
+        self.calibration_x_move = 0
+
+        self.optical_factor = OPTICAL_CALIBRATION
+
         # GPS Vars
         self.start_lat = None
         self.start_lon = None
@@ -103,6 +123,14 @@ class GeoLocator(Node):
             self.get_logger().info(
                 f"Captured start coordinates: {self.start_lat}, {self.start_lon}"
             )
+
+    def positionCB_(self, req, response):
+        response.x = self.calibration_x_move
+        response.y = self.calibration_y_move
+        return response
+
+    def ofs_calCB_(self, msg: Float32):
+        self.optical_factor = msg.data
 
     def tofCB_(self, msg: Float32):
         self.z_prev_ = self.z_pos
@@ -123,14 +151,16 @@ class GeoLocator(Node):
 
         self.euler_angles = Vector3(x=yaw, y=pitch, z=roll)
 
+        self.calibration_y_move += msg.dy
+        self.calibration_x_move += msg.dx
         # rotate the dx and dy increments around the yaw
         increment = np.array([[msg.dx], [msg.dy]])
         rotated_increment = rotate_vector2D(yaw, increment)
 
         self.dx = rotated_increment[0][0]
         self.dy = rotated_increment[1][0]
-        self.x_pos += self.dx * OPTICAL_CALIBRATION
-        self.y_pos += self.dy * OPTICAL_CALIBRATION
+        self.x_pos += self.dx * self.optical_factor
+        self.y_pos += self.dy * self.optical_factor
 
         self.dt = msg.dt
 
@@ -146,7 +176,7 @@ class GeoLocator(Node):
         ):
             self.lat = msg.latitude
             self.long = msg.longitude
-            
+
             if not self.start_lon or not self.start_lat:
                 self.start_lat = self.lat
                 self.start_lon = self.long
@@ -229,4 +259,4 @@ def main(args=None):
         location_node.get_logger().warn(f"KeyboardInterrupt triggered.")
     finally:
         location_node.destroy_node()
-        rclpy.utilities.try_shutdown()  
+        rclpy.utilities.try_shutdown()

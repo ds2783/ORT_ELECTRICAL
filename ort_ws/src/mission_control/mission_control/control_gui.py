@@ -20,11 +20,11 @@ from mission_control.config.network import (
     tofQoS,
 )
 from mission_control.config.gui import (
-    CALLIBRATE_IMU,
+    CALIBRATE_IMU,
     WIDTH,
     HEIGHT,
-    CALLIBRATE_IMU,
     ZERO_AXIS,
+    CALIBRATE_OFS,
 )
 
 from threading import Thread
@@ -86,7 +86,7 @@ class GuiClient(Node):
 
         goal_msg.code = code
 
-        if code == CALIRATE_OFS:
+        if code == CALIBRATE_OFS:
             self._send_goal_future = self.optical_calibration_client_.send_goal_async(
                 goal_msg, feedback_callback=self.feedback_callback
             )
@@ -332,14 +332,18 @@ class GUI(Node):
         imgui.begin_child("Calibration Client", self.width / 6, self.height / 20, True)
         if imgui.button("Calibrate Rover"):
             imgui.open_popup("Calibration Client")
+
         if imgui.begin_popup_modal("Calibration Client").opened:
             imgui.text("Feedback: " + str(self.client_.current_step))
 
             if imgui.button("Calibrate IMU"):
-                self.client_.send_goal(CALLIBRATE_IMU)
+                self.client_.send_goal(CALIBRATE_IMU)
 
             elif imgui.button("Zero Axis"):
                 self.client_.send_goal(ZERO_AXIS)
+
+            elif imgui.button("Calibrate OFS"):
+                self.client_.send_goal(CALIBRATE_OFS)
 
             elif imgui.button("Close Client"):
                 imgui.close_current_popup()

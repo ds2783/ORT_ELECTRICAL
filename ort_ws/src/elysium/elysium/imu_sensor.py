@@ -34,7 +34,7 @@ class Imu(Node):
 
         # Action Server ------
         self.calibrate_action_server_ = ActionServer(
-            self, CalibrateImu, "/imu/calibrate", self.actionServerCB_
+            self, Calibrate, "/imu/calibrate", self.actionServerCB_
         )
         # --------------------
 
@@ -81,6 +81,7 @@ class Imu(Node):
             return result
 
         goal_handle.fail()
+        result = Calibrate.Result()
         result.result = 2
         return result
 

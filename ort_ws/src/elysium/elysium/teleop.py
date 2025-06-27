@@ -4,9 +4,10 @@ import rclpy.utilities
 import rclpy.executors
 from rclpy.action.server import ActionServer
 
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, Float32
 from sensor_msgs.msg import Joy
 from ort_interfaces.msg import CameraRotation
+from ort_interfaces.srv import Vec2Pos
 from ort_interfaces.action import Calibrate
 
 from elysium.config.mappings import AXES
@@ -19,9 +20,13 @@ from elysium.config.controls import (
 
 import time
 from threading import Thread
+from functools import partial
 from numpy import pi
 from dataclasses import dataclass
 from adafruit_servokit import ServoKit
+
+CODE_TERMINATE = 0
+CODE_CONTINUE = 1
 
 
 @dataclass
@@ -39,23 +44,33 @@ class rotation2D:
 class TelepresenceOperations(Node):
     def __init__(self, sleep_node):
         super().__init__("teleop")
-       
+
         self.sleep_node = sleep_node
-        self.rate = self.sleep_node.create_rate(1)
-        
-        # Topics 
+        self.allow_teleop = True
+
+        # Topics
         self.controller_commands_sub_ = self.create_subscription(
             Joy, "joy", self.teleopCB_, 10
         )
         self.base_ping_sub_ = self.create_subscription(
             Bool, "ping", self.confirmConnectionCB_, 10
         )
+
+        # Publishers
         self.cam_angles__pub_ = self.create_publisher(
             CameraRotation, "/elysium/cam_angles", 10
         )
+        self.optical_factor_pub_ = self.create_publisher(
+            Float32, "/elysium/ofs_calibration", 10
+        )
+
+        # Services
+        self.optical_client_ = self.create_client(Vec2Pos, "/elysium/srv/position")
 
         # Action Server
-        self.calibrate_optical_ = ActionServer(self, Calibrate, "/optical_flow/calibrate", self.actionServerCB_) 
+        self.calibrate_optical_ = ActionServer(
+            self, Calibrate, "/optical_flow/calibrate", self.actionServerCB_
+        )
 
         # State -
         self.state = twist(0, 0)
@@ -67,54 +82,149 @@ class TelepresenceOperations(Node):
         # Setting Zeroed rotation for camera servos
         self.cam_angles_ = rotation2D(90.0, 90.0)
 
-        # Conncection timer
+        # Connection timer
         self.last_connection_ = time.time_ns()
         self.connection_timer_ = self.create_timer(0.4, self.shutdownCB_)
         self.driver_timer_ = self.create_timer(0.02, self.driveCB_)
 
         # Servo Offset control
         self.offset_ = OFFSET
-
         self.kit_ = ServoKit(channels=16)
+
+        # Optical Calibration
+        self.opt_x = 0
+        self.opt_y = 0
 
     def actionServerCB_(self, goal_handle):
         self.get_logger().info("Executing goal.")
-       
+
         CALIBRATE_OFS = 2
         if goal_handle.request == CALIBRATE_OFS:
-            pass
+            self.allow_teleop = False
+            self.target.linear = 0
+            self.target.rotation = 0
+            self.drive()
+            self.request_optical_pos()
+
+            # create rate in (frequency)
+            sleep_seconds = 2
+            rate = self.sleep_node.create_rate(1 / sleep_seconds)
+
+            resp1 = self.wait_for_response()
+            resp2 = None
+            if resp1 == CODE_CONTINUE:
+                x1, y1 = self.opt_x, self.opt_y
+                self.target.linear = 1
+                self.drive()
+
+                rate.sleep()
+
+                self.target.linear = 0
+                self.drive()
+
+                self.request_optical_pos()
+
+                resp2 = self.wait_for_response()
+                if resp2 == CODE_CONTINUE:
+                    x2, y2 = self.opt_x, self.opt_y
+
+                    y_dist = y2 - y1
+                    
+                    factor = Float32(data=1/y_dist)
+                    self.optical_factor_pub_.publish(factor)
+                    
+                    goal_handle.succeed()
+                    result = Calibrate.Result()
+                    result.result = 0
+                    return result
+            
+            
+            self.sleep_node.destroy_rate(rate)
+            
+            if (resp1 == CODE_TERMINATE or resp2 == CODE_TERMINATE):
+                self.get_logger().warn("No calibration has been completed.")
+                goal_handle.fail()
+                result = Calibrate.Result()
+                result.result = 1
+                return result
+
         else:
-            pass
+            goal_handle.fail()
+            result = Calibrate.Result()
+            result.result = 2
+            self.get_logger().warn(
+                "Unrecognised OP-Code recieved from Calibration Client."
+            )
+            return result
+
+    def wait_for_response(self):
+        self.request_complete = False
+        self.server_unavailable = False
+        now = time.monotonic()
+        timeout = time.monotonic()
+        while not self.request_complete and (now - timeout) > 5.0:
+            now = time.monotonic()
+            if self.server_unavailable:
+                return CODE_TERMINATE
+
+        if self.request_complete:
+            return CODE_CONTINUE
+        else:
+            return CODE_TERMINATE
+
+    def request_optical_pos(self):
+        timeout = time.monotonic()
+        now = time.monotonic()
+        while not self.optical_client_.wait_for_service(1.0) and (now - timeout) > 2.0:
+            now = time.monotonic()
+            self.get_logger().warn("Waiting for connection to position service.")
+
+        if (now - timeout) < 2.0:
+            request = Vec2Pos.Request()
+            request.request = True
+            future = self.optical_client_.call_async(request)
+            future.add_done_callback(partial(self.complete_requestCB_))
+        else:
+            self.get_logger().warn(
+                "Optical position calibration service is unavailable."
+            )
+            self.server_unavailable = True
+
+    def complete_requestCB_(self, future):
+        response = future.result()
+        self.opt_x = response.x
+        self.opt_y = response.y
+        self.request_complete = True
 
     def confirmConnectionCB_(self, msg: Bool):
         self.last_connection_ = time.time_ns()
 
     def shutdownCB_(self):
-        if time.time_ns() > self.last_connection_ + 5e8:
+        if time.time_ns() > self.last_connection_ + 5e8 and self.allow_teleop:
             self.target.linear = 0
             self.target.rotation = 0
-
             self.drive()
 
     def teleopCB_(self, msg: Joy):
-        # DRIVE -----------------
-        self.target.linear = msg.axes[AXES["TRIGGERRIGHT"]]
-        self.target.linear -= msg.axes[AXES["TRIGGERLEFT"]]
-        # goes from 1 to -1, therefore difference between the two
-        # should be halved.
-        self.target.linear /= 2
-        self.target.rotation = -msg.axes[AXES["LEFTX"]]
-        # ------------------------
+        if self.allow_teleop:
+            # DRIVE -----------------
+            self.target.linear = msg.axes[AXES["TRIGGERRIGHT"]]
+            self.target.linear -= msg.axes[AXES["TRIGGERLEFT"]]
+            # goes from 1 to -1, therefore difference between the two
+            # should be halved.
+            self.target.linear /= 2
+            self.target.rotation = -msg.axes[AXES["LEFTX"]]
+            # ------------------------
 
-        self.z_increment = msg.axes[AXES["RIGHTX"]] * CAMERA_SENSITIVITY
-        self.x_increment = msg.axes[AXES["RIGHTY"]] * CAMERA_SENSITIVITY
+            self.z_increment = msg.axes[AXES["RIGHTX"]] * CAMERA_SENSITIVITY
+            self.x_increment = msg.axes[AXES["RIGHTY"]] * CAMERA_SENSITIVITY
 
-        # publish camera rotation, note 90degrees servo rotation -> 0degrees around the axis
-        camera_rotation_msg = CameraRotation(
-            z_axis=float(float_to_rad(self.cam_angles_.z_axis - 90)),
-            x_axis=float(float_to_rad(self.cam_angles_.x_axis - 90)),
-        )
-        self.cam_angles__pub_.publish(camera_rotation_msg)
+            # publish camera rotation, note 90degrees servo rotation -> 0degrees around the axis
+            camera_rotation_msg = CameraRotation(
+                z_axis=float(float_to_rad(self.cam_angles_.z_axis - 90)),
+                x_axis=float(float_to_rad(self.cam_angles_.x_axis - 90)),
+            )
+            self.cam_angles__pub_.publish(camera_rotation_msg)
 
     def driveCB_(self):
         self.drive()
@@ -178,10 +288,10 @@ def float_to_rad(val):
 def main(args=None):
     rclpy.init(args=args)
 
-    sleep_node = rclpy.create_node("teleop_sleep_node")  
-    
+    sleep_node = rclpy.create_node("teleop_sleep_node")
+
     tele = TelepresenceOperations(sleep_node)
-   
+
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(tele)
     executor.add_node(sleep_node)
@@ -189,4 +299,13 @@ def main(args=None):
     executor_thread = Thread(target=executor.spin, daemon=True)
     executor_thread.start()
 
-    rclpy.shutdown()
+    try:
+        while rclpy.utilities.ok():
+            pass
+    except KeyboardInterrupt:
+        tele.get_logger().warn(f"KeyboardInterrupt triggered.")
+    finally:
+        sleep_node.destroy_node()
+        tele.destroy_node()
+        rclpy.utilities.try_shutdown()
+        executor_thread.join()
