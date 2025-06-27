@@ -119,8 +119,8 @@ def main(args=None):
     green_led.on()  # indicate ROS2 is running. 
 
     try:
-        test_tof_1 = tof.VL53L4CX(i2c_bus, i2c_address=0x29, sleep_node=sleep_node)
-        test_tof_2 = tof.VL53L4CX(i2c_bus, i2c_address=0x2A, sleep_node=sleep_node)
+        test_tof_1 = tof.VL53L4CX(i2c_bus, i2c_address=0x29)
+        test_tof_2 = tof.VL53L4CX(i2c_bus, i2c_address=0x2A)
         both_on = True  # The i2c addresses have already been set properly and are returning correct model id 
         # values. 
     except OSError as err:
