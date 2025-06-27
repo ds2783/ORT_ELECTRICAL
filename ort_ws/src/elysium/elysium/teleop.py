@@ -141,12 +141,12 @@ class TelepresenceOperations(Node):
         # CONTIOUS
         self.kit_.servo[CAMERA_SERVO_X].angle = self.cam_angles_.x_axis
 
-        # self.get_logger().info(
-        #     "z_axis: "
-        #     + str(self.cam_angles_.z_axis)
-        #     + " x_axis: "
-        #     + str(self.cam_angles_.x_axis)
-        # )
+        self.get_logger().info(
+            "z_axis: "
+            + str(self.cam_angles_.z_axis)
+            + " x_axis: "
+            + str(self.cam_angles_.x_axis)
+        )
 
 
 def main(args=None):
