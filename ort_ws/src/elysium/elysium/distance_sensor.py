@@ -123,8 +123,8 @@ def main(args=None):
         both_on = True  # The i2c addresses have already been set properly and are returning correct model id 
         # values. 
     except OSError as err:
-        sleep_node.get_logger().info(f"[distance node] the i2c addresses of the sleep node have not been set yet, \
-                                      (to be expected after a reboot) and will be set accordingly.")
+        sleep_node.get_logger().info(f"""[distance node] the i2c addresses of the sleep node have not been set yet, 
+                                      (to be expected after a reboot) and will be set accordingly.""")
         both_on = False  # They are not both set to the correct addresses, and have to be set accordingly. 
 
     if both_on:
