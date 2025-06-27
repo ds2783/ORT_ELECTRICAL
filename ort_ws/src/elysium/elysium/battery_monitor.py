@@ -29,6 +29,20 @@ from ort_interfaces.msg import BatteryInfo
 # SUBSEQUENT TBRO MEMBERS SHOULD LOOK AT KALMANN FILTERS FOR A MORE OPTIMISED ESTIMATION OF THE SOC OF THE BATTERY.
 
 
+class RollingAverage:
+    def __init__(self, length):
+        self.length = length
+        self._queue = []
+
+    def add(self, value):
+        self._queue.append(value)
+        if len(self._queue) > self.length:
+            self._queue.pop(0)
+        
+    def average(self):
+        return sum(self._queue)/self.length
+    
+
 class BatteryMonitorNode(Node):
     def __init__(self, node_name, topic_name, i2c_addr=0x40, recording_lookup=False):
         """Battery Monitoring Node using the INA260.
@@ -63,10 +77,11 @@ class BatteryMonitorNode(Node):
 
         self.delta_t = self.create_timer(BMS_DELTA_T, self.get_data)
 
-        self.measured_voltage, self.measured_current, self.measured_power = (
+        self.measured_voltage, self.measured_current, self.measured_power, self.est_time_remaining = (
             0.0,
             0.0,
             0.0,
+            0.0
         )
 
         self.current_capacity = BMS_BATTERY_CAPACITY
@@ -294,10 +309,12 @@ class BatteryMonitorNode(Node):
 
         charge_expended = (
             self.measured_current * 1e-3 * BMS_DELTA_T
-        )  # mA * 0.0001 * dt, giving charge in coulombs.
+        * (1 / 3.6))  # mA * 0.0001 * dt, giving charge in mAh.
         self.soc = (
-            self.current_capacity - charge_expended * (1 / 3.6)
-        ) / self.total_capacity  # This is a conversion from couloumbs to mAh (1 mAh = 3.6C, hence 1C = 1/3.6 mAh)
+            self.current_capacity - charge_expended 
+        ) / self.total_capacity 
+
+        self.est_time_remaining = self.current_capacity / charge_expended  # estimated time remaining in seconds.
 
         if (abs(self.prev_soc - self.soc) >= 0.001
         ):  # if the soc value has dropped 0.1%, check and save the data to the lookup table.
@@ -344,6 +361,7 @@ class BatteryMonitorNode(Node):
         msg.soc = float(self.soc)
         msg.remaining_capacity = float(self.current_capacity)
         msg.total_capacity = float(self.total_capacity)
+        msg.estimated_time_remaining = float(self.est_time_remaining)
 
         self.bms_publisher.publish(msg)
 

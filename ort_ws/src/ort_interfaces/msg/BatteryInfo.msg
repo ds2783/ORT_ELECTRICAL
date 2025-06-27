@@ -4,3 +4,4 @@ float32 power
 float32 soc
 float32 remaining_capacity
 float32 total_capacity
+float32 estimated_time_remaining
