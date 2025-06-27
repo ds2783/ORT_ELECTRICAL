@@ -52,7 +52,7 @@ class DistanceNode(Node):
         try:
             self.bus = i2c_bus
             self.i2c_addr = i2c_addr
-            self.sensor = tof.VL53L4CX(self.bus, self.i2c_addr, sleep_node=sleep_node)
+            self.sensor = tof.VL53L4CX(self.bus, self.i2c_addr)
 
         except Exception as err:
             self.get_logger().error(
