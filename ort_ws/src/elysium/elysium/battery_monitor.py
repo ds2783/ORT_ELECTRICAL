@@ -40,7 +40,7 @@ class RollingAverage:
             self._queue.pop(0)
         
     def average(self):
-        return sum(self._queue)/self.length
+        return sum(self._queue)/len(self._queue)
     
 
 class BatteryMonitorNode(Node):
@@ -83,6 +83,8 @@ class BatteryMonitorNode(Node):
             0.0,
             0.0
         )
+
+        self.rolling_avg = RollingAverage(length=5)
 
         self.current_capacity = BMS_BATTERY_CAPACITY
         self.total_capacity = BMS_BATTERY_CAPACITY
@@ -314,7 +316,8 @@ class BatteryMonitorNode(Node):
             self.current_capacity - charge_expended 
         ) / self.total_capacity 
 
-        self.est_time_remaining = self.current_capacity / charge_expended  # estimated time remaining in seconds.
+        self.rolling_avg.add(charge_expended)
+        self.est_time_remaining = self.current_capacity / (self.rolling_avg.average() / BMS_DELTA_T)  # estimated time remaining in seconds.
 
         if (abs(self.prev_soc - self.soc) >= 0.001
         ):  # if the soc value has dropped 0.1%, check and save the data to the lookup table.
