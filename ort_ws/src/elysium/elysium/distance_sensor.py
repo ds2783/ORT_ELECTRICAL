@@ -62,7 +62,7 @@ class DistanceNode(Node):
 
             self.sensor = tof_fallback.VL53L4CD(address=i2c_addr)
 
-        self._poll_data.reset()
+        self.poll_data.reset()
 
     def test_i2c(self):
         try:
