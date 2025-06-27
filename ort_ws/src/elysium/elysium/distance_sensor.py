@@ -8,13 +8,15 @@ import lgpio
 from gpiozero.pins.lgpio import LGPIOFactory
 
 from std_msgs.msg import Float32
+
+import time
 import threading
 import elysium.hardware.adafruit_vl53l4cx as tof
 from elysium.config.sensors import DISTANCE_SENSOR_REFRESH_PERIOD, tofQoS
 
 
 class DistanceNode(Node):
-    def __init__(self, node_name, topic_name, i2c_addr, sleep_node):
+    def __init__(self, node_name, topic_name, i2c_bus, i2c_addr, sleep_node):
         """Time of Flight Node using the VL53L4CX. 
         Measures the distance off the sensor and returns the value.
 
@@ -43,7 +45,7 @@ class DistanceNode(Node):
         )
 
         try:
-            self.bus = smbus.SMBus("/dev/i2c-1")
+            self.bus = i2c_bus
             self.i2c_addr = i2c_addr
             self.sensor = tof.VL53L4CX(self.bus, self.i2c_addr, sleep_node=sleep_node)
 
@@ -105,32 +107,49 @@ def main(args=None):
     topic_name_2 = "/distance_sensor/optical_flow"
     node_name_2 = "distance_node_optical_flow"
 
-    sleep_node = rclpy.create_node("dis_sleep_node")
+    sleep_node = rclpy.create_node("dist_sleep_node")
 
-    gpio.pins.lgpio.LGPIOFactory.__init__ = __patched_init
+    i2c_bus = smbus.SMBus("/dev/i2c-1")
+
+    gpio.pins.lgpio.LGPIOFactory.__init__ = __patched_init   # setup the XSHUT pin and the green LED pins. 
     factory = LGPIOFactory()
-
-    xshut_pin = gpio.DigitalOutputDevice(17, pin_factory=factory)
-    xshut_pin.off()
-
+    xshut_pin = gpio.DigitalOutputDevice(17, initial_value=True, pin_factory=factory)  # active low to turn off ToF
     green_led = gpio.DigitalOutputDevice(26, pin_factory=factory)
-    green_led.on()
+    green_led.on()  # indicate ROS2 is running. 
 
-    import time
+    try:
+        test_tof_1 = tof.VL53L4CX(i2c_bus, i2c_address=0x29, sleep_node=sleep_node)
+        test_tof_2 = tof.VL53L4CX(i2c_bus, i2c_address=0x2A, sleep_node=sleep_node)
+        both_on = True  # The i2c addresses have already been set properly and are returning correct model id 
+        # values. 
+    except OSError as err:
+        sleep_node.get_logger().info(f"[distance node] the i2c addresses of the sleep node have not been set yet, \
+                                      (to be expected after a reboot) and will be set accordingly.")
+        both_on = False  # They are not both set to the correct addresses, and have to be set accordingly. 
 
-    _distance_sensor_1 = DistanceNode(
-        node_name_1, topic_name_1, i2c_addr=0x29, sleep_node=sleep_node
-    )
-    # we accept the cursed for what it is. It's 100ms each on startup only anyway it's fineeee.
-    time.sleep(0.3) 
+    if both_on:
+        _distance_sensor_1 = DistanceNode(
+        node_name_1, topic_name_1, i2c_bus, i2c_addr=0x2A, sleep_node=sleep_node
+        )
+        _distance_sensor_2 = DistanceNode(
+        node_name_2, topic_name_2, i2c_bus, i2c_addr=0x29, sleep_node=sleep_node
+        )
+    else:
+        xshut_pin.off()
 
-    _distance_sensor_1.sensor.set_address(0x2A)
-    time.sleep(0.3)
-    xshut_pin.on()
+        _distance_sensor_1 = DistanceNode(
+            node_name_1, topic_name_1, i2c_bus, i2c_addr=0x29, sleep_node=sleep_node
+        )
+        # we accept the cursed for what it is. It's 100ms each on startup only anyway it's fineeee.
+        time.sleep(0.3) 
 
-    _distance_sensor_2 = DistanceNode(
-        node_name_2, topic_name_2, i2c_addr=0x29, sleep_node=sleep_node
-    )
+        _distance_sensor_1.sensor.set_address(0x2A)
+        time.sleep(0.3)
+        xshut_pin.on()
+
+        _distance_sensor_2 = DistanceNode(
+            node_name_2, topic_name_2, i2c_bus, i2c_addr=0x29, sleep_node=sleep_node
+        )
 
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(_distance_sensor_1)
