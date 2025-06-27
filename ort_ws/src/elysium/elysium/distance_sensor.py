@@ -44,7 +44,10 @@ class DistanceNode(Node):
             refresh_period, self.get_data, autostart=True
         )
 
-        # self.poll_data = self.create_
+        poll_period = DISTANCE_SENSOR_POLL_PERIOD = 0.1
+        self.poll_data = self.create_timer(poll_period, self._poll_data, auto_start=False)
+
+        self.data = .0
 
         try:
             self.bus = i2c_bus
@@ -59,6 +62,7 @@ class DistanceNode(Node):
 
             self.sensor = tof_fallback.VL53L4CD(address=i2c_addr)
 
+
     def test_i2c(self):
         try:
             tmp = self.sensor._read_register(0x010F, 2)
@@ -67,28 +71,10 @@ class DistanceNode(Node):
                 f"Node {self.get_name()} I2C address is not accessible."
             )
 
-    # def start_ranging(self):
-    #     """Starts ranging operation."""
-    #     # start ranging depending inter-measurement setting
-    #     if self.sensor.inter_measurement == 0:
-    #         # continuous mode
-    #         self.sensor._write_register(tof._VL53L4CX_SYSTEM_START, b"\x21")
-    #     else:
-    #         # autonomous mode
-    #         self.sensor._write_register(tof._VL53L4CX_SYSTEM_START, b"\x40")
-
-    #     # wait for data ready
-    #     timed_out = True
-    #     for _ in range(1000):
-    #         if self.data_ready:
-    #             timed_out = False
-    #             break
-    #         self._wait()
-    #     if timed_out:
-    #         raise TimeoutError("Time out waiting for data ready.")
-
-    #     self.clear_interrupt()
-    #     self._ranging = True
+    def _poll_data(self):
+        if self.sensor.data_ready:
+            self.data = self.sensor.distance
+            self.sensor.clear_interrupt()
 
     def get_data(self):
         """Get the data from the ToF sensors.
@@ -96,19 +82,8 @@ class DistanceNode(Node):
         
         self.sensor.start_sensor()  # we can't have the TOF sensor initialise fully in the __init__ because the sleep node hasn't spun up yet (it uses rate.sleep)
 
-        try:
-            self.sensor.start_ranging()  # so we start the sensor here proper. It only actually inits once
-        except OSError as err:
-            self.get_logger().warn(
-                f"[{self.get_name()}] OSError, probably due to the TOF updating internal addresses. Error: {err}"
-            )
-            self._wait(0.2)
-
-        if self.sensor.data_ready:
-            self.sensor.clear_interrupt()
-
         msg = Float32()
-        msg.data = self.sensor.distance
+        msg.data = self.data
         self.distance_publisher.publish(msg)
 
     def _wait(self, seconds):

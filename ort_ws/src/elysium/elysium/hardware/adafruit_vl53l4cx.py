@@ -107,6 +107,7 @@ class VL53L4CX:
     def start_sensor(self):
         if not self.ros_start:
             self._sensor_init()
+            self.start_ranging()
             self.ros_start = True
 
     def _sensor_init(self):
