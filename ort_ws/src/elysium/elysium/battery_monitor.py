@@ -227,16 +227,9 @@ class BatteryMonitorNode(Node):
         """
 
         experimental_ocv_value = self.lookup_table.iloc[int(round(OCV_ARRAY_SIZE * self.soc)), 3]
+        tmp_voltage = self.bms.voltage
 
-        test_samples = []
-        for i in range(10):
-            test_samples.append(self.bms.voltage)
-            
-        tmp_voltage = sum(test_samples)/len(test_samples)
-
-        self.get_logger().info(f"LOGGED BATTERY VOLTAGES: {test_samples}, AVG: {tmp_voltage}")
-
-        if tmp_voltage / experimental_ocv_value >= deviation:
+        if (abs(experimental_ocv_value - tmp_voltage) / experimental_ocv_value) >= deviation:
             self.get_logger().warn(
                 f"[{self.get_name()}] The expected OCV value is more than 10% different to what we are expecting of the battery voltage, \
                       rebasing SOC."
