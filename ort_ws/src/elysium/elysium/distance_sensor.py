@@ -40,14 +40,16 @@ class DistanceNode(Node):
         )
 
         refresh_period = DISTANCE_SENSOR_REFRESH_PERIOD  # 200ms data retrieval rate
-        self.poll_data = self.create_timer(
+        self.send_data = self.create_timer(
             refresh_period, self.get_data, autostart=True
         )
+
+        # self.poll_data = self.create_
 
         try:
             self.bus = i2c_bus
             self.i2c_addr = i2c_addr
-            self.sensor = tof.VL53L4CX(self.bus, self.i2c_addr, sleep_node=sleep_node)
+            self.sensor = tof.VL53L4CX(self.bus, self.i2c_addr, sleep_node=self)
 
         except Exception:
             self.get_logger().error(
@@ -64,6 +66,29 @@ class DistanceNode(Node):
             self.get_logger().error(
                 f"Node {self.get_name()} I2C address is not accessible."
             )
+
+    # def start_ranging(self):
+    #     """Starts ranging operation."""
+    #     # start ranging depending inter-measurement setting
+    #     if self.sensor.inter_measurement == 0:
+    #         # continuous mode
+    #         self.sensor._write_register(tof._VL53L4CX_SYSTEM_START, b"\x21")
+    #     else:
+    #         # autonomous mode
+    #         self.sensor._write_register(tof._VL53L4CX_SYSTEM_START, b"\x40")
+
+    #     # wait for data ready
+    #     timed_out = True
+    #     for _ in range(1000):
+    #         if self.data_ready:
+    #             timed_out = False
+    #             break
+    #         self._wait()
+    #     if timed_out:
+    #         raise TimeoutError("Time out waiting for data ready.")
+
+    #     self.clear_interrupt()
+    #     self._ranging = True
 
     def get_data(self):
         """Get the data from the ToF sensors.
