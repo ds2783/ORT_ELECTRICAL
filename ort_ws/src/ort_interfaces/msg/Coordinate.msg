@@ -1,2 +1,0 @@
-string latitude
-string longitude

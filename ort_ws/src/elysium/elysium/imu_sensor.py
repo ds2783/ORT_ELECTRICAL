@@ -2,6 +2,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.action.server import ActionServer
 from rclpy.qos import qos_profile_sensor_data
+import rclpy.utilities
 
 from geometry_msgs.msg import Quaternion
 from ort_interfaces.action import Calibrate
@@ -42,6 +43,7 @@ class Imu(Node):
         # -----------------
 
         # Variables ---------
+
         self.q = np.array([0.0, 0.0, 0.0, 1.0])  # Initial quaternion
         self.inverse = np.array([0.0, 0.0, 0.0, 1.0])
 
@@ -85,9 +87,15 @@ class Imu(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-
     imu = Imu()
-    rclpy.spin(imu)
 
     # Cleanup After Shutdown
-    rclpy.shutdown()
+    try:
+        while rclpy.utilities.ok():
+            rclpy.spin(imu)
+    except KeyboardInterrupt:
+        imu.get_logger().warn(f"KeyboardInterrupt triggered.")
+    finally:
+        imu.destroy_node()
+        rclpy.utilities.try_shutdown()  
+

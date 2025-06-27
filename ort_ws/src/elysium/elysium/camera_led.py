@@ -1,7 +1,7 @@
 import rclpy
-import rclpy.logging
 from rclpy.node import Node 
 from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
+import rclpy.utilities
 
 import gpiozero as gpio
 import lgpio
@@ -28,6 +28,17 @@ QoS = QoSProfile(
 
 class LEDNode(Node):
     def __init__(self, node_name, topic_name, factory):
+        """
+        Node that handles the infrared LED panel for the upper camera on the rover. 
+        
+        :param node_name: node name
+        :type node_name: str
+        :param topic_name: topic name
+        :type topic_name: str
+        :param factory: gpiozero pin factory for the pin 
+        :type factory: gpiozero pin factory
+        """
+
         super().__init__(node_name)
 
         msg_type = Float32
@@ -38,10 +49,10 @@ class LEDNode(Node):
         self.led_pwm_pin = gpio.PWMOutputDevice(pin=12, initial_value=0, frequency=1000, pin_factory=factory)
 
     def _led_callback(self, msg):
-        float_val = msg.data
+        float_val = msg.data  # This always will be a float since ROS2 typechecks (and complains a lot if it isn't) it before sending data
 
         if float_val < 0 or float_val > 1:
-            raise ValueError(f"The LED brightness value must be between 0 and 1.")
+            raise ValueError(f"The LED brightness value must be between 0 and 1. Given: {float_val}")
         
         self.set_brightness(float_val)
     
@@ -51,12 +62,17 @@ class LEDNode(Node):
         self.led_pwm_pin.value = value
 
     def set_frequency(self, value: int):
-        """Set the frequency of the LED board, value between 1 and 10kHz. 
+        """Set the frequency of the LED board, value between 1 and 10kHz. Limited by the software PWM since the RPi5 has problems with hardware PWM. 
         """
         self.led_pwm_pin.frequency = value
 
 
-def __patched_init(self, chip=None):
+def __patched_init(self, chip=None):  
+    
+    # This is necessary because LGPIO assumes the Pi5 uses gpiochip4, but in a shadow kernel
+    # update, Team RPi has refactored it so that gpiochip0 is used like the rest of them. The issue is that LGPIO has not caught on
+    # and locks you into gpiochip4 even if you pass a param to say its 0. 
+
     gpio.pins.lgpio.LGPIOFactory.__bases__[0].__init__(self)
     chip = 0
     self._handle = lgpio.gpiochip_open(chip)
@@ -74,11 +90,11 @@ def main(args=None):
     _led_node = LEDNode(node_name, topic_name, factory)
 
     try:
-        while rclpy.ok():
+        while rclpy.utilities.ok():
             rclpy.spin(_led_node)
     except KeyboardInterrupt:
         _led_node.get_logger().warn(f"KeyboardInterrupt triggered.")
     finally:
         _led_node.destroy_node()
-        rclpy.try_shutdown()  
+        rclpy.utilities.try_shutdown()  
 

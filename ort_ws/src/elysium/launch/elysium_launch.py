@@ -23,7 +23,6 @@ def generate_launch_description():
                 package="elysium",
                 executable="imu_sensor",
                 namespace="",
-                name="imu_sensor",
             ),
             Node(
                 package="elysium",
@@ -34,19 +33,16 @@ def generate_launch_description():
                 package="elysium",
                 executable="camera_led",
                 namespace="",
-                name="camera_led",
             ),
             Node(
                 package="elysium",
                 executable="geo_locator",
                 namespace="",
-                name="geo_locator",
                 ),    
             Node(
                 package="elysium",
                 executable="battery_monitor",
                 namespace="",
-                name="battery_monitor",
                 ),     
             Node(
                 package="elysium",

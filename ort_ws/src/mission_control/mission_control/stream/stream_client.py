@@ -1,13 +1,76 @@
+from io import BytesIO
+from PIL import Image
 import subprocess
 import cv2
 import numpy as np
-
-# import multiprocessing as mp
+import socket
 import threading
+import time
 
 NO_CROP = 0
 LEFT_CROP = 1
 RIGHT_CROP = 2
+
+
+class ServerClient:
+    def __init__(self, server_host, server_port):
+        self.server_host = server_host
+        self.server_port = server_port
+
+    def get_picture(self, logger):
+        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            client.connect((self.server_host, self.server_port))
+            client.send("QR\n".encode())
+
+            timeout = time.monotonic()
+            now = time.monotonic()
+            pieces = [b""]
+            data = b""
+            total = 0
+            # up to 20MB file | timout so max wait for data is 2.0 seconds
+            while (
+                b"data_end\n" not in data
+                and total < 20_000_000
+                # and (now - timeout) < 10.0
+            ):
+                now = time.monotonic()
+                pieces.append(client.recv(2000))
+                total += len(pieces[-1])
+                data = b"".join(pieces)
+
+            data = b"".join(pieces)
+
+            try:
+                bytes = BytesIO(data[:-9])
+                img = Image.open(bytes)
+                image = np.array(img)
+
+            except:
+                logger().warn("No image recieved from TCP server.")
+
+                if total > 20_000_000:
+                    logger().warn("Image file sent is too large")
+                elif (now - timeout) > 10.0:
+                    logger().warn("No transmission end signal recieved before timeout.")
+                elif b"data_end\n" not in data:
+                    logger().error("Logic error. End of Array: " + str(data[-9:]))
+                else:
+                    logger().warn("Image array corrupted, or incorrect format.")
+
+                image = None
+
+        except TimeoutError:
+            logger().warn("Server took too long to respond.")
+            image = None
+        except InterruptedError:
+            logger().warn("Process was interrupted.")
+            image = None
+        except:
+            logger().error("Something went wrong with the TCP server.")
+            image = None
+
+        return image
 
 
 class StreamClient:
@@ -61,28 +124,17 @@ class StreamClient:
         else:
             options = ""
         command = [
-            "ffmpeg",
-            "-hide_banner",
-            "-probesize",
-            "500000",
-            "-analyzeduration",
-            "0",
-            "-flags",
-            "low_delay",
-            "-strict",
-            "experimental",
-            "-hwaccel",
-            "auto",
-            "-i",
-            f"{self.type}://{self.host}:{self.port}{options}",
-            "-vf",
-            f"scale={self.width}:{self.height}",
-            "-fflags",
-            "nobuffer",
-            "-f",
-            "rawvideo",  # Get rawvideo output format.
-            "-pix_fmt",
-            "rgb24",  # Set BGR pixel format
+            "ffmpeg","-hide_banner",
+            "-probesize","500000",
+            "-analyzeduration","0",
+            "-flags","low_delay",
+            "-strict","experimental",
+            "-hwaccel","auto",
+            "-i",f"{self.type}://{self.host}:{self.port}{options}",
+            "-vf",f"scale={self.width}:{self.height}",
+            "-fflags","nobuffer",
+            "-f","rawvideo",  # Get rawvideo output format.
+            "-pix_fmt","rgb24",  # Set BGR pixel format
             "pipe:",
         ]
         try:

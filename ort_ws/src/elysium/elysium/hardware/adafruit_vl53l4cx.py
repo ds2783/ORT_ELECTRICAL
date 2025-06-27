@@ -92,7 +92,6 @@ class VL53L4CX:
             raise ValueError("No sleep node in the VL53L4CX/X lib!")
         
         self.sleep_node = sleep_node
-        self.rate = self.sleep_node.create_rate(1e3)
         self.ros_start = False
 
         self.i2c_address = i2c_address
@@ -377,6 +376,7 @@ class VL53L4CX:
         ]
         clock_pll &= 0x3FF
         clock_pll = int(1.065 * clock_pll)
+
         return int(reg_val / clock_pll)
 
     @inter_measurement.setter
@@ -416,7 +416,7 @@ class VL53L4CX:
             if self.data_ready:
                 timed_out = False
                 break
-            self.rate.sleep()
+            self._wait()
         if timed_out:
             raise TimeoutError("Time out waiting for data ready.")
 
@@ -449,7 +449,7 @@ class VL53L4CX:
         for _ in range(1000):
             if self._read_register(_VL53L4CX_FIRMWARE_SYSTEM_STATUS)[0] == 0x03:
                 return
-            self.rate.sleep()
+            self._wait()
         raise TimeoutError("Time out waiting for system boot.")
 
     def _start_vhv(self):
@@ -457,7 +457,7 @@ class VL53L4CX:
         for _ in range(1000):
             if self.data_ready:
                 return
-            self.rate.sleep()
+            self._wait()
         raise TimeoutError("Time out starting VHV.")
 
     def _write_register(self, register, data, debug=False):
@@ -509,6 +509,16 @@ class VL53L4CX:
             print(f"DATA READ: {buf}, {int.from_bytes(buf)}, {bytes(buf)}")
 
         return bytes(buf)
+
+    def _wait(self, freq=1e3):
+        """Waits for 1/frequency seconds.
+
+        :param freq: frequency, defaults to 1e3
+        :type freq: int, optional
+        """
+        rate = self.sleep_node.create_rate(freq)
+        rate.sleep()
+        self.sleep_node.destroy_rate(rate)
 
     def set_address(self, new_address):
         """

@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
+import rclpy.utilities
 
 from std_msgs.msg import Bool
 from nav_msgs.msg import Odometry
@@ -220,6 +221,12 @@ def main(args=None):
     rclpy.init(args=args)
 
     location_node = GeoLocator("location_service")
-    rclpy.spin(location_node)
-    rclpy.shutdown()
 
+    try:
+        while rclpy.utilities.ok():
+            rclpy.spin(location_node)
+    except KeyboardInterrupt:
+        location_node.get_logger().warn(f"KeyboardInterrupt triggered.")
+    finally:
+        location_node.destroy_node()
+        rclpy.utilities.try_shutdown()  

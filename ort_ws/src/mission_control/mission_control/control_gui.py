@@ -1,23 +1,30 @@
 import rclpy
 from rclpy import executors
 from rclpy.node import Node
+import rclpy.utilities
 from rclpy.action.client import ActionClient
 
 import imgui.core as imgui
 import glfw
 import OpenGL.GL as gl
 from imgui.integrations.glfw import GlfwRenderer
+import colorsys
 
 from mission_control.gui.dashboard import Dashboard
 from mission_control.stream.stream_client import StreamClient
-from mission_control.config.network import COMM_PORT, PORT_MAIN, PORT_SECONDARY, PI_IP
+from mission_control.config.network import (
+    COMM_PORT,
+    PORT_MAIN,
+    PORT_SECONDARY,
+    PI_IP,
+    tofQoS,
+)
 from mission_control.config.gui import (
     CALLIBRATE_IMU,
     WIDTH,
     HEIGHT,
     CALLIBRATE_IMU,
     ZERO_AXIS,
-    CALIRATE_OFS,
 )
 
 from threading import Thread
@@ -25,7 +32,7 @@ from multiprocessing.connection import Listener
 
 # Messages ---
 from ort_interfaces.action import Calibrate
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, Float32
 
 
 def impl_glfw_init(window_name="Project Gorgon", width=WIDTH, height=HEIGHT):
@@ -37,7 +44,6 @@ def impl_glfw_init(window_name="Project Gorgon", width=WIDTH, height=HEIGHT):
     glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
     glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
     glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
-
     glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, gl.GL_TRUE)
 
     # Create a windowed mode window and its OpenGL context
@@ -64,6 +70,12 @@ class GuiClient(Node):
         self.current_step = None
 
         self.reset_pos_pub_ = self.create_publisher(Bool, "/elysium/reset_pos", 10)
+        self.led_pub_ = self.create_publisher(Float32, "/led", tofQoS)
+
+    def publish_led(self, slider_float: float):
+        msg = Float32()
+        msg.data = slider_float
+        self.led_pub_.publish(msg)
 
     def send_goal(self, code):
         goal_msg = Calibrate.Goal()
@@ -118,13 +130,20 @@ class GUI(Node):
         super().__init__("control_gui")
         self.backgroundColor = (0, 0, 0, 1)
         self.window = impl_glfw_init()
+        glfw.set_window_refresh_callback(self.window, self.window_refresh_CB_)
+        glfw.set_framebuffer_size_callback(self.window, self.frame_buffer_size_CB_)
+
         gl.glClearColor(*self.backgroundColor)
         imgui.create_context()
         self.impl = GlfwRenderer(self.window)
 
+        # Window Size
+        self.width = WIDTH
+        self.height = HEIGHT
+
         # REPLACE THESE PATHS WITH ABSOLUTE PATH OF SHADERS ON INSTALL
         # alternative place all shader code with string in a python file
-        self.dashboard = Dashboard(cams)
+        self.dashboard = Dashboard(cams, self.get_logger)
 
         # QR
         self.last_qr_ = "None"
@@ -158,12 +177,43 @@ class GUI(Node):
         self.q_tof = "0"
         self.o_tof = "0"
 
+        # Battery
+        self.soc = 0.5
+
+        # IR LED
+        self.led = 0.0
+        self.current_value = 100.0
+
         self.address = ("localhost", port)  # family is deduced to be 'AF_INET'
         self.listener = Listener(self.address, authkey=b"123")
-
+        self.listen = True
         self.conn = self.listener.accept()
-        comms_thread = Thread(target=self.qrComms)
-        comms_thread.start()
+        self.comms_thread = Thread(target=self.qrComms)
+        self.comms_thread.start()
+
+        # IMGUI
+        imgui.get_io().font_global_scale = 1.2
+        self.style = imgui.get_style()
+        self.style.window_rounding = 3.0
+
+    def window_refresh_CB_(self, window):
+        self.run()
+        gl.glFinish()
+
+    def frame_buffer_size_CB_(self, window, width, height):
+        gl.glViewport(0, 0, width, height)
+        self.width = width
+        self.height = height
+
+        offset = self.width / 40
+        imgui.set_window_size_named(
+            "Dashboard", self.width/2 - offset, self.height * 3 / 4
+        )
+
+    def shutdown(self):
+        self.listen = False
+        self.comms_thread.join()
+        self.destroy_node()
 
     def qrComms(self):
         while True:
@@ -199,6 +249,8 @@ class GUI(Node):
                         self.q_tof = data
                     case "o-tof":
                         self.o_tof = data
+                    case "soc--":
+                        self.soc = float(data)
                     case "gps-d":
                         self.gps_dist = data
 
@@ -208,82 +260,127 @@ class GUI(Node):
         gl.glClearColor(*self.backgroundColor)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
-        imgui.get_io().font_global_scale = 1.2
-
         self.dashboard.draw()
         imgui.new_frame()
-
-        imgui.begin("QR-Display", True)
-        imgui.set_window_size(180, 80)
-        imgui.text(self.last_qr_)
-        imgui.end()
 
         imgui.begin("Performance")
         io = imgui.get_io()
         imgui.text(f"FPS: {io.framerate:.2f}")
         imgui.end()
 
-        imgui.begin("CalibrateImu")
-        imgui.text(str(self.client_.current_step))
-        imgui.set_window_size(180, 80)
+        imgui.begin(
+            "Dashboard",
+            flags=imgui.WINDOW_NO_COLLAPSE
+            | imgui.WINDOW_NO_MOVE
+            | imgui.WINDOW_NO_RESIZE
+            | imgui.WINDOW_MENU_BAR
+            | imgui.WINDOW_NO_BRING_TO_FRONT_ON_FOCUS,
+        )
 
-        if imgui.button("Calibrate IMU"):
-            self.client_.send_goal(CALLIBRATE_IMU)
+        offset = self.width / 40
+        imgui.set_window_position(self.width / 2 + offset, 0)
 
-        elif imgui.button("Zero Axis and Position"):
-            self.client_.send_goal(ZERO_AXIS)
+        imgui.begin_group()
+        imgui.text("Telemetry:")
+        imgui.text("(All data is in degrees)\n\n")
+        imgui.text(
+            f"Yaw: {self.elysium_yaw}\nPitch: {self.elysium_pitch}\nRoll: {self.elysium_roll}\n"
+        )
+        imgui.text(f"x: {self.elysium_x}\ny: {self.elysium_y}\nz: {self.elysium_z}\n")
+        imgui.text(
+            f"x_vel: {self.elysium_x_vel}\ny_vel: {self.elysium_y_vel}\nz_vel: {self.elysium_z_vel}\n"
+        )
+        imgui.text(
+            f"camera-yaw: {self.camera_yaw}\ncamera-pitch: {self.camera_pitch}\n"
+        )
+        imgui.text(f"bottom-dist: {self.o_tof}\ncamera-dist: {self.q_tof}\n")
+        imgui.end_group()
+
+        imgui.same_line(spacing=self.width / 10)
+
+        imgui.begin_group()
+
+        imgui.text("Battery Readout:")
+        # from 0 to 255 -> OpenGL and ImGui uses float values to conversion is needed
+        # Magic Colours ->
+        low_bat_colour = (181, 56, 56)
+        high_bat_colour = (31, 161, 91)
+        
+        batt_colour_rgb = colour_interpolate(low_bat_colour, high_bat_colour, self.soc, linear)
+        display_batt_colour = normalise_rgb(batt_colour_rgb)
+
+        imgui.push_style_color(
+            imgui.COLOR_PLOT_HISTOGRAM,
+            *display_batt_colour,
+        )
+        imgui.progress_bar(self.soc, (self.width / 14, 18 + 1 / 200 * self.height), "")
+        imgui.pop_style_color(1)
+        imgui.same_line()
+        imgui.text(f"{self.soc * 100}%")
+
+        imgui.new_line()
+
+        imgui.begin_child("IR Cam", self.width / 6, self.height / 15, True)
+        changed, self.current_value = imgui.slider_float(
+            "IR Cam", self.current_value, min_value=0.0, max_value=100.0, format="%.1f"
+        )
+        if self.led != self.current_value:
+            self.led = self.current_value
+            self.client_.publish_led(self.led / 100)
+        imgui.end_child()
+
+        imgui.begin_child("Calibration Client", self.width / 6, self.height / 20, True)
+        if imgui.button("Calibrate Rover"):
+            imgui.open_popup("Calibration Client")
+        if imgui.begin_popup_modal("Calibration Client").opened:
+            imgui.text("Feedback: " + str(self.client_.current_step))
+
+            if imgui.button("Calibrate IMU"):
+                self.client_.send_goal(CALLIBRATE_IMU)
+
+            elif imgui.button("Zero Axis"):
+                self.client_.send_goal(ZERO_AXIS)
+
+            elif imgui.button("Close Client"):
+                imgui.close_current_popup()
+            imgui.end_popup()
+
+        imgui.end_child()
+
+        imgui.begin_child("QR-Display", self.width / 6, self.height / 10, True)
+        imgui.text("QR-Display:")
+        imgui.text(self.last_qr_)
+        imgui.end_child()
+
+        imgui.end_group()
 
         imgui.end()
-
-        imgui.begin("Telemetry")
-        imgui.text("All data is in degrees.")
-        imgui.text(
-            f"""
-        Yaw: {self.elysium_yaw}
-        Pitch: {self.elysium_pitch} 
-        Roll: {self.elysium_roll}
-        """
-        )
-        imgui.text(
-            f""" 
-        x: {self.elysium_x} 
-        y: {self.elysium_y}
-        z: {self.elysium_z}
-        """
-        )
-        imgui.text(
-            f"""
-        gps-dist: {self.gps_dist}
-        """
-        )
-        imgui.text(
-            f"""
-        x_vel: {self.elysium_x_vel}
-        y_vel: {self.elysium_y_vel}
-        z_vel: {self.elysium_z_vel}
-        """
-        )
-        imgui.text(
-            f"""
-        camera-yaw: {self.camera_yaw}
-        camera-pitch: {self.camera_pitch}
-        """
-        )
-        imgui.text(
-            f"""
-        bottom-dist: {self.o_tof}
-        camera-dist: {self.q_tof}
-        """
-        )
-        imgui.end()
-
-        # Display Testing Window
-        # imgui.show_test_window()
 
         imgui.render()
 
         self.impl.render(imgui.get_draw_data())
         glfw.swap_buffers(self.window)
+
+
+def colour_interpolate(c1, c2, percentage_c2, interpolator):
+    hsv_c1 = colorsys.rgb_to_hsv(*c1)
+    hsv_c2 = colorsys.rgb_to_hsv(*c2)
+
+    final = (
+        interpolator(hsv_c1[0], hsv_c2[0], percentage_c2),
+        interpolator(hsv_c1[1], hsv_c2[1], percentage_c2),
+        interpolator(hsv_c1[2], hsv_c2[2], percentage_c2),
+    )
+
+    return colorsys.hsv_to_rgb(*final)
+
+
+def linear(v1, v2, percentage_v2):
+    return v1 * (1 - percentage_v2) + v2 * percentage_v2
+
+def normalise_rgb(rgb):
+    r, g, b = rgb
+    return (r/255, g/255, b/255)
 
 
 def main(args=None):
@@ -303,11 +400,14 @@ def main(args=None):
     node_thread = Thread(target=executor.spin)
     node_thread.start()
 
-    # Run GUI
-    while not glfw.window_should_close(gui.window):
-        gui.run()
-
-    # Cleanup After Shutdown
-    gui.impl.shutdown()
-    glfw.terminate()
-    rclpy.shutdown()
+    try:
+        # Run GUI
+        while not glfw.window_should_close(gui.window):
+            gui.run()
+    except:
+        # Cleanup After Shutdown
+        gui.impl.shutdown()
+        glfw.terminate()
+        gui.shutdown()
+        rclpy.utilities.try_shutdown()
+        node_thread.join()

@@ -1,5 +1,6 @@
 import rclpy
 from rclpy.node import Node
+import rclpy.utilities
 import rclpy.executors
 from rclpy.action.server import ActionServer
 
@@ -151,9 +152,8 @@ class TelepresenceOperations(Node):
         # )
 
     def camera_rotate(self):
-        # to fix or not to fix
         self.cam_angles_.z_axis = self.bound_180(
-            float(-self.z_increment + self.cam_angles_.z_axis)
+            float(self.z_increment + self.cam_angles_.z_axis)
         )
         self.cam_angles_.x_axis = self.bound_180(
             float(-self.x_increment + self.cam_angles_.x_axis)
@@ -163,9 +163,12 @@ class TelepresenceOperations(Node):
         # CONTIOUS
         self.kit_.servo[CAMERA_SERVO_X].angle = self.cam_angles_.x_axis
 
-        # self.get_logger().info(
-        #     "z_axis: " + str(self.cam_angles_.z_axis) + " x_axis: " + str(self.cam_angles_.x_axis)
-        # )
+        self.get_logger().info(
+            "z_axis: "
+            + str(self.cam_angles_.z_axis)
+            + " x_axis: "
+            + str(self.cam_angles_.x_axis)
+        )
 
 
 def float_to_rad(val):

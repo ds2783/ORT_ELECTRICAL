@@ -1,7 +1,8 @@
 import rclpy
 from rclpy.node import Node
-import smbus3 as smbus
+import rclpy.utilities
 
+import smbus3 as smbus
 import gpiozero as gpio
 import lgpio
 from gpiozero.pins.lgpio import LGPIOFactory
@@ -14,6 +15,19 @@ from elysium.config.sensors import DISTANCE_SENSOR_REFRESH_PERIOD, tofQoS
 
 class DistanceNode(Node):
     def __init__(self, node_name, topic_name, i2c_addr, sleep_node):
+        """Time of Flight Node using the VL53L4CX. 
+        Measures the distance off the sensor and returns the value.
+
+        :param node_name: node name
+        :type node_name: str
+        :param topic_name: topic name
+        :type topic_name: str
+        :param i2c_addr: i2c address on the i2c bus
+        :type i2c_addr: hexadecimal, optional
+        :param sleep_node: sleep node for Rates
+        :type sleep_node: Node
+        """
+
         super().__init__(node_name)
 
         self.sleep_node = sleep_node
@@ -50,15 +64,18 @@ class DistanceNode(Node):
             )
 
     def get_data(self):
+        """Get the data from the ToF sensors.
+        """
+        
         self.sensor.start_sensor()  # we can't have the TOF sensor initialise fully in the __init__ because the sleep node hasn't spun up yet (it uses rate.sleep)
 
         try:
             self.sensor.start_ranging()  # so we start the sensor here proper. It only actually inits once
-        except OSError:
+        except OSError as err:
             self.get_logger().warn(
-                f"[{self.get_name()}] OSError, probably due to the TOF updating internal addresses."
+                f"[{self.get_name()}] OSError, probably due to the TOF updating internal addresses. Error: {err}"
             )
-            self.sleep_node.create_rate(5).sleep()
+            self._wait(0.2)
 
         if self.sensor.data_ready:
             self.sensor.clear_interrupt()
@@ -67,6 +84,10 @@ class DistanceNode(Node):
         msg.data = self.sensor.distance
         self.distance_publisher.publish(msg)
 
+    def _wait(self, seconds):
+        rate = self.sleep_node.create_rate(1/seconds)
+        rate.sleep()
+        self.sleep_node.destroy_rate(rate)
 
 def __patched_init(self, chip=None):
     gpio.pins.lgpio.LGPIOFactory.__bases__[0].__init__(self)
@@ -101,10 +122,10 @@ def main(args=None):
         node_name_1, topic_name_1, i2c_addr=0x29, sleep_node=sleep_node
     )
     # we accept the cursed for what it is. It's 100ms each on startup only anyway it's fineeee.
-    time.sleep(0.1) 
+    time.sleep(0.3) 
 
     _distance_sensor_1.sensor.set_address(0x2A)
-    time.sleep(0.1)
+    time.sleep(0.3)
     xshut_pin.on()
 
     _distance_sensor_2 = DistanceNode(
@@ -120,7 +141,7 @@ def main(args=None):
     executor_thread.start()
 
     try:
-        while rclpy.ok():
+        while rclpy.utilities.ok():
             pass
     except KeyboardInterrupt:
         _distance_sensor_1.get_logger().warn(f"KeyboardInterrupt triggered.")
@@ -128,5 +149,5 @@ def main(args=None):
     finally:
         _distance_sensor_1.destroy_node()
         _distance_sensor_2.destroy_node()
-        rclpy.try_shutdown()
+        rclpy.utilities.try_shutdown()
         executor_thread.join()
