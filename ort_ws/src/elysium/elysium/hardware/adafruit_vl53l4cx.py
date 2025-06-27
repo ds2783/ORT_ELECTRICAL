@@ -86,13 +86,9 @@ class VL53L4CX:
 
     def __init__(self, 
                  i2c_bus: smbus.SMBus, 
-                 i2c_address: int = 0x29, 
-                 sleep_node=None):
+                 i2c_address: int = 0x29
+                 ):
 
-        if not sleep_node:
-            raise ValueError("No sleep node in the VL53L4CX/X lib!")
-        
-        self.sleep_node = sleep_node
         self.ros_start = False
 
         self.i2c_address = i2c_address
