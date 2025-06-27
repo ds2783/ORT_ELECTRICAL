@@ -112,6 +112,8 @@ class TelepresenceOperations(Node):
 
             resp1 = self.wait_for_response()
             resp2 = None
+            self.get_logger().info("x: " + str(self.opt_x) + " y: " + str(self.opt_y))
+
             if resp1 == CODE_CONTINUE:
                 x1, y1 = self.opt_x, self.opt_y
                 self.target.linear = 1
@@ -125,6 +127,7 @@ class TelepresenceOperations(Node):
                 self.request_optical_pos()
 
                 resp2 = self.wait_for_response()
+                self.get_logger().info("x: " + str(self.opt_x) + " y: " + str(self.opt_y))
                 if resp2 == CODE_CONTINUE:
                     x2, y2 = self.opt_x, self.opt_y
 
