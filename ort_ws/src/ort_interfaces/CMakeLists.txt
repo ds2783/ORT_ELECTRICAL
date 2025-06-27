@@ -32,6 +32,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Vec2.msg"
   "msg/CameraRotation.msg"
   "msg/BatteryInfo.msg"
+  "msg/GPSStatus.msg"
+  "msg/SatelliteInfo.msg"
   "srv/SetMode.srv"
   "srv/Vec2Pos.srv"
   "action/Calibrate.action"
