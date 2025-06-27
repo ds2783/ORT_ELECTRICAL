@@ -99,7 +99,7 @@ class TelepresenceOperations(Node):
         self.get_logger().info("Executing goal.")
 
         CALIBRATE_OFS = 2
-        if goal_handle.request == CALIBRATE_OFS:
+        if goal_handle.request.code == CALIBRATE_OFS:
             self.allow_teleop = False
             self.target.linear = 0
             self.target.rotation = 0
@@ -202,7 +202,7 @@ class TelepresenceOperations(Node):
         self.last_connection_ = time.time_ns()
 
     def shutdownCB_(self):
-        if time.time_ns() > self.last_connection_ + 5e8 and self.allow_teleop:
+        if (time.time_ns() > self.last_connection_ + 1e9) and self.allow_teleop:
             self.target.linear = 0
             self.target.rotation = 0
             self.drive()
