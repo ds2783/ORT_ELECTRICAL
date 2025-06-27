@@ -5,7 +5,7 @@ uint8 MAG=1
 #etc...
 
 # Sets the Mode
-uint8 mode
+uint8 code
 ---
 # Define return codes
 uint8 SUCCESS=0
@@ -13,7 +13,7 @@ uint8 FAIL=1
 uint8 FAIL_UNRECOGNISED_OP_CODE=2
 
 # Returns diagnostic information about change of state.
-uint8 diagnostic
+uint8 result
 
 ---
 # seconds until completion
