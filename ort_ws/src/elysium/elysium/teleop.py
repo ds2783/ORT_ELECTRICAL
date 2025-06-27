@@ -113,6 +113,7 @@ class TelepresenceOperations(Node):
             resp1 = self.wait_for_response()
             resp2 = None
             self.get_logger().info("x: " + str(self.opt_x) + " y: " + str(self.opt_y))
+            self.get_logger().info("First response is: " + str(resp1))
 
             if resp1 == CODE_CONTINUE:
                 x1, y1 = self.opt_x, self.opt_y
@@ -128,6 +129,7 @@ class TelepresenceOperations(Node):
 
                 resp2 = self.wait_for_response()
                 self.get_logger().info("x: " + str(self.opt_x) + " y: " + str(self.opt_y))
+                self.get_logger().info("Second response is: " + str(resp2))
                 if resp2 == CODE_CONTINUE:
                     x2, y2 = self.opt_x, self.opt_y
 
@@ -199,12 +201,14 @@ class TelepresenceOperations(Node):
         self.opt_x = response.x
         self.opt_y = response.y
         self.request_complete = True
+        self.get_logger().info("Opt distances set.")
 
     def confirmConnectionCB_(self, msg: Bool):
         self.last_connection_ = time.time_ns()
 
     def shutdownCB_(self):
         if (time.time_ns() > self.last_connection_ + 1e9) and self.allow_teleop:
+            self.get_logger().warn("Lost connection, setting movement to zero.")
             self.target.linear = 0
             self.target.rotation = 0
             self.drive()
@@ -212,6 +216,7 @@ class TelepresenceOperations(Node):
     def teleopCB_(self, msg: Joy):
         self.allow_teleop = True
         if self.allow_teleop:
+            self.get_logger().info("Attempting to Drive.")
             # DRIVE -----------------
             self.target.linear = msg.axes[AXES["TRIGGERRIGHT"]]
             self.target.linear -= msg.axes[AXES["TRIGGERLEFT"]]
