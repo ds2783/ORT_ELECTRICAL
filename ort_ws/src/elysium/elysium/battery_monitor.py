@@ -85,6 +85,7 @@ class BatteryMonitorNode(Node):
         )
 
         self.rolling_avg = RollingAverage(length=200)
+        self.voltage_avg = RollingAverage(length=100)
 
         self.current_capacity = BMS_BATTERY_CAPACITY
         self.total_capacity = BMS_BATTERY_CAPACITY
@@ -93,8 +94,8 @@ class BatteryMonitorNode(Node):
         # discharges while tracking the current integrated SOC.
 
         # 4.2 max per cell voltage on a 12.6V 1.5A full charge.
-        # ~8.8/3 min per cell voltage before the RPi5 succumbed to low voltage. 
-        
+        # ~8.8/3 min per cell voltage before the RPi5 succumbed to low voltage.
+
         self.lookup = recording_lookup  # if this should be a full-discharge lookup table calibration run.
 
         self.lookup_table = self._read_lookup_data()
@@ -234,27 +235,29 @@ class BatteryMonitorNode(Node):
                 f"[{self.get_name()}] - OSError: probably given a bad path for the file ({path})."
             )
 
-    def _compare_ocv_soc(self, deviation=0.1):
+    def _compare_ocv_soc(self, deviation=0.05):
         """Compare the OCV lookup value with the immediate measured voltage.
 
-        If there is more than a 10% deviation (default value), assume we have drifted too far and set the SOC to the OCV lookup value.
+        If there is more than a 5% deviation (default value), 
+        assume we have drifted too far and set the SOC to the OCV lookup value.
 
-        :param deviation: voltage deviation, defaults to 0.1
+        :param deviation: soc deviation, defaults to 0.05
         :type deviation: float, optional
         """
+        tmp_voltage = self.voltage_avg.average()
+        lookup_soc = self._find_ocv_soc(tmp_voltage)
+        
+        if lookup_soc:
+            if abs(lookup_soc - self.soc) >= deviation:
+                self.get_logger().warn(
+                        f"[{self.get_name()}] The expected SOC value is more than {self.soc * 100:1f}% different to what we are expecting of the battery voltage, rebasing SOC."
+                )
+                tmp = self.soc
+                self.soc = lookup_soc
 
-        experimental_ocv_value = self.lookup_table.iloc[int(round(OCV_ARRAY_SIZE * self.soc)), 3]
-        tmp_voltage = self.bms.voltage
-
-        if (abs(experimental_ocv_value - tmp_voltage) / experimental_ocv_value) >= deviation:
-            self.get_logger().warn(
-                f"[{self.get_name()}] The expected OCV value is more than 10% different to what we are expecting of the battery voltage, \
-                      rebasing SOC."
-            )
-            tmp = self.soc
-            self.soc = self._find_ocv_soc(tmp_voltage)
-
-            self.get_logger().warn(f"Old value: {tmp}, new value: {self.soc}, measured voltage: {tmp_voltage}")
+                self.get_logger().warn(f"Old value: {tmp}, new value: {self.soc}, measured voltage: {tmp_voltage}")
+        else:
+            self.get_logger().warn("Failed to check rebase, as no valid soc interpolation found.")
 
     def _find_ocv_soc(self, ocv: float):
         """Find the SOC from the OCV table voltages, needs to iterate through the table from the smallest value upwards.
@@ -267,14 +270,15 @@ class BatteryMonitorNode(Node):
 
         voltage = self.lookup_table["ocv"]
         soc = self.lookup_table["soc"]
-       
+
         try:
             lookupval = np.interp(ocv, voltage, soc)
             if lookupval is None:
-                self.get_logger().warn("Interpolation returned None, invalid Interpolation.")
+                self.get_logger().warn(
+                    "Interpolation returned None, invalid Interpolation."
+                )
             else:
                 return float(lookupval)
-
         except:
             self.get_logger().warn("Could not interpolate lookup OCV.")
 
@@ -318,6 +322,8 @@ class BatteryMonitorNode(Node):
 
         self.rolling_avg.add(charge_expended)
         self.est_time_remaining = self.current_capacity / (self.rolling_avg.average() / BMS_DELTA_T)  # estimated time remaining in seconds.
+        
+        self.voltage_avg.add(self.measured_voltage)
 
         if (abs(self.prev_soc - self.soc) >= 0.001
         ):  # if the soc value has dropped 0.1%, check and save the data to the lookup table.
