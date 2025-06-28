@@ -408,7 +408,6 @@ class GUI(Node):
                         width = 1000
                         aspect_ratio = self.qr_image.width / self.qr_image.height
                         imgui.set_window_size(width + 10, width/aspect_ratio + 90)
-                        # TO DO: Use aspect ratio to dynamically resize the image
                         imgui.image(self.qr_texID, width, width/aspect_ratio)
                     except Exception as e:
                         self.get_logger().warn("No image available. Exception: " + str(e))
