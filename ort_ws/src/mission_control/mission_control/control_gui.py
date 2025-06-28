@@ -402,11 +402,13 @@ class GUI(Node):
                         self.bind_image(self.qr_image)
                     except:
                         self.get_logger().warn("Issue loading required image.")
+
                 if imgui.begin_popup_modal("Image: " + str(key)).opened:
                     try:
-                        # TO DO: Use aspect ratio to dynamically resize the image
-                        aspect_ratio = self.qr_image.width / self.qr_image.height
                         width = 1000
+                        aspect_ratio = self.qr_image.width / self.qr_image.height
+                        imgui.set_window_size(width + 10, width/aspect_ratio + 90)
+                        # TO DO: Use aspect ratio to dynamically resize the image
                         imgui.image(self.qr_texID, width, width/aspect_ratio)
                     except Exception as e:
                         self.get_logger().warn("No image available. Exception: " + str(e))
