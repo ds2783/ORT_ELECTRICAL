@@ -402,7 +402,7 @@ class GUI(Node):
                         self.bind_image(self.qr_image)
                     except:
                         self.get_logger().warn("Issue loading required image.")
-                if imgui.begin_popup_modal("Image " + str(key)).opened:
+                if imgui.begin_popup_modal("Image: " + str(key)).opened:
                     try:
                         # TO DO: Use aspect ratio to dynamically resize the image
                         aspect_ratio = self.qr_image.width / self.qr_image.height
