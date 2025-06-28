@@ -18,15 +18,20 @@ from elysium.config.controls import (
     CAMERA_SERVO_Z,
     OFFSET,
 )
+from elysium.config.services import (
+    FAIL_UNRECOGNISED_OP_CODE,
+    SUCCESS,
+    FAIL,
+    CALIBRATE_OFS,
+    CODE_CONTINUE,
+    CODE_TERMINATE
+)
 
 import time
 from functools import partial
 from numpy import pi
 from dataclasses import dataclass
 from adafruit_servokit import ServoKit
-
-CODE_TERMINATE = 0
-CODE_CONTINUE = 1
 
 
 @dataclass
@@ -112,7 +117,6 @@ class TelepresenceOperations(Node):
     def actionServerCB_(self, goal_handle):
         self.get_logger().info("Executing goal.")
 
-        CALIBRATE_OFS = 2
         if goal_handle.request.code == CALIBRATE_OFS:
             self.target.linear = 0
             self.target.rotation = 0
@@ -127,7 +131,7 @@ class TelepresenceOperations(Node):
                 x1, y1 = self.opt_x, self.opt_y
                 self.target.linear = 1
                 self.drive()
-                
+
                 # sleep for $(sleep_seconds) while rover drives
                 self.rate.sleep()
 
@@ -149,7 +153,7 @@ class TelepresenceOperations(Node):
 
                     goal_handle.succeed()
                     result = Calibrate.Result()
-                    result.result = 0
+                    result.result = SUCCESS
                     return result
 
             if resp1 == CODE_TERMINATE or resp2 == CODE_TERMINATE:
@@ -158,13 +162,13 @@ class TelepresenceOperations(Node):
                 )
                 goal_handle.succeed()
                 result = Calibrate.Result()
-                result.result = 1
+                result.result = FAIL
                 return result
 
         else:
             goal_handle.succeed()
             result = Calibrate.Result()
-            result.result = 2
+            result.result = FAIL_UNRECOGNISED_OP_CODE
             self.get_logger().warn(
                 "Unrecognised OP-Code recieved from Calibration Client."
             )
@@ -216,7 +220,7 @@ class TelepresenceOperations(Node):
         self.last_connection_ = time.time_ns()
 
     def shutdownCB_(self):
-        if (time.time_ns() > self.last_connection_ + 1e9):
+        if time.time_ns() > self.last_connection_ + 1e9:
             self.get_logger().warn("Lost connection, setting movement to zero.")
             self.target.linear = 0
             self.target.rotation = 0

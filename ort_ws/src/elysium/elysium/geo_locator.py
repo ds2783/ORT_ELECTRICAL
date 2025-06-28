@@ -131,7 +131,9 @@ class GeoLocator(Node):
 
     def ofs_calCB_(self, msg: Float32):
         self.optical_factor = msg.data
-        self.get_logger().info("Optical calibration factor successfuly set to: " + str(self.optical_factor))
+        self.get_logger().info(
+            "Optical calibration factor successfuly set to: " + str(self.optical_factor)
+        )
 
     def tofCB_(self, msg: Float32):
         self.z_prev_ = self.z_pos
