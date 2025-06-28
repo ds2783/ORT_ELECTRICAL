@@ -31,8 +31,8 @@ from threading import Thread
 from multiprocessing.connection import Listener
 
 # Messages ---
-from ort_interfaces.action import CalibrateImu
 from std_msgs.msg import Bool, Float32
+from ort_interfaces.action import CalibrateImu
 
 
 def impl_glfw_init(window_name="Project Gorgon", width=WIDTH, height=HEIGHT):
