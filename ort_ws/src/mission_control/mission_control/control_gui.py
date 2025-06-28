@@ -4,9 +4,9 @@ from rclpy.node import Node
 import rclpy.utilities
 from rclpy.action.client import ActionClient
 
-import imgui.core as imgui
-import glfw
 import OpenGL.GL as gl
+import glfw
+import imgui.core as imgui
 from imgui.integrations.glfw import GlfwRenderer
 import colorsys
 
@@ -21,6 +21,7 @@ from mission_control.config.network import (
 )
 from mission_control.config.gui import (
     CALLIBRATE_IMU,
+    QR_DIRECTORY,
     WIDTH,
     HEIGHT,
     CALLIBRATE_IMU,
@@ -29,6 +30,9 @@ from mission_control.config.gui import (
 
 from threading import Thread
 from multiprocessing.connection import Listener
+import json
+from PIL import Image
+import numpy as np
 
 # Messages ---
 from std_msgs.msg import Bool, Float32
@@ -129,9 +133,12 @@ class GUI(Node):
 
         # QR
         self.last_qr_ = "None"
+        self.qr_dict_ = {}
+        self.qr_texID = gl.glGenTextures(1)
 
         # Calbration Client
         self.client_ = GuiClient()
+        self.logger = self.client_.get_logger
 
         # Position
         self.elysium_x = "0"
@@ -185,9 +192,11 @@ class GUI(Node):
         self.width = width
         self.height = height
 
-        offset = self.width / 40
-        imgui.set_window_size_named(
-            "Dashboard", self.width/2 - offset, self.height * 3 / 4
+        scale_change = 0.5 * (((width) / (WIDTH) * 1.2) + ((height) / (HEIGHT) * 1.2))
+
+        ARBRITRARY_SCALE = 0.4
+        imgui.get_io().font_global_scale = (
+            1.2 - ARBRITRARY_SCALE + scale_change * ARBRITRARY_SCALE
         )
 
     def shutdown(self):
@@ -231,6 +240,31 @@ class GUI(Node):
                         self.o_tof = data
                     case "soc--":
                         self.soc = float(data)
+                    case "qrdic":
+                        self.qr_dict_ = json.loads(data)
+
+    def bind_image(self, img):
+        image = np.array(img)
+        gl.glBindTexture(gl.GL_TEXTURE_2D, self.qr_texID)
+
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_NEAREST)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
+
+        # Set texture clamping method
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_REPEAT)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_REPEAT)
+
+        gl.glTexImage2D(
+            gl.GL_TEXTURE_2D,
+            0,
+            gl.GL_RGB,
+            image.shape[1],
+            image.shape[0],
+            0,
+            gl.GL_BGR,
+            gl.GL_UNSIGNED_BYTE,
+            image,
+        )
 
     def run(self):
         glfw.poll_events()
@@ -239,12 +273,20 @@ class GUI(Node):
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
         self.dashboard.draw()
+
+        # IMGUI - BEGIN ---
         imgui.new_frame()
 
+        # PERFORMANCE
         imgui.begin("Performance")
         io = imgui.get_io()
         imgui.text(f"FPS: {io.framerate:.2f}")
         imgui.end()
+
+        # MAIN DASHBOARD
+        offset = self.width / 40
+        imgui.set_next_window_position(self.width / 2 + offset, 0)
+        imgui.set_next_window_size(self.width / 2 - offset, self.height)
 
         imgui.begin(
             "Dashboard",
@@ -255,9 +297,7 @@ class GUI(Node):
             | imgui.WINDOW_NO_BRING_TO_FRONT_ON_FOCUS,
         )
 
-        offset = self.width / 40
-        imgui.set_window_position(self.width / 2 + offset, 0)
-
+        # TELEMETRY
         imgui.begin_group()
         imgui.text("Telemetry:")
         imgui.text("(All data is in degrees)\n\n")
@@ -274,17 +314,19 @@ class GUI(Node):
         imgui.text(f"bottom-dist: {self.o_tof}\ncamera-dist: {self.q_tof}\n")
         imgui.end_group()
 
-        imgui.same_line(spacing=self.width / 10)
+        imgui.same_line(position=self.width * 9 / 32)
 
+        # BATTERY MONITOR
         imgui.begin_group()
-
         imgui.text("Battery Readout:")
         # from 0 to 255 -> OpenGL and ImGui uses float values to conversion is needed
         # Magic Colours ->
         low_bat_colour = (181, 56, 56)
         high_bat_colour = (31, 161, 91)
-        
-        batt_colour_rgb = colour_interpolate(low_bat_colour, high_bat_colour, self.soc, linear)
+
+        batt_colour_rgb = colour_interpolate(
+            low_bat_colour, high_bat_colour, self.soc, linear
+        )
         display_batt_colour = normalise_rgb(batt_colour_rgb)
 
         imgui.push_style_color(
@@ -298,15 +340,21 @@ class GUI(Node):
 
         imgui.new_line()
 
-        imgui.begin_child("IR Cam", self.width / 6, self.height / 15, True)
+        # IR LIGHT
+        imgui.begin_child("IR Light", self.width / 6, self.height / 15, True)
         changed, self.current_value = imgui.slider_float(
-            "IR Cam", self.current_value, min_value=0.0, max_value=100.0, format="%.1f"
+            "IR Light",
+            self.current_value,
+            min_value=0.0,
+            max_value=100.0,
+            format="%.1f",
         )
         if self.led != self.current_value:
             self.led = self.current_value
             self.client_.publish_led(self.led / 100)
         imgui.end_child()
 
+        # CALIBRATION CLIENT
         imgui.begin_child("Calibration Client", self.width / 6, self.height / 20, True)
         if imgui.button("Calibrate Rover"):
             imgui.open_popup("Calibration Client")
@@ -322,9 +370,9 @@ class GUI(Node):
             elif imgui.button("Close Client"):
                 imgui.close_current_popup()
             imgui.end_popup()
-
         imgui.end_child()
 
+        # QR DISPLAY
         imgui.begin_child("QR-Display", self.width / 6, self.height / 10, True)
         imgui.text("QR-Display:")
         imgui.text(self.last_qr_)
@@ -332,9 +380,38 @@ class GUI(Node):
 
         imgui.end_group()
 
+        imgui.spacing()
+        imgui.spacing()
+        imgui.spacing()
+
+        # QR LIST
+        imgui.begin_child("QR-List", self.width / 2 - offset, self.height / 4, True)
+        for key in self.qr_dict_.keys():
+            expanded, visible = imgui.collapsing_header(str(key), None)
+            if expanded:
+                imgui.text("x: " + self.qr_dict_[key]["x"])
+                imgui.text("y: " + self.qr_dict_[key]["y"])
+                imgui.text("distance: " + self.qr_dict_[key]["distance"])
+                if imgui.button("Show Image"):
+                    imgui.open_popup("Image " + str(key))
+                if imgui.begin_popup_modal("Image " + str(key)).opened:
+                    qr_image = Image.open(
+                        QR_DIRECTORY + str(self.qr_dict_[key]["filename"])
+                    )
+                    # TO DO: Use aspect ratio to dynamically resize the image
+                    aspect_ratio = qr_image.width / qr_image.height
+                    self.bind_image(qr_image)
+
+                    imgui.image(self.qr_texID, qr_image.width, qr_image.height)
+                    if imgui.button("Close Image"):
+                        imgui.close_current_popup()
+                    imgui.end_popup()
+        imgui.end_child()
+
         imgui.end()
 
         imgui.render()
+        # END OF IMGUI -----------
 
         self.impl.render(imgui.get_draw_data())
         glfw.swap_buffers(self.window)
@@ -356,9 +433,10 @@ def colour_interpolate(c1, c2, percentage_c2, interpolator):
 def linear(v1, v2, percentage_v2):
     return v1 * (1 - percentage_v2) + v2 * percentage_v2
 
+
 def normalise_rgb(rgb):
     r, g, b = rgb
-    return (r/255, g/255, b/255)
+    return (r / 255, g / 255, b / 255)
 
 
 def main(args=None):

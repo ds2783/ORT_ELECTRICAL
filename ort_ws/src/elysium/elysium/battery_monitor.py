@@ -1,6 +1,6 @@
 import rclpy
-from rclpy.node import Node
 import rclpy.utilities
+from rclpy.node import Node
 
 import pandas
 import pandas.errors

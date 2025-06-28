@@ -12,20 +12,20 @@ from ort_interfaces.msg import CameraRotation, BatteryInfo
 from mission_control.stream.stream_client import ServerClient
 from mission_control.config.mappings import BUTTONS
 from mission_control.config.network import COMM_PORT, PORT_MAIN_BASE, PI_IP, tofQoS
+from mission_control.config.gui import QR_DIRECTORY
 
 from qreader import QReader
 from multiprocessing.connection import Client
 
 import numpy as np
 import csv
-
+import datetime
+from PIL import Image
+import json
 
 class BaseNode(Node):
     def __init__(self, port):
         super().__init__("base")
-        # CONSTANTS -- DO NOT REASSIGN
-        # ---
-
         # STATE OBJECTS
         self.main_cam = ServerClient(PI_IP, PORT_MAIN_BASE)
         self.qreader_ = QReader()
@@ -104,6 +104,7 @@ class BaseNode(Node):
             self.get_logger().info(
                 "This data was recovered: " + str(self.scanned_codes)
             )
+            self.sendComms("qrdic:" + json.dumps(self.scanned_codes))
         except:
             self.get_logger().info("No CSV to recover from.")
         # ----------------------------
@@ -138,13 +139,24 @@ class BaseNode(Node):
                 x_dist = self.elysium_x + offset[0][0]
                 y_dist = self.elysium_y + offset[1][0]
 
-                for code in qreader_out:
-                    if code != None:
-                        self.scanned_codes[code] = (
-                            f"x: {x_dist:4f}",
-                            f"y: {y_dist:4f}",
-                            f"distance: {np.sqrt(x_dist ** 2 + y_dist ** 2)}",
-                        )
+                # list comprension to filter out None's
+                qr_final = [x for x in qreader_out if x is not None]
+
+                for code in enumerate(qr_final):
+                    date = datetime.datetime.now()
+                    fname = f"qr_{len(self.scanned_codes)}_{date.year}_{date.month}_{date.day}.jpeg"
+                    self.scanned_codes[code] = {
+                            "x": x_dist,
+                            "y": y_dist,
+                            "distance": np.sqrt(x_dist ** 2 + y_dist ** 2),
+                            "filename": fname,
+                            }
+
+                    im = Image.fromarray(image)
+                    im.save(f"{QR_DIRECTORY}{fname}")
+                
+                if len(qr_final) >= 1:
+                    self.sendComms("qrdic:" + json.dumps(self.scanned_codes))
 
                 with open("qr_data.csv", "w", newline="") as csvfile:
                     writer = csv.DictWriter(
@@ -172,15 +184,6 @@ class BaseNode(Node):
                 self.try_again = False
             except:
                 pass
-
-    def handler(self, signal_received, frame):
-        self.main_cam.stop()
-        self.get_logger().warn(
-            "Stream has stoped due to error: "
-            + str(signal_received)
-            + " on frame: "
-            + str(frame)
-        )
 
     def eulerCB_(self, msg: Vector3):
         self.eulerAngles = msg
