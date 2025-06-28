@@ -31,16 +31,19 @@ from ort_interfaces.msg import BatteryInfo
 
 class RollingAverage:
     def __init__(self, length):
+        self.items = 0
         self.length = length
-        self._queue = []
-
+        self._queue = np.zeros(length, dtype=np.float32)
+    
     def add(self, value):
-        self._queue.append(value)
-        if len(self._queue) > self.length:
-            self._queue.pop(0)
-        
+        if self.items < self.length:
+            self.items += 1
+    
+        self._queue[:-1] = self._queue[1:]
+        self._queue[-1] = value
+
     def average(self):
-        return sum(self._queue)/len(self._queue)
+        return np.sum(self._queue)/self.items
     
 
 class BatteryMonitorNode(Node):
