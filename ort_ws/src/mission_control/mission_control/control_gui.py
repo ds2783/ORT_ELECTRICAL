@@ -241,6 +241,7 @@ class GUI(Node):
                     case "soc--":
                         self.soc = float(data)
                     case "qrdic":
+                        self.get_logger().info("Recieved JSON file from Base Station.")
                         self.qr_dict_ = json.loads(data)
 
     def bind_image(self, img):
@@ -261,7 +262,7 @@ class GUI(Node):
             image.shape[1],
             image.shape[0],
             0,
-            gl.GL_BGR,
+            gl.GL_RGB,
             gl.GL_UNSIGNED_BYTE,
             image,
         )
@@ -389,20 +390,27 @@ class GUI(Node):
         for key in self.qr_dict_.keys():
             expanded, visible = imgui.collapsing_header(str(key), None)
             if expanded:
-                imgui.text("x: " + self.qr_dict_[key]["x"])
-                imgui.text("y: " + self.qr_dict_[key]["y"])
-                imgui.text("distance: " + self.qr_dict_[key]["distance"])
+                imgui.text("x: " + str(self.qr_dict_[key]["x"]))
+                imgui.text("y: " + str(self.qr_dict_[key]["y"]))
+                imgui.text("distance: " + str(self.qr_dict_[key]["distance"]))
                 if imgui.button("Show Image"):
-                    imgui.open_popup("Image " + str(key))
+                    imgui.open_popup("Image: " + str(key))
+                    try:
+                        self.qr_image = Image.open(
+                            QR_DIRECTORY + str(self.qr_dict_[key]["filename"])
+                        )
+                        self.bind_image(self.qr_image)
+                    except:
+                        self.get_logger().warn("Issue loading required image.")
                 if imgui.begin_popup_modal("Image " + str(key)).opened:
-                    qr_image = Image.open(
-                        QR_DIRECTORY + str(self.qr_dict_[key]["filename"])
-                    )
-                    # TO DO: Use aspect ratio to dynamically resize the image
-                    aspect_ratio = qr_image.width / qr_image.height
-                    self.bind_image(qr_image)
-
-                    imgui.image(self.qr_texID, qr_image.width, qr_image.height)
+                    try:
+                        # TO DO: Use aspect ratio to dynamically resize the image
+                        aspect_ratio = self.qr_image.width / self.qr_image.height
+                        width = 1000
+                        imgui.image(self.qr_texID, width, width/aspect_ratio)
+                    except Exception as e:
+                        self.get_logger().warn("No image available. Exception: " + str(e))
+                        imgui.close_current_popup()
                     if imgui.button("Close Image"):
                         imgui.close_current_popup()
                     imgui.end_popup()

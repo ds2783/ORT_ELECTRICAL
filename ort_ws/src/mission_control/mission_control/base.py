@@ -18,10 +18,10 @@ from qreader import QReader
 from multiprocessing.connection import Client
 
 import numpy as np
-import csv
 import datetime
 from PIL import Image
 import json
+import time
 
 class BaseNode(Node):
     def __init__(self, port):
@@ -95,18 +95,18 @@ class BaseNode(Node):
         # Recover Old Codes
         self.scanned_codes = {}
         try:
-            with open("qr_data.csv", newline="") as csvfile:
-                reader = csv.DictReader(csvfile, delimiter="&", quotechar="|")
-                headers = reader.fieldnames
-                if headers is not None:
-                    for index, row in enumerate(reader):
-                        self.scanned_codes[headers[index]] = row[headers[index]]
+            with open('qr_data.json', 'r') as fp:
+                self.scanned_codes = json.load(fp)
             self.get_logger().info(
                 "This data was recovered: " + str(self.scanned_codes)
             )
-            self.sendComms("qrdic:" + json.dumps(self.scanned_codes))
         except:
             self.get_logger().info("No CSV to recover from.")
+        self.start_time = time.monotonic()
+        # Added this state variable in case Python interpreter is too dump to 
+        # figure out that (now - self.start_time) < 1.0 will never be true
+        # again after 1 second.
+        self.qr_ping = True
         # ----------------------------
         self.get_logger().info("The Base Station has been initialised.")
 
@@ -158,13 +158,9 @@ class BaseNode(Node):
                 if len(qr_final) >= 1:
                     self.sendComms("qrdic:" + json.dumps(self.scanned_codes))
 
-                with open("qr_data.csv", "w", newline="") as csvfile:
-                    writer = csv.DictWriter(
-                        csvfile, self.scanned_codes.keys(), delimiter="&", quotechar="|"
-                    )
-                    writer.writeheader()
-                    writer.writerow(self.scanned_codes)
-
+                with open('qr_data.json', 'w') as fp:
+                    json.dump(self.scanned_codes, fp)
+                
                 self.get_logger().info("Image processed and CSV updated.")
             else:
                 self.get_logger().warn("No image available for processing.")
@@ -184,6 +180,13 @@ class BaseNode(Node):
                 self.try_again = False
             except:
                 pass
+        now = time.monotonic()
+
+        # Allow time for GUI to fully load.
+        if (now - self.start_time) < 1.0 and self.qr_ping:
+            self.sendComms("qrdic:" + json.dumps(self.scanned_codes))
+        else:
+            self.qr_ping = False
 
     def eulerCB_(self, msg: Vector3):
         self.eulerAngles = msg
