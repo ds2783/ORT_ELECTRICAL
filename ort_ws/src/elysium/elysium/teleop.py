@@ -20,9 +20,8 @@ from elysium.config.controls import (
 )
 
 import time
-from threading import Thread
 from functools import partial
-from numpy import info, pi
+from numpy import pi
 from dataclasses import dataclass
 from adafruit_servokit import ServoKit
 
@@ -46,16 +45,20 @@ class TelepresenceOperations(Node):
     def __init__(self):
         super().__init__("teleop")
 
-        self.allow_teleop = True
         node_cb_group = MutuallyExclusiveCallbackGroup()
         service_cb_group = MutuallyExclusiveCallbackGroup()
+        connection_cb_group = MutuallyExclusiveCallbackGroup()
 
         # Topics
         self.controller_commands_sub_ = self.create_subscription(
-            Joy, "joy", self.teleopCB_, 10
+            Joy, "joy", self.teleopCB_, 10, callback_group=node_cb_group
         )
         self.base_ping_sub_ = self.create_subscription(
-            Bool, "ping", self.confirmConnectionCB_, 10
+            Bool,
+            "ping",
+            self.confirmConnectionCB_,
+            10,
+            callback_group=connection_cb_group,
         )
 
         # Publishers
@@ -111,13 +114,11 @@ class TelepresenceOperations(Node):
 
         CALIBRATE_OFS = 2
         if goal_handle.request.code == CALIBRATE_OFS:
-            self.allow_teleop = False
             self.target.linear = 0
             self.target.rotation = 0
             self.drive()
-            self.request_optical_pos()
 
-            resp1 = self.wait_for_response()
+            resp1 = self.get_optical_pos()
             resp2 = None
             self.get_logger().info("x: " + str(self.opt_x) + " y: " + str(self.opt_y))
             self.get_logger().info("First response is: " + str(resp1))
@@ -126,15 +127,14 @@ class TelepresenceOperations(Node):
                 x1, y1 = self.opt_x, self.opt_y
                 self.target.linear = 1
                 self.drive()
-
+                
+                # sleep for $(sleep_seconds) while rover drives
                 self.rate.sleep()
 
                 self.target.linear = 0
                 self.drive()
 
-                self.request_optical_pos()
-
-                resp2 = self.wait_for_response()
+                resp2 = self.get_optical_pos()
                 self.get_logger().info(
                     "x: " + str(self.opt_x) + " y: " + str(self.opt_y)
                 )
@@ -150,15 +150,15 @@ class TelepresenceOperations(Node):
                     goal_handle.succeed()
                     result = Calibrate.Result()
                     result.result = 0
-                    self.allow_teleop = True
                     return result
 
             if resp1 == CODE_TERMINATE or resp2 == CODE_TERMINATE:
-                self.get_logger().warn("No calibration has been completed.")
+                self.get_logger().warn(
+                    "Initial and final positions could not be obtained. No calibration was aquired."
+                )
                 goal_handle.succeed()
                 result = Calibrate.Result()
                 result.result = 1
-                self.allow_teleop = True
                 return result
 
         else:
@@ -170,12 +170,14 @@ class TelepresenceOperations(Node):
             )
             return result
 
-    def wait_for_response(self):
+    def get_optical_pos(self):
         self.request_complete = False
         self.server_unavailable = False
+        self.request_optical_pos()
+
         now = time.monotonic()
         timeout = time.monotonic()
-        while not self.request_complete and (now - timeout) > 5.0:
+        while not self.request_complete and (now - timeout) < 5.0:
             now = time.monotonic()
             if self.server_unavailable:
                 return CODE_TERMINATE
@@ -188,7 +190,7 @@ class TelepresenceOperations(Node):
     def request_optical_pos(self):
         timeout = time.monotonic()
         now = time.monotonic()
-        while not self.optical_client_.wait_for_service(1.0) and (now - timeout) > 2.0:
+        while not self.optical_client_.wait_for_service(1.0) and (now - timeout) < 2.0:
             now = time.monotonic()
             self.get_logger().warn("Waiting for connection to position service.")
 
@@ -214,33 +216,31 @@ class TelepresenceOperations(Node):
         self.last_connection_ = time.time_ns()
 
     def shutdownCB_(self):
-        if (time.time_ns() > self.last_connection_ + 1e9) and self.allow_teleop:
+        if (time.time_ns() > self.last_connection_ + 1e9):
             self.get_logger().warn("Lost connection, setting movement to zero.")
             self.target.linear = 0
             self.target.rotation = 0
             self.drive()
 
     def teleopCB_(self, msg: Joy):
-        if self.allow_teleop:
-            self.get_logger().info("Attempting to Drive.")
-            # DRIVE -----------------
-            self.target.linear = msg.axes[AXES["TRIGGERRIGHT"]]
-            self.target.linear -= msg.axes[AXES["TRIGGERLEFT"]]
-            # goes from 1 to -1, therefore difference between the two
-            # should be halved.
-            self.target.linear /= 2
-            self.target.rotation = -msg.axes[AXES["LEFTX"]]
-            # ------------------------
+        # DRIVE -----------------
+        self.target.linear = msg.axes[AXES["TRIGGERRIGHT"]]
+        self.target.linear -= msg.axes[AXES["TRIGGERLEFT"]]
+        # goes from 1 to -1, therefore difference between the two
+        # should be halved.
+        self.target.linear /= 2
+        self.target.rotation = -msg.axes[AXES["LEFTX"]]
+        # ------------------------
 
-            self.z_increment = msg.axes[AXES["RIGHTX"]] * CAMERA_SENSITIVITY
-            self.x_increment = msg.axes[AXES["RIGHTY"]] * CAMERA_SENSITIVITY
+        self.z_increment = msg.axes[AXES["RIGHTX"]] * CAMERA_SENSITIVITY
+        self.x_increment = msg.axes[AXES["RIGHTY"]] * CAMERA_SENSITIVITY
 
-            # publish camera rotation, note 90degrees servo rotation -> 0degrees around the axis
-            camera_rotation_msg = CameraRotation(
-                z_axis=float(float_to_rad(self.cam_angles_.z_axis - 90)),
-                x_axis=float(float_to_rad(self.cam_angles_.x_axis - 90)),
-            )
-            self.cam_angles__pub_.publish(camera_rotation_msg)
+        # publish camera rotation, note 90degrees servo rotation -> 0degrees around the axis
+        camera_rotation_msg = CameraRotation(
+            z_axis=float(float_to_rad(self.cam_angles_.z_axis - 90)),
+            x_axis=float(float_to_rad(self.cam_angles_.x_axis - 90)),
+        )
+        self.cam_angles__pub_.publish(camera_rotation_msg)
 
     def driveCB_(self):
         self.drive()
