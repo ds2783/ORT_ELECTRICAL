@@ -4,7 +4,7 @@ class Integration:
     def __init__(self, previous_y=0):
         self.prev_y = previous_y
 
-    def integ_single(self, y, dx):  # Trapezoidal rule approximate integration
+    def single(self, y, dx):  # Trapezoidal rule approximate integration
         ret = ((self.prev_y + y) / 2) * dx
         self.prev_y = y
         return ret
@@ -17,7 +17,7 @@ class Integration:
             x_1 = x_vals[index]
             x_2 = x_vals[index + 1]
             dx = x_2 - x_1
-            rolling_val += self.integ_single(y_vals[index + 1], dx)
+            rolling_val += self.single(y_vals[index + 1], dx)
             integ_vals.append(rolling_val)
         return integ_vals
 
@@ -28,7 +28,7 @@ class Integration:
             x_1 = x_vals[index]
             x_2 = x_vals[index + 1]
             dx = x_2 - x_1
-            final += self.integ_single(y_vals[index + 1], dx)
+            final += self.single(y_vals[index + 1], dx)
         return final
 
 class RollingAverage:
