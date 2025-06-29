@@ -327,7 +327,7 @@ class GUI(Node):
             "Telemetry:", 
             "(All data is in degrees)\n\n",
             "Yaw: {:.3f}\nPitch: {:.3f}\nRoll: {:.3f}\n".format(self.elysium_yaw, self.elysium_pitch, self.elysium_roll),
-            "x: {}\ny: {}\nz: {}\n".format(self.elysium_x, self.elysium_y, self.elysium_z),
+            "x: {:.3f}\ny: {:.3f}\nz: {:.3f}\n".format(self.elysium_x, self.elysium_y, self.elysium_z),
             "x_vel: {:.3f}\ny_vel: {:.3f}\nz_vel: {:.3f}\n".format(self.elysium_x_vel, self.elysium_y_vel, self.elysium_z_vel),
             "camera-yaw: {:.3f}\ncamera-pitch: {:.3f}\n".format(self.camera_yaw, self.camera_pitch),
             "bottom-dist: {:.3f}\ncamera-dist: {:.3f}\n".format(self.o_tof, self.q_tof)
@@ -336,19 +336,6 @@ class GUI(Node):
         for text in imgui_text:
             imgui.text(text)
 
-        # imgui.text("Telemetry:")
-        # imgui.text("(All data is in degrees)\n\n")
-        # imgui.text(
-        #     f"Yaw: {self.elysium_yaw}\nPitch: {self.elysium_pitch}\nRoll: {self.elysium_roll}\n"
-        # )
-        # imgui.text(f"x: {self.elysium_x}\ny: {self.elysium_y}\nz: {self.elysium_z}\n")
-        # imgui.text(
-        #     f"x_vel: {self.elysium_x_vel}\ny_vel: {self.elysium_y_vel}\nz_vel: {self.elysium_z_vel}\n"
-        # )
-        # imgui.text(
-        #     f"camera-yaw: {self.camera_yaw}\ncamera-pitch: {self.camera_pitch}\n"
-        # )
-        # imgui.text(f"bottom-dist: {self.o_tof}\ncamera-dist: {self.q_tof}\n")
         imgui.end_group()
 
         imgui.same_line(position=self.width * 9 / 32)
