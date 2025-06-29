@@ -9,7 +9,7 @@ from pathlib import Path
 import busio, board
 
 import elysium.hardware.adafruit_ina260 as _ina260
-from elysium.utils import RollingAverage, ApproxIntegration
+from elysium.utils import RollingAverage, Integration
 from elysium.config.sensors import (
     BMS_REFRESH_PERIOD,
     BMS_DELTA_T,
@@ -76,7 +76,7 @@ class BatteryMonitorNode(Node):
         self.charge_avg = RollingAverage(length=round(BMS_ROLLING_AVERAGE_SECONDS/BMS_DELTA_T))
         self.voltage_avg = RollingAverage(length=round(BMS_ROLLING_AVERAGE_SECONDS/BMS_DELTA_T))
 
-        self.integration = ApproxIntegration(self.bms.current * (1e-3/3.6))
+        self.integration = Integration(self.bms.current * (1e-3/3.6))
 
         self.current_capacity = BMS_BATTERY_CAPACITY
         self.total_capacity = BMS_BATTERY_CAPACITY

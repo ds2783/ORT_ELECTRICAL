@@ -1,7 +1,7 @@
 import numpy as np
 
 class Integration:
-    def __init__(self, previous_y=0):
+    def __init__(self, previous_y=.0):
         self.prev_y = previous_y
 
     def integ_single(self, y, dx):  # Trapezoidal rule approximate integration
