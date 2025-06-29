@@ -1,0 +1,5 @@
+# Always returns position despite request True or False
+bool request
+---
+float32 x
+float32 y

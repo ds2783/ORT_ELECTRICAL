@@ -5,7 +5,7 @@ from rclpy.qos import qos_profile_sensor_data
 import rclpy.utilities
 
 from geometry_msgs.msg import Quaternion
-from ort_interfaces.action import CalibrateImu
+from ort_interfaces.action import Calibrate
 
 import numpy as np
 from pyrr import quaternion
@@ -15,7 +15,7 @@ from elysium.config.sensors import IMU_SENSOR_PERIOD
 import board
 import busio
 from adafruit_bno08x.i2c import BNO08X_I2C
-from adafruit_bno08x import BNO_REPORT_ACCELEROMETER, BNO_REPORT_ROTATION_VECTOR
+from adafruit_bno08x import BNO_REPORT_ROTATION_VECTOR
 
 
 class Imu(Node):
@@ -34,7 +34,7 @@ class Imu(Node):
 
         # Action Server ------
         self.calibrate_action_server_ = ActionServer(
-            self, CalibrateImu, "/imu/calibrate", self.actionServerCB_
+            self, Calibrate, "/imu/calibrate", self.actionServerCB_
         )
         # --------------------
 
@@ -76,12 +76,12 @@ class Imu(Node):
             self.zero_axis()
         if goal_handle.request.code in [0, 1]:
             goal_handle.succeed()
-            result = CalibrateImu.Result()
+            result = Calibrate.Result()
             result.result = 0
             return result
 
         goal_handle.fail()
-        result = CalibrateImu.Result()
+        result = Calibrate.Result()
         result.result = 2
         return result
 

@@ -71,6 +71,10 @@ class BaseNode(Node):
             BatteryInfo, "/battery_monitor", self.battCB_, qos_profile=tofQoS
         )
 
+        self.gps_dist_sub_ = self.create_subscription(
+            Float32, "/elysium/gps_dist", self.gpsCB_, 10
+        )
+
         # Publishers
         self.connection_pub_ = self.create_publisher(Bool, "ping", 10)
         # ----------------------------
@@ -92,6 +96,9 @@ class BaseNode(Node):
 
         # Elysium Battery
         self.soc = 0.0
+
+        # GPS
+        self.gps_dist_ = 0
 
         # Recover Old Codes
         self.scanned_codes = {}
@@ -123,10 +130,10 @@ class BaseNode(Node):
 
                 self.last_qr = str(qreader_out)
                 self.sendComms("qr---:" + self.last_qr)
-
+                    
                 # assuming y is the forward coordinate
                 # (still to be tested)
-                # raycasted vector ->
+                # raycasted vector  ->
                 relative_elysium_pos = np.array([[0.0], [self.qr_tof_dist.data]])
                 # x -> yaw, which is rotation around the z_axis
                 xy_plane_rotation = self.eulerAngles.x + self.cam_rotation.z_axis
@@ -140,8 +147,25 @@ class BaseNode(Node):
                 x_dist = self.elysium_x + offset[0][0]
                 y_dist = self.elysium_y + offset[1][0]
 
-                # list comprension to filter out None's
+                dist = np.sqrt(x_dist**2 + y_dist**2)
+                
+                elysium_dist = np.sqrt(self.elysium_x**2 + self.elysium_y**2)
                 qr_final = [x for x in qreader_out if x is not None]
+                # list comprension to filter out None's
+                
+                # checks the difference between gps dist and elysium dist, and checks last gps distance is 
+                # is recent.
+                if abs(self.gps_dist_ - elysium_dist) > 3.0 and (time.monotonic() - self.last_gps_) < 2.0:
+                    self.get_logger().warn(
+                        "GPS and calculated coordinates of the Rover disagree by more than 3m."
+                    )
+                    self.get_logger().warn(
+                        "Defaulting to GPS as it is deemed to be more reliable."
+                    )
+                    reliable_sensor = "gps"
+                else:
+
+                    reliable_sensor = "op-imu"
 
                 for code in qr_final:
                     date = datetime.datetime.now()
@@ -149,8 +173,10 @@ class BaseNode(Node):
                     self.scanned_codes[code] = {
                             "x": x_dist,
                             "y": y_dist,
-                            "distance": np.sqrt(x_dist ** 2 + y_dist ** 2),
+                            "distance-op-imu": dist,
+                            "distance-gps": self.gps_dist_,
                             "filename": fname,
+                            "more-reliable": reliable_sensor,
                             }
                     
                     # Rotate camera from mount point.
@@ -233,6 +259,11 @@ class BaseNode(Node):
         self.soc = msg.soc
         self.sendComms("soc--:" + f"{self.soc:2f}")
 
+    def gpsCB_(self, msg: Float32):
+        self.gps_dist_ = msg.data
+        self.last_gps_ = time.monotonic()
+        self.sendComms("gps-d:" + f"{self.gps_dist_:2f}")
+
     def sendComms(self, msg):
         if self.try_again == False:
             try:
@@ -268,3 +299,4 @@ def main(args=None):
     except:
         base.destroy_node()
         rclpy.utilities.try_shutdown()
+

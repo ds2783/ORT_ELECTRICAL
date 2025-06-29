@@ -1,4 +1,5 @@
 from launch import LaunchDescription, actions
+from launch.descriptions import Executable
 from launch_ros.actions import Node
 from launch.actions import EmitEvent, RegisterEventHandler
 from launch.events import matches_action
@@ -37,12 +38,18 @@ def generate_launch_description():
                 package="elysium",
                 executable="geo_locator",
                 namespace="",
-                ),    
+            ),    
             Node(
                 package="elysium",
                 executable="battery_monitor",
                 namespace="",
-                ),              
+            ),     
+            Node(
+                package="elysium",
+                executable="gps",
+                namespace="",
+            ),   
+                     
         ]
     )
     optical_flow_params_path = PathJoinSubstitution(

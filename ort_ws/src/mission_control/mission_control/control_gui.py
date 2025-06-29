@@ -24,8 +24,8 @@ from mission_control.config.gui import (
     QR_DIRECTORY,
     WIDTH,
     HEIGHT,
-    CALLIBRATE_IMU,
     ZERO_AXIS,
+    CALIBRATE_OFS,
 )
 
 from threading import Thread
@@ -35,8 +35,8 @@ from PIL import Image
 import numpy as np
 
 # Messages ---
+from ort_interfaces.action import Calibrate
 from std_msgs.msg import Bool, Float32
-from ort_interfaces.action import CalibrateImu
 
 
 def impl_glfw_init(window_name="Project Gorgon", width=WIDTH, height=HEIGHT):
@@ -65,7 +65,12 @@ def impl_glfw_init(window_name="Project Gorgon", width=WIDTH, height=HEIGHT):
 class GuiClient(Node):
     def __init__(self):
         super().__init__("gui_client")
-        self.calibration_client_ = ActionClient(self, CalibrateImu, "/imu/calibrate")
+        # Action Servers
+        self.calibration_client_ = ActionClient(self, Calibrate, "/imu/calibrate")
+        self.optical_calibration_client_ = ActionClient(
+            self, Calibrate, "/optical_flow/calibrate"
+        )
+
         self.current_step = None
 
         self.reset_pos_pub_ = self.create_publisher(Bool, "/elysium/reset_pos", 10)
@@ -77,16 +82,22 @@ class GuiClient(Node):
         self.led_pub_.publish(msg)
 
     def send_goal(self, code):
-        goal_msg = CalibrateImu.Goal()
+        goal_msg = Calibrate.Goal()
         if code == ZERO_AXIS:
             msg = Bool()
             msg.data = True
             self.reset_pos_pub_.publish(msg)
+
         goal_msg.code = code
 
-        self._send_goal_future = self.calibration_client_.send_goal_async(
-            goal_msg, feedback_callback=self.feedback_callback
-        )
+        if code == CALIBRATE_OFS:
+            self._send_goal_future = self.optical_calibration_client_.send_goal_async(
+                goal_msg, feedback_callback=self.feedback_callback
+            )
+        else:
+            self._send_goal_future = self.calibration_client_.send_goal_async(
+                goal_msg, feedback_callback=self.feedback_callback
+            )
 
         self._send_goal_future.add_done_callback(self.goal_response_callback)
 
@@ -103,7 +114,14 @@ class GuiClient(Node):
 
     def get_result_callback(self, future):
         result = future.result().result
-        self.get_logger().info("Result: {0}".format(result.result))
+        match result.result:
+            case 0:
+                result = "Success"
+            case 1:
+                result = "Fail"
+            case 2:
+                result = "Fail, uncrecognised OP-code."
+        self.get_logger().info("Result: {0}".format(result))
 
     def feedback_callback(self, feedback_msg):
         feedback = feedback_msg.feedback
@@ -145,6 +163,9 @@ class GUI(Node):
         self.elysium_y = "0"
         self.elysium_z = "0"
 
+        # GPS
+        self.gps_dist = "0"
+
         # Attitude
         self.elysium_yaw = "0"
         self.elysium_pitch = "0"
@@ -172,7 +193,6 @@ class GUI(Node):
 
         self.address = ("localhost", port)  # family is deduced to be 'AF_INET'
         self.listener = Listener(self.address, authkey=b"123")
-
         self.listen = True
         self.conn = self.listener.accept()
         self.comms_thread = Thread(target=self.qrComms)
@@ -243,6 +263,8 @@ class GUI(Node):
                     case "qrdic":
                         self.get_logger().info("Recieved JSON file from Base Station.")
                         self.qr_dict_ = json.loads(data)
+                    case "gps-d":
+                        self.gps_dist = data
 
     def bind_image(self, img):
         image = np.array(img)
@@ -359,14 +381,18 @@ class GUI(Node):
         imgui.begin_child("Calibration Client", self.width / 6, self.height / 20, True)
         if imgui.button("Calibrate Rover"):
             imgui.open_popup("Calibration Client")
+
         if imgui.begin_popup_modal("Calibration Client").opened:
             imgui.text("Feedback: " + str(self.client_.current_step))
 
             if imgui.button("Calibrate IMU"):
-                self.client_.send_goal(CALLIBRATE_IMU)
+                self.client_.send_goal(CALIBRATE_IMU)
 
             elif imgui.button("Zero Axis"):
                 self.client_.send_goal(ZERO_AXIS)
+
+            elif imgui.button("Calibrate OFS"):
+                self.client_.send_goal(CALIBRATE_OFS)
 
             elif imgui.button("Close Client"):
                 imgui.close_current_popup()
