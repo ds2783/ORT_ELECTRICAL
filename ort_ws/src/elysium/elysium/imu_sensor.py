@@ -10,22 +10,14 @@ from ort_interfaces.action import Calibrate
 import numpy as np
 from pyrr import quaternion
 
-from elysium.config.sensors import IMU_SENSOR_PERIOD
+from elysium.config.sensors import IMU_SENSOR_PERIOD, IMU_UPDATE_FREQUENCY
+from elysium.utils import RollingAverage
 
 import board
 import busio
 from adafruit_bno08x.i2c import BNO08X_I2C
 from adafruit_bno08x import BNO_REPORT_ROTATION_VECTOR, BNO_REPORT_LINEAR_ACCELERATION
 
-
-class ApproxIntegration:
-    def __init__(self):
-        self.prev_y = 0
-
-    def integ_trap(self, y, dt):  # Trapezoidal rule approximate integration
-        ret = ((self.prev_y + y) / 2) * dt
-        self.prev_y = y
-        return ret
 
 class Imu(Node):
     def __init__(self, i2c_addr=0x4B):
@@ -53,9 +45,13 @@ class Imu(Node):
 
         # Timer -----------
         self.imu_data_timer_ = self.create_timer(IMU_SENSOR_PERIOD, self.sendDataCB_)
+        self.imu_update_timer_ = self.create_timer(1/IMU_UPDATE_FREQUENCY, self.updateAccelCB_)
         # -----------------
 
         # Variables ---------
+        self.acceleration_x = RollingAverage(50)
+        self.acceleration_y = RollingAverage(50)
+        self.acceleration_z = RollingAverage(50)
 
         self.q = np.array([0.0, 0.0, 0.0, 1.0])  # Initial quaternion
         self.inverse = np.array([0.0, 0.0, 0.0, 1.0])
@@ -79,9 +75,13 @@ class Imu(Node):
         quat.w = corrected_q[0]
         self.quaternion_pub_.publish(quat)
 
-        acceleration = self.bno.linear_acceleration
-        accel = Vector3(x=acceleration[0], y=acceleration[1], z=acceleration[2])
+        accel = Vector3(x=self.acceleration_x, y=self.acceleration_y, z=self.acceleration_z)
         self.accelerometer_pub_.publish(accel)
+
+    def updateAccelCB_(self):
+        self.acceleration_x.add(self.bno.linear_acceleration[0])
+        self.acceleration_y.add(self.bno.linear_acceleration[1])
+        self.acceleration_z.add(self.bno.linear_acceleration[2])
 
     def actionServerCB_(self, goal_handle):
         self.get_logger().info("Executing goal.")
