@@ -13,7 +13,7 @@ class Integration:
         rolling_val = c
         self.prev_y = y_vals[0]
         integ_vals = [c]
-        for index in range(len(x_vals - 1)):
+        for index in range(len(x_vals) - 1):
             x_1 = x_vals[index]
             x_2 = x_vals[index + 1]
             dx = x_2 - x_1
@@ -24,7 +24,7 @@ class Integration:
     def integrate(self, x_vals, y_vals, c=0):
         final = c
         self.prev_y = y_vals[0]
-        for index in range(len(x_vals - 1)):
+        for index in range(len(x_vals) - 1):
             x_1 = x_vals[index]
             x_2 = x_vals[index + 1]
             dx = x_2 - x_1
