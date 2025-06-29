@@ -42,8 +42,8 @@ class RollingAverage:
         self.items = 0
         self.dim = dim
         
-        if isinstance(dim, int):
-            self.dim = (dim, 1)
+        if isinstance(self.dim, int):
+            self.dim = (self.dim, 1)
 
         self._queue = np.zeros(self.dim, dtype=np.float32)
     
