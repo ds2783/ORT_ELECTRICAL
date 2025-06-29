@@ -148,7 +148,7 @@ class TelepresenceOperations(Node):
                 self.target.linear = 1
                 self.drive()
                 
-                move_seconds = 4
+                move_seconds = 3
 
                 start_time = time.monotonic()
                 now = time.monotonic()
@@ -157,7 +157,7 @@ class TelepresenceOperations(Node):
                 accelerations = []
                 while (now - start_time) < move_seconds:
                     now = time.monotonic()
-                    accel = np.sqrt(self.x_accel ** 2 + self.y_accel ** 2 + self.z_accel ** 2)
+                    accel = np.sqrt(self.x_accel ** 2 + self.y_accel ** 2)
 
                     times.append(now - start_time)
                     accelerations.append(accel)
@@ -176,7 +176,8 @@ class TelepresenceOperations(Node):
                     x2, y2 = self.opt_x, self.opt_y
 
                     y_dist = y2 - y1
-                    
+                    # ERROR HANDLING
+                    self.get_logger().info("")
                     integrator = Integration()
                     velocities = integrator.rollingIntegration(times, accelerations) 
                     # actual distance in meters
