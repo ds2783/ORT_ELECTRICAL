@@ -42,7 +42,7 @@ class RollingAverage:
         self.items = 0
         self.dim = dim
         
-        if len(dim) == 1:
+        if isinstance(dim, int):
             dim = (dim, 1)
 
         self._queue = np.zeros(dim, dtype=np.float32)
@@ -52,7 +52,7 @@ class RollingAverage:
             self.items += 1
     
         self._queue[:-1, :] = self._queue[1:, :]
-        self._queue[-1, :] = value
+        self._queue[-1, :] = value  # make sure this is a row vector if its 2D! 
 
     @property
     def average(self):
