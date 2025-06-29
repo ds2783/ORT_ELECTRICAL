@@ -233,38 +233,38 @@ class GUI(Node):
                     case "qr---":
                         self.last_qr_ = data
                     case "x----":
-                        self.elysium_x = data
+                        self.elysium_x = float(data)
                     case "y----":
-                        self.elysium_y = data
+                        self.elysium_y = float(data)
                     case "z----":
-                        self.elysium_z = data
+                        self.elysium_z = float(data)
                     case "yaw--":
-                        self.elysium_yaw = data
+                        self.elysium_yaw = float(data)
                     case "pitch":
-                        self.elysium_pitch = data
+                        self.elysium_pitch = float(data)
                     case "roll-":
-                        self.elysium_roll = data
+                        self.elysium_roll = float(data)
                     case "x_vel":
-                        self.elysium_x_vel = data
+                        self.elysium_x_vel = float(data)
                     case "y_vel":
-                        self.elysium_y_vel = data
+                        self.elysium_y_vel = float(data)
                     case "z_vel":
-                        self.elysium_z_vel = data
+                        self.elysium_z_vel = float(data)
                     case "cam_y":
-                        self.camera_yaw = data
+                        self.camera_yaw = float(data)
                     case "cam_p":
-                        self.camera_pitch = data
+                        self.camera_pitch = float(data)
                     case "q-tof":
-                        self.q_tof = data
+                        self.q_tof = float(data)
                     case "o-tof":
-                        self.o_tof = data
+                        self.o_tof = float(data)
                     case "soc--":
                         self.soc = float(data)
                     case "qrdic":
                         self.get_logger().info("Recieved JSON file from Base Station.")
                         self.qr_dict_ = json.loads(data)
                     case "gps-d":
-                        self.gps_dist = data
+                        self.gps_dist = float(data)
 
     def bind_image(self, img):
         image = np.array(img)
