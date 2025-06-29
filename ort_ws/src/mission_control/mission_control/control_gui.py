@@ -20,7 +20,7 @@ from mission_control.config.network import (
     tofQoS,
 )
 from mission_control.config.gui import (
-    CALLIBRATE_IMU,
+    CALIBRATE_IMU,
     QR_DIRECTORY,
     WIDTH,
     HEIGHT,
@@ -325,16 +325,16 @@ class GUI(Node):
         imgui.text("Telemetry:")
         imgui.text("(All data is in degrees)\n\n")
         imgui.text(
-            f"Yaw: {self.elysium_yaw:.3f}\nPitch: {self.elysium_pitch:.3f}\nRoll: {self.elysium_roll:.3f}\n"
+            f"Yaw: {self.elysium_yaw}\nPitch: {self.elysium_pitch}\nRoll: {self.elysium_roll}\n"
         )
-        imgui.text(f"x: {self.elysium_x:.3f}\ny: {self.elysium_y:.3f}\nz: {self.elysium_z:.3f}\n")
+        imgui.text(f"x: {self.elysium_x}\ny: {self.elysium_y}\nz: {self.elysium_z}\n")
         imgui.text(
-            f"x_vel: {self.elysium_x_vel:.3f}\ny_vel: {self.elysium_y_vel:.3f}\nz_vel: {self.elysium_z_vel:.3f}\n"
+            f"x_vel: {self.elysium_x_vel}\ny_vel: {self.elysium_y_vel}\nz_vel: {self.elysium_z_vel}\n"
         )
         imgui.text(
-            f"camera-yaw: {self.camera_yaw:.3f}\ncamera-pitch: {self.camera_pitch:.3f}\n"
+            f"camera-yaw: {self.camera_yaw}\ncamera-pitch: {self.camera_pitch}\n"
         )
-        imgui.text(f"bottom-dist: {self.o_tof:.3f}\ncamera-dist: {self.q_tof:.3f}\n")
+        imgui.text(f"bottom-dist: {self.o_tof}\ncamera-dist: {self.q_tof}\n")
         imgui.end_group()
 
         imgui.same_line(position=self.width * 9 / 32)

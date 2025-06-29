@@ -18,6 +18,15 @@ from adafruit_bno08x.i2c import BNO08X_I2C
 from adafruit_bno08x import BNO_REPORT_ROTATION_VECTOR
 
 
+class ApproxIntegration:
+    def __init__(self):
+        self.prev_y = 0
+
+    def integ_trap(self, y, dt):  # Trapezoidal rule approximate integration
+        ret = ((self.prev_y + y) / 2) * dt
+        self.prev_y = y
+        return ret
+
 class Imu(Node):
     def __init__(self, i2c_addr=0x4B):
         super().__init__("imu_sensor")
