@@ -45,7 +45,7 @@ class RollingAverage:
         if isinstance(dim, int):
             self.dim = (dim, 1)
 
-        self._queue = np.zeros(dim, dtype=np.float32)
+        self._queue = np.zeros(self.dim, dtype=np.float32)
     
     def add(self, value):
         """Add a value or set of values to the rolling average. If the shape of the 
