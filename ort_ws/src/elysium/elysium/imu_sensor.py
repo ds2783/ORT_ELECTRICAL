@@ -4,7 +4,7 @@ from rclpy.action.server import ActionServer
 from rclpy.qos import qos_profile_sensor_data
 import rclpy.utilities
 
-from geometry_msgs.msg import Quaternion
+from geometry_msgs.msg import Quaternion, Vector3
 from ort_interfaces.action import Calibrate
 
 import numpy as np
@@ -15,7 +15,7 @@ from elysium.config.sensors import IMU_SENSOR_PERIOD
 import board
 import busio
 from adafruit_bno08x.i2c import BNO08X_I2C
-from adafruit_bno08x import BNO_REPORT_ROTATION_VECTOR
+from adafruit_bno08x import BNO_REPORT_ROTATION_VECTOR, BNO_REPORT_LINEAR_ACCELERATION
 
 
 class ApproxIntegration:
@@ -34,10 +34,14 @@ class Imu(Node):
         self.bno = BNO08X_I2C(i2c, address=i2c_addr)
         self.bno.initialize()
         self.bno.enable_feature(BNO_REPORT_ROTATION_VECTOR)
+        self.bno.enable_feature(BNO_REPORT_LINEAR_ACCELERATION)
 
         # Topics -------------
         self.quaternion_pub_ = self.create_publisher(
             Quaternion, "/imu/quat", qos_profile=qos_profile_sensor_data
+        )
+        self.accelerometer_pub_ = self.create_publisher(
+            Vector3, "/imu/linear_accel", qos_profile=qos_profile_sensor_data
         )
         # -------------------
 
@@ -75,6 +79,10 @@ class Imu(Node):
         quat.w = corrected_q[0]
         self.quaternion_pub_.publish(quat)
 
+        acceleration = self.bno.linear_acceleration
+        accel = Vector3(x=acceleration[0], y=acceleration[1], z=acceleration[2])
+        self.accelerometer_pub_.publish(accel)
+
     def actionServerCB_(self, goal_handle):
         self.get_logger().info("Executing goal.")
 
@@ -101,11 +109,9 @@ def main(args=None):
 
     # Cleanup After Shutdown
     try:
-        while rclpy.utilities.ok():
-            rclpy.spin(imu)
+        rclpy.spin(imu)
     except KeyboardInterrupt:
         imu.get_logger().warn(f"KeyboardInterrupt triggered.")
     finally:
         imu.destroy_node()
-        rclpy.utilities.try_shutdown()  
-
+        rclpy.utilities.try_shutdown()
