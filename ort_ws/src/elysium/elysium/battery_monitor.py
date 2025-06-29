@@ -125,7 +125,7 @@ class BatteryMonitorNode(Node):
         self.current_capacity = self._soc * self.total_capacity
 
     def _rebase_voltages(self):
-        """Run X seconds after rclpy spins the node. 
+        """Run X seconds after rclpy spins the node. Destroys the timer afterwards. 
         """
         
         if not self.lookup:
@@ -269,7 +269,7 @@ class BatteryMonitorNode(Node):
                 tmp = self.soc
                 self.soc = lookup_soc
 
-                self.get_logger().warn(f"Old value: {tmp}, new value: {self.soc}, measured voltage: {tmp_voltage}")
+                self.get_logger().warn(f"Old value: {tmp:.3f}, new value: {self.soc:.3f}, measured voltage: {tmp_voltage:.3f}")
         else:
             self.get_logger().warn("Failed to check rebase, as no valid soc interpolation found.")
 
