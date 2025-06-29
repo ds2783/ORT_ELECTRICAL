@@ -20,6 +20,7 @@ from multiprocessing.connection import Client
 import numpy as np
 import datetime
 from PIL import Image
+from pathlib import Path
 import json
 import time
 
@@ -153,7 +154,11 @@ class BaseNode(Node):
                             }
 
                     im = Image.fromarray(image)
-                    im.save(f"{QR_DIRECTORY}{fname}")
+
+                    if not Path(QR_DIRECTORY).is_dir():
+                        Path(QR_DIRECTORY).mkdir()
+
+                    im.save(Path(QR_DIRECTORY, fname))
                 
                 if len(qr_final) >= 1:
                     self.get_logger().info("Sending JSON object.")
