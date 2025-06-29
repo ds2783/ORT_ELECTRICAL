@@ -310,11 +310,12 @@ class BatteryMonitorNode(Node):
         self.measured_current = self.bms.current  # mA
         self.measured_power = self.bms.power  # mW
 
-        charge_expended = self.integration.integ_trap(self.measured_current * 1e-3/3.6, BMS_DELTA_T)
+        charge_expended = self.integration.integ_single(self.measured_current * 1e-3/3.6, BMS_DELTA_T)
 
         # charge_expended = (
         #     self.measured_current * 1e-3 * BMS_DELTA_T
         # * (1 / 3.6))  # mA * 0.0001 * dt * (1/3.6), giving charge in mAh.
+        
         self.soc = (
             self.current_capacity - charge_expended 
         ) / self.total_capacity 

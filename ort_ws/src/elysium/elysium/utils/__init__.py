@@ -4,7 +4,7 @@ class ApproxIntegration:
     def __init__(self, previous_y):
         self.prev_y = previous_y
 
-    def integ_trap(self, y, dt):  # Trapezoidal rule approximate integration
+    def integ_single(self, y, dt):  # Trapezoidal rule approximate integration
         ret = ((self.prev_y + y) / 2) * dt
         self.prev_y = y
         return ret
