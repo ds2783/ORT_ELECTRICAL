@@ -20,7 +20,7 @@ from mission_control.config.network import (
     tofQoS,
 )
 from mission_control.config.gui import (
-    CALLIBRATE_IMU,
+    CALIBRATE_IMU,
     QR_DIRECTORY,
     WIDTH,
     HEIGHT,
