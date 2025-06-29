@@ -92,7 +92,7 @@ class BatteryMonitorNode(Node):
             0.0
         )
         
-        self.rolling_avg = RollingAverage(length=round(BMS_ROLLING_AVERAGE_SECONDS/BMS_DELTA_T))
+        self.charge_avg = RollingAverage(length=round(BMS_ROLLING_AVERAGE_SECONDS/BMS_DELTA_T))
         self.voltage_avg = RollingAverage(length=round(BMS_ROLLING_AVERAGE_SECONDS/BMS_DELTA_T))
 
         self.current_capacity = BMS_BATTERY_CAPACITY
@@ -334,8 +334,8 @@ class BatteryMonitorNode(Node):
             self.current_capacity - charge_expended 
         ) / self.total_capacity 
 
-        self.rolling_avg.add(charge_expended)
-        self.est_time_remaining = self.current_capacity / (self.rolling_avg.average / BMS_DELTA_T)  # estimated time remaining in seconds.
+        self.charge_avg.add(charge_expended)
+        self.est_time_remaining = self.current_capacity / (self.charge_avg.average / BMS_DELTA_T)  # estimated time remaining in seconds.
         
         self.voltage_avg.add(self.measured_voltage)
 
