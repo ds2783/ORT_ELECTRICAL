@@ -45,7 +45,9 @@ class Imu(Node):
 
         # Timer -----------
         self.imu_data_timer_ = self.create_timer(IMU_SENSOR_PERIOD, self.sendDataCB_)
-        self.imu_update_timer_ = self.create_timer(1/IMU_UPDATE_FREQUENCY, self.updateAccelCB_)
+        self.imu_update_timer_ = self.create_timer(
+            1 / IMU_UPDATE_FREQUENCY, self.updateAccelCB_
+        )
         # -----------------
 
         # Variables ---------
@@ -75,7 +77,11 @@ class Imu(Node):
         quat.w = corrected_q[0]
         self.quaternion_pub_.publish(quat)
 
-        accel = Vector3(x=self.acceleration_x, y=self.acceleration_y, z=self.acceleration_z)
+        accel = Vector3(
+            x=self.acceleration_x.average,
+            y=self.acceleration_y.average,
+            z=self.acceleration_z.average,
+        )
         self.accelerometer_pub_.publish(accel)
 
     def updateAccelCB_(self):
