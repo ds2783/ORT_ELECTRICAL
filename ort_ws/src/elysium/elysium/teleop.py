@@ -28,6 +28,7 @@ from elysium.config.services import (
     CODE_CONTINUE,
     CODE_TERMINATE,
 )
+from elysium.utils import Integration
 
 import time
 from functools import partial
@@ -158,7 +159,7 @@ class TelepresenceOperations(Node):
                     now = time.monotonic()
                     accel = np.sqrt(self.x_accel ** 2 + self.y_accel ** 2 + self.z_accel ** 2)
 
-                    times.append(now)
+                    times.append(now - start_time)
                     accelerations.append(accel)
 
                     self.rate.sleep()
@@ -175,8 +176,14 @@ class TelepresenceOperations(Node):
                     x2, y2 = self.opt_x, self.opt_y
 
                     y_dist = y2 - y1
-
-                    factor = Float32(data=1 / y_dist)
+                    
+                    integrator = Integration()
+                    velocities = integrator.rollingIntegration(times, accelerations) 
+                    # actual distance in meters
+                    actual_dist = integrator.integrate(times, velocities)
+                    self.get_logger().info("Actual distance travelled: " + str(actual_dist) + "m")
+                    
+                    factor = Float32(data= actual_dist / y_dist)
                     self.optical_factor_pub_.publish(factor)
 
                     goal_handle.succeed()
