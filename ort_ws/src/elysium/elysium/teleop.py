@@ -111,8 +111,6 @@ class TelepresenceOperations(Node):
         self.opt_x = 0
         self.opt_y = 0
 
-        sleep_seconds = 4
-        self.rate = self.create_rate(1/sleep_seconds)
 
     def actionServerCB_(self, goal_handle):
         self.get_logger().info("Executing goal.")
@@ -133,7 +131,8 @@ class TelepresenceOperations(Node):
                 self.drive()
 
                 # sleep for $(sleep_seconds) while rover drives
-                self.rate.sleep()
+                sleep_seconds = 2
+                time.sleep(sleep_seconds)
 
                 self.target.linear = 0
                 self.drive()
