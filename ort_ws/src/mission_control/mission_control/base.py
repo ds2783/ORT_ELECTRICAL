@@ -173,7 +173,7 @@ class BaseNode(Node):
                     self.scanned_codes[code] = {
                             "x": x_dist,
                             "y": y_dist,
-                            "distance-op-imu": dist,
+                            "distance-ofs-imu": dist,
                             "distance-gps": self.gps_dist_,
                             "filename": fname,
                             "more-reliable": reliable_sensor,

@@ -4,9 +4,11 @@ import rclpy.utilities
 import rclpy.executors
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.action.server import ActionServer
+from rclpy.qos import qos_profile_sensor_data
 
 from std_msgs.msg import Bool, Float32
 from sensor_msgs.msg import Joy
+from geometry_msgs.msg import Vector3
 from ort_interfaces.msg import CameraRotation
 from ort_interfaces.srv import Vec2Pos
 from ort_interfaces.action import Calibrate
@@ -24,12 +26,13 @@ from elysium.config.services import (
     FAIL,
     CALIBRATE_OFS,
     CODE_CONTINUE,
-    CODE_TERMINATE
+    CODE_TERMINATE,
 )
 
 import time
 from functools import partial
 from numpy import pi
+import numpy as np
 from dataclasses import dataclass
 from adafruit_servokit import ServoKit
 
@@ -64,6 +67,14 @@ class TelepresenceOperations(Node):
             self.confirmConnectionCB_,
             10,
             callback_group=connection_cb_group,
+        )
+
+        self.linear_accel_ = self.create_subscription(
+            Vector3,
+            "/imu/linear_accel",
+            self.linearCB_,
+            qos_profile=qos_profile_sensor_data,
+            callback_group=connection_cb_group
         )
 
         # Publishers
@@ -111,6 +122,12 @@ class TelepresenceOperations(Node):
         self.opt_x = 0
         self.opt_y = 0
 
+        self.rate = self.create_rate(200)
+
+    def linearCB_(self, msg: Vector3):
+        self.x_accel = msg.x
+        self.y_accel = msg.y
+        self.z_accel = msg.z
 
     def actionServerCB_(self, goal_handle):
         self.get_logger().info("Executing goal.")
@@ -129,10 +146,22 @@ class TelepresenceOperations(Node):
                 x1, y1 = self.opt_x, self.opt_y
                 self.target.linear = 1
                 self.drive()
+                
+                move_seconds = 2
 
-                # sleep for $(sleep_seconds) while rover drives
-                sleep_seconds = 2
-                time.sleep(sleep_seconds)
+                start_time = time.monotonic()
+                now = time.monotonic()
+                
+                times = []
+                accelerations = []
+                while (now - start_time) < move_seconds:
+                    now = time.monotonic()
+                    accel = np.sqrt(self.x_accel ** 2 + self.y_accel ** 2 + self.z_accel ** 2)
+
+                    times.append(now)
+                    accelerations.append(accel)
+
+                    self.rate.sleep()
 
                 self.target.linear = 0
                 self.drive()
@@ -144,7 +173,7 @@ class TelepresenceOperations(Node):
                 self.get_logger().info("Second response is: " + str(resp2))
                 if resp2 == CODE_CONTINUE:
                     x2, y2 = self.opt_x, self.opt_y
-                    
+
                     y_dist = y2 - y1
 
                     factor = Float32(data=1 / y_dist)
