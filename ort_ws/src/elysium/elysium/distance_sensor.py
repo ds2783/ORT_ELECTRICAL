@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
 import rclpy.utilities
+import rclpy.executors
 
 import smbus3 as smbus
 import gpiozero as gpio
@@ -10,7 +11,6 @@ from gpiozero.pins.lgpio import LGPIOFactory
 from std_msgs.msg import Float32
 
 import time
-import threading
 import elysium.hardware.adafruit_vl53l4cx as tof
 from elysium.config.sensors import DISTANCE_SENSOR_REFRESH_PERIOD, tofQoS
 
@@ -144,12 +144,9 @@ def main(args=None):
     executor.add_node(_distance_sensor_1)
     executor.add_node(_distance_sensor_2)
     
-    executor_thread = threading.Thread(target=executor.spin, daemon=True)
-    executor_thread.start()
-
     try:
         while rclpy.utilities.ok():
-            pass
+            executor.spin()
     except KeyboardInterrupt:
         _distance_sensor_1.get_logger().warn(f"KeyboardInterrupt triggered.")
         _distance_sensor_2.get_logger().warn(f"KeyboardInterrupt triggered.")
@@ -157,4 +154,3 @@ def main(args=None):
         _distance_sensor_1.destroy_node()
         _distance_sensor_2.destroy_node()
         rclpy.utilities.try_shutdown()
-        executor_thread.join()

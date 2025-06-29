@@ -153,8 +153,7 @@ def main(args=None):
     rclpy.init(args=args)
     node = TelepresenceOperations()
     try:
-        while rclpy.utilities.ok():
-            rclpy.spin(node)
+        rclpy.spin(node)
     except KeyboardInterrupt:
         node.get_logger().warn(f"KeyboardInterrupt triggered.")
     finally:
