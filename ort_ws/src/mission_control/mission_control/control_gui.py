@@ -159,30 +159,30 @@ class GUI(Node):
         self.logger = self.client_.get_logger
 
         # Position
-        self.elysium_x = "0"
-        self.elysium_y = "0"
-        self.elysium_z = "0"
+        self.elysium_x = .0
+        self.elysium_y = .0
+        self.elysium_z = .0
 
         # GPS
-        self.gps_dist = "0"
+        self.gps_dist = .0
 
         # Attitude
-        self.elysium_yaw = "0"
-        self.elysium_pitch = "0"
-        self.elysium_roll = "0"
+        self.elysium_yaw = .0
+        self.elysium_pitch = .0
+        self.elysium_roll = .0
 
         # Twist
-        self.elysium_x_vel = "0"
-        self.elysium_y_vel = "0"
-        self.elysium_z_vel = "0"
+        self.elysium_x_vel = .0
+        self.elysium_y_vel = .0
+        self.elysium_z_vel = .0
 
         # Camera Rotation
-        self.camera_yaw = "0"
-        self.camera_pitch = "0"
+        self.camera_yaw = .0
+        self.camera_pitch = .0
 
         # tof
-        self.q_tof = "0"
-        self.o_tof = "0"
+        self.q_tof = .0
+        self.o_tof = .0
 
         # Battery
         self.soc = 0.5
