@@ -111,8 +111,8 @@ class TelepresenceOperations(Node):
         self.opt_x = 0
         self.opt_y = 0
 
-        sleep_seconds = 2
-        self.rate = self.create_rate(sleep_seconds)
+        sleep_seconds = 4
+        self.rate = self.create_rate(1/sleep_seconds)
 
     def actionServerCB_(self, goal_handle):
         self.get_logger().info("Executing goal.")
@@ -145,7 +145,7 @@ class TelepresenceOperations(Node):
                 self.get_logger().info("Second response is: " + str(resp2))
                 if resp2 == CODE_CONTINUE:
                     x2, y2 = self.opt_x, self.opt_y
-
+                    
                     y_dist = y2 - y1
 
                     factor = Float32(data=1 / y_dist)
