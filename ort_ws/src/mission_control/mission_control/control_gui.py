@@ -418,7 +418,9 @@ class GUI(Node):
             if expanded:
                 imgui.text("x: " + str(self.qr_dict_[key]["x"]))
                 imgui.text("y: " + str(self.qr_dict_[key]["y"]))
-                imgui.text("distance: " + str(self.qr_dict_[key]["distance"]))
+                imgui.text("distance-ofs-imu: " + str(self.qr_dict_[key]["distance-ofs-imu"]))
+                imgui.text("distance-gps: " + str(self.qr_dict_[key]["distance-gps"]))
+                imgui.text("more-reliable: " + str(self.qr_dict_[key]["more-reliable"]))
                 if imgui.button("Show Image"):
                     imgui.open_popup("Image: " + str(key))
                     try:
