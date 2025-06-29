@@ -341,7 +341,7 @@ class BatteryMonitorNode(Node):
                 self._save_lookup_data()
 
         if (
-            self.measured_voltage <= BMS_UNDERVOLT_WARN and self.measured_voltage > 1
+            self.voltage_avg.average <= BMS_UNDERVOLT_WARN and self.voltage_avg.average > 1
         ):  # checking if the voltage isn't around 0, since the Pi could be connected
             # to external power supplies, leading to near-zero reading on the INA260.
             self.get_logger().warn(
@@ -350,8 +350,8 @@ class BatteryMonitorNode(Node):
             )
 
         elif (
-            self.measured_voltage <= BMS_UNDERVOLT_SHUTDOWN
-            and self.measured_voltage > 1
+            self.voltage_avg.average <= BMS_UNDERVOLT_SHUTDOWN
+            and self.voltage_avg.average > 1
         ):  # will try to gracefully shutdown the entire system.
             for _ in range(3):
                 self.get_logger().error(
