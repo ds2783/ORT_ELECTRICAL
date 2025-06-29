@@ -32,17 +32,27 @@ class Integration:
         return final
 
 class RollingAverage:
-    def __init__(self, length):
+    def __init__(self, dim):
+        """Rolling average for a ndarray or 2D ndarray.
+
+        :param dim: shape of numpy array, format of (Row, Column). The row will dictate how many samples to average over.
+        :type dim: Iterable, Tuple, List
+        """
+
         self.items = 0
-        self.length = length
-        self._queue = np.zeros(length, dtype=np.float32)
+        self.dim = dim
+        
+        if len(dim) == 1:
+            dim = (dim, 1)
+
+        self._queue = np.zeros(dim, dtype=np.float32)
     
     def add(self, value):
-        if self.items < self.length:
+        if self.items < self.dim[0]:
             self.items += 1
     
-        self._queue[:-1] = self._queue[1:]
-        self._queue[-1] = value
+        self._queue[:-1, :] = self._queue[1:, :]
+        self._queue[-1, :] = value
 
     @property
     def average(self):
