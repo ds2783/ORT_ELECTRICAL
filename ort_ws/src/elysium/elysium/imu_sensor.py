@@ -77,12 +77,17 @@ class Imu(Node):
         quat.w = corrected_q[0]
         self.quaternion_pub_.publish(quat)
 
-        accel = Vector3(
-            x=self.acceleration_x.average,
-            y=self.acceleration_y.average,
-            z=self.acceleration_z.average,
-        )
-        self.accelerometer_pub_.publish(accel)
+        if (
+            self.acceleration_x.average is not None
+            and self.acceleration_y.average is not None
+            and self.acceleration_z.average is not None
+        ):
+            accel = Vector3(
+                x=float(self.acceleration_x.average),
+                y=float(self.acceleration_y.average),
+                z=float(self.acceleration_z.average),
+            )
+            self.accelerometer_pub_.publish(accel)
 
     def updateAccelCB_(self):
         self.acceleration_x.add(self.bno.linear_acceleration[0])
