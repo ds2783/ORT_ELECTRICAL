@@ -9,6 +9,7 @@ from pathlib import Path
 import busio, board
 
 import elysium.hardware.adafruit_ina260 as _ina260
+from elysium.utils import RollingAverage, ApproxIntegration
 from elysium.config.sensors import (
     BMS_REFRESH_PERIOD,
     BMS_DELTA_T,
@@ -28,26 +29,6 @@ from ort_interfaces.msg import BatteryInfo
 
 # USING A COMBINATION OF SIMPLISTIC COLOUMB COUNTING AND AN 'OCV' LOOKUP TABLE.
 # SUBSEQUENT TBRO MEMBERS SHOULD LOOK AT KALMANN FILTERS FOR A MORE OPTIMISED ESTIMATION OF THE SOC OF THE BATTERY.
-
-
-class RollingAverage:
-    def __init__(self, length):
-        self.items = 0
-        self.length = length
-        self._queue = np.zeros(length, dtype=np.float32)
-    
-    def add(self, value):
-        if self.items < self.length:
-            self.items += 1
-    
-        self._queue[:-1] = self._queue[1:]
-        self._queue[-1] = value
-
-    @property
-    def average(self):
-        _items = self.items if self.items else 1  # Avoid dividing by zero.
-        
-        return np.sum(self._queue)/_items
     
 
 class BatteryMonitorNode(Node):
@@ -94,6 +75,8 @@ class BatteryMonitorNode(Node):
         
         self.charge_avg = RollingAverage(length=round(BMS_ROLLING_AVERAGE_SECONDS/BMS_DELTA_T))
         self.voltage_avg = RollingAverage(length=round(BMS_ROLLING_AVERAGE_SECONDS/BMS_DELTA_T))
+
+        self.integration = ApproxIntegration(self.bms.current * (1e-3/3.6))
 
         self.current_capacity = BMS_BATTERY_CAPACITY
         self.total_capacity = BMS_BATTERY_CAPACITY
@@ -327,12 +310,16 @@ class BatteryMonitorNode(Node):
         self.measured_current = self.bms.current  # mA
         self.measured_power = self.bms.power  # mW
 
-        charge_expended = (
-            self.measured_current * 1e-3 * BMS_DELTA_T
-        * (1 / 3.6))  # mA * 0.0001 * dt, giving charge in mAh.
+        charge_expended = self.integration.integ_trap(self.measured_current * 1e-3/3.6, BMS_DELTA_T)
+
+        # charge_expended = (
+        #     self.measured_current * 1e-3 * BMS_DELTA_T
+        # * (1 / 3.6))  # mA * 0.0001 * dt * (1/3.6), giving charge in mAh.
         self.soc = (
             self.current_capacity - charge_expended 
         ) / self.total_capacity 
+
+        self.previous_current = self.measured_current  # for the integration calculation.
 
         self.charge_avg.add(charge_expended)
         self.est_time_remaining = self.current_capacity / (self.charge_avg.average / BMS_DELTA_T)  # estimated time remaining in seconds.
