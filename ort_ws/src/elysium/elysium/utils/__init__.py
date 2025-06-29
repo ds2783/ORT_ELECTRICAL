@@ -31,6 +31,43 @@ class Integration:
             final += self.single(y_vals[index + 1], dx)
         return final
 
+class RollingAverage2D:
+    def __init__(self, dim):
+        """Rolling average for a ndarray or a 2D ndarray.
+
+        :param dim: shape of numpy array, format of (Row, Column). The row will dictate how many samples to average over.
+        :type dim: Iterable, Tuple, List
+        """
+
+        self.items = 0
+        self.dim = dim
+        
+        if isinstance(self.dim, int):
+            self.dim = (self.dim, 1)
+
+        self._queue = np.zeros(self.dim, dtype=np.float32)
+    
+    def add(self, value):
+        """Add a value or set of values to the rolling average. If the shape of the 
+        rolling average is not (row, 1), make sure the row vector passed is the same shape as 
+        (1, col). (Basically make sure the row vector is the correct shape.)
+
+        :param value: Single value or row vector
+        :type value: int, np.ndarray
+        """
+        if self.items < self.dim[0]:
+            self.items += 1
+    
+        self._queue[:-1, :] = self._queue[1:, :]
+        self._queue[-1, :] = value  # make sure this is a row vector if its 2D! 
+
+    @property
+    def average(self):
+        _items = self.items if self.items else 1  # Avoid dividing by zero.
+        
+        return np.sum(self._queue, axis=0)/_items
+    
+    
 class RollingAverage:
     def __init__(self, length):
         self.items = 0
