@@ -1,4 +1,3 @@
-from numpy.lib import average
 import rclpy
 from rclpy.node import Node
 from rclpy.action.server import ActionServer
