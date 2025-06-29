@@ -153,7 +153,7 @@ class BaseNode(Node):
                             "filename": fname,
                             }
 
-                    im = Image.fromarray(image)
+                    im = Image.fromarray(image).rotate(-90)
 
                     if not Path(QR_DIRECTORY).is_dir():
                         Path(QR_DIRECTORY).mkdir()
