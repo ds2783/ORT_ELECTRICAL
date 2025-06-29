@@ -12,6 +12,7 @@ import elysium.hardware.adafruit_ina260 as _ina260
 from elysium.config.sensors import (
     BMS_REFRESH_PERIOD,
     BMS_DELTA_T,
+    BMS_ROLLING_AVERAGE_SECONDS,
     BMS_UNDERVOLT_WARN,
     BMS_UNDERVOLT_SHUTDOWN,
     BMS_BATTERY_CAPACITY,
@@ -42,8 +43,11 @@ class RollingAverage:
         self._queue[:-1] = self._queue[1:]
         self._queue[-1] = value
 
+    @property
     def average(self):
-        return np.sum(self._queue)/self.items
+        _items = self.items if self.items else 1  # Avoid dividing by zero.
+        
+        return np.sum(self._queue)/_items
     
 
 class BatteryMonitorNode(Node):
@@ -69,6 +73,7 @@ class BatteryMonitorNode(Node):
             msg_type=msg_type, topic=topic_name, qos_profile=tofQoS
         )
         self.publisher_timer = self.create_timer(BMS_REFRESH_PERIOD, self.send_data)
+        self._tmp_timer = self.create_timer(BMS_ROLLING_AVERAGE_SECONDS, self._rebase_voltages)    
 
         i2c = busio.I2C(board.SCL, board.SDA)
         self.bms = _ina260.INA260(i2c, address=i2c_addr)
@@ -86,9 +91,11 @@ class BatteryMonitorNode(Node):
             0.0,
             0.0
         )
+        
+        self.rolling_avg = RollingAverage(length=round(BMS_ROLLING_AVERAGE_SECONDS/BMS_DELTA_T))
+        self.voltage_avg = RollingAverage(length=round(BMS_ROLLING_AVERAGE_SECONDS/BMS_DELTA_T))
 
-        self.rolling_avg = RollingAverage(length=200)
-        self.voltage_avg = RollingAverage(length=100)
+        self._take_initial_readings()
 
         self.current_capacity = BMS_BATTERY_CAPACITY
         self.total_capacity = BMS_BATTERY_CAPACITY
@@ -106,9 +113,6 @@ class BatteryMonitorNode(Node):
             self._read_battery_file()
         )  # state of charge = capacity remaining / total capacity
 
-        if not self.lookup:
-            self._compare_ocv_soc()  # sanity check the stored SOC values against the 'OCV' values in the lookup table.
-
     @property
     def soc(self):
         return round(self._soc, ndigits=3)
@@ -121,6 +125,14 @@ class BatteryMonitorNode(Node):
 
         self._soc = value
         self.current_capacity = self._soc * self.total_capacity
+
+    def _rebase_voltages(self):
+        """Run X seconds after rclpy spins the node. 
+        """
+        
+        if not self.lookup:
+            self._compare_ocv_soc()  # sanity check the stored SOC values against the 'OCV' values in the lookup table.
+        self.destroy_timer(self._tmp_timer)
 
     def _read_battery_file(self, path=BMS_SAVE_PATH):
         """If the BMS_SAVE_PATH file exists, read and typecast into float.
@@ -247,7 +259,8 @@ class BatteryMonitorNode(Node):
         :param deviation: soc deviation, defaults to 0.05
         :type deviation: float, optional
         """
-        tmp_voltage = self.voltage_avg.average()
+
+        tmp_voltage = self.voltage_avg.average
         lookup_soc = self._find_ocv_soc(tmp_voltage)
         
         if lookup_soc:
@@ -324,7 +337,7 @@ class BatteryMonitorNode(Node):
         ) / self.total_capacity 
 
         self.rolling_avg.add(charge_expended)
-        self.est_time_remaining = self.current_capacity / (self.rolling_avg.average() / BMS_DELTA_T)  # estimated time remaining in seconds.
+        self.est_time_remaining = self.current_capacity / (self.rolling_avg.average / BMS_DELTA_T)  # estimated time remaining in seconds.
         
         self.voltage_avg.add(self.measured_voltage)
 
