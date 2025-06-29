@@ -95,8 +95,6 @@ class BatteryMonitorNode(Node):
         self.rolling_avg = RollingAverage(length=round(BMS_ROLLING_AVERAGE_SECONDS/BMS_DELTA_T))
         self.voltage_avg = RollingAverage(length=round(BMS_ROLLING_AVERAGE_SECONDS/BMS_DELTA_T))
 
-        self._take_initial_readings()
-
         self.current_capacity = BMS_BATTERY_CAPACITY
         self.total_capacity = BMS_BATTERY_CAPACITY
 
