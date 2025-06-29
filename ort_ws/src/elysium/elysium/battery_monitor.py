@@ -73,8 +73,8 @@ class BatteryMonitorNode(Node):
             0.0
         )
         
-        self.charge_avg = RollingAverage(length=round(BMS_ROLLING_AVERAGE_SECONDS/BMS_DELTA_T))
-        self.voltage_avg = RollingAverage(length=round(BMS_ROLLING_AVERAGE_SECONDS/BMS_DELTA_T))
+        self.charge_avg = RollingAverage(round(BMS_ROLLING_AVERAGE_SECONDS/BMS_DELTA_T))
+        self.voltage_avg = RollingAverage(round(BMS_ROLLING_AVERAGE_SECONDS/BMS_DELTA_T))
 
         self.integration = Integration(self.bms.current * (1e-3/3.6))
 
