@@ -159,7 +159,8 @@ class BaseNode(Node):
                         Path(QR_DIRECTORY).mkdir()
 
                     im.save(Path(QR_DIRECTORY, fname))
-                
+               
+                self.get_logger().info(str(self.scanned_codes))
                 if len(qr_final) >= 1:
                     self.get_logger().info("Sending JSON object.")
                     self.sendComms("qrdic:" + json.dumps(self.scanned_codes))
