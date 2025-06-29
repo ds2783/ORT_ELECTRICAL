@@ -145,8 +145,7 @@ def main(args=None):
     executor.add_node(_distance_sensor_2)
     
     try:
-        while rclpy.utilities.ok():
-            executor.spin()
+        executor.spin()
     except KeyboardInterrupt:
         _distance_sensor_1.get_logger().warn(f"KeyboardInterrupt triggered.")
         _distance_sensor_2.get_logger().warn(f"KeyboardInterrupt triggered.")

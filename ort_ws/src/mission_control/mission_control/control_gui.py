@@ -206,43 +206,46 @@ class GUI(Node):
 
     def qrComms(self):
         while True:
-            recieved_msg = self.conn.recv()
-            if recieved_msg is not None:
-                data = str(recieved_msg)[6:]
-                match recieved_msg[:5]:
-                    case "qr---":
-                        self.last_qr_ = data
-                    case "x----":
-                        self.elysium_x = data
-                    case "y----":
-                        self.elysium_y = data
-                    case "z----":
-                        self.elysium_z = data
-                    case "yaw--":
-                        self.elysium_yaw = data
-                    case "pitch":
-                        self.elysium_pitch = data
-                    case "roll-":
-                        self.elysium_roll = data
-                    case "x_vel":
-                        self.elysium_x_vel = data
-                    case "y_vel":
-                        self.elysium_y_vel = data
-                    case "z_vel":
-                        self.elysium_z_vel = data
-                    case "cam_y":
-                        self.camera_yaw = data
-                    case "cam_p":
-                        self.camera_pitch = data
-                    case "q-tof":
-                        self.q_tof = data
-                    case "o-tof":
-                        self.o_tof = data
-                    case "soc--":
-                        self.soc = float(data)
-                    case "qrdic":
-                        self.get_logger().info("Recieved JSON file from Base Station.")
-                        self.qr_dict_ = json.loads(data)
+            try:
+                recieved_msg = self.conn.recv()
+                if recieved_msg is not None:
+                    data = str(recieved_msg)[6:]
+                    match recieved_msg[:5]:
+                            case "qr---":
+                                self.last_qr_ = data
+                            case "x----":
+                                self.elysium_x = data
+                            case "y----":
+                                self.elysium_y = data
+                            case "z----":
+                                self.elysium_z = data
+                            case "yaw--":
+                                self.elysium_yaw = data
+                            case "pitch":
+                                self.elysium_pitch = data
+                            case "roll-":
+                                self.elysium_roll = data
+                            case "x_vel":
+                                self.elysium_x_vel = data
+                            case "y_vel":
+                                self.elysium_y_vel = data
+                            case "z_vel":
+                                self.elysium_z_vel = data
+                            case "cam_y":
+                                self.camera_yaw = data
+                            case "cam_p":
+                                self.camera_pitch = data
+                            case "q-tof":
+                                self.q_tof = data
+                            case "o-tof":
+                                self.o_tof = data
+                            case "soc--":
+                                self.soc = float(data)
+                            case "qrdic":
+                                self.get_logger().info("Recieved JSON file from Base Station.")
+                                self.qr_dict_ = json.loads(data)
+            except EOFError:
+                self.get_logger().warn("EOFError no valid message.")
 
     def bind_image(self, img):
         image = np.array(img)

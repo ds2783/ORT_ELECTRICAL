@@ -156,6 +156,7 @@ class BaseNode(Node):
                     im.save(f"{QR_DIRECTORY}{fname}")
                 
                 if len(qr_final) >= 1:
+                    self.get_logger().info("Sending JSON object.")
                     self.sendComms("qrdic:" + json.dumps(self.scanned_codes))
 
                 with open('qr_data.json', 'w') as fp:

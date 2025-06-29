@@ -400,8 +400,7 @@ def main(args=None):
     )
 
     try:
-        while rclpy.utilities.ok():
-            rclpy.spin(_bms_node)
+        rclpy.spin(_bms_node)
     except KeyboardInterrupt:
         _bms_node.get_logger().warn(f"KeyboardInterrupt triggered.")
     finally:
