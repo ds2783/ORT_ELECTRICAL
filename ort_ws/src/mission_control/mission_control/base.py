@@ -152,9 +152,9 @@ class BaseNode(Node):
                             "distance": np.sqrt(x_dist ** 2 + y_dist ** 2),
                             "filename": fname,
                             }
-
-                    im_pre_rot = Image.fromarray(image)
-                    im = im_pre_rot.rotate(270)
+                    
+                    # Rotate camera from mount point.
+                    im = Image.fromarray(image).rotate(270)
 
                     if not Path(QR_DIRECTORY).is_dir():
                         Path(QR_DIRECTORY).mkdir()
