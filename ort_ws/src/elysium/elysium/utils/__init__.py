@@ -43,7 +43,7 @@ class RollingAverage:
         self.dim = dim
         
         if isinstance(dim, int):
-            dim = (dim, 1)
+            self.dim = (dim, 1)
 
         self._queue = np.zeros(dim, dtype=np.float32)
     
