@@ -148,7 +148,7 @@ class TelepresenceOperations(Node):
                 self.target.linear = 1
                 self.drive()
                 
-                move_seconds = 2
+                move_seconds = 4
 
                 start_time = time.monotonic()
                 now = time.monotonic()
