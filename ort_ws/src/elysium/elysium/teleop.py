@@ -9,6 +9,7 @@ from rclpy.qos import qos_profile_sensor_data
 from std_msgs.msg import Bool, Float32
 from sensor_msgs.msg import Joy
 from geometry_msgs.msg import Vector3
+from elysium import imu_sensor
 from ort_interfaces.msg import CameraRotation
 from ort_interfaces.srv import Vec2Pos
 from ort_interfaces.action import Calibrate
@@ -154,13 +155,14 @@ class TelepresenceOperations(Node):
                 now = time.monotonic()
                 
                 times = []
-                accelerations = []
+                accelerations_x = []
+                accelerations_y = []
                 while (now - start_time) < move_seconds:
                     now = time.monotonic()
-                    accel = np.sqrt(self.x_accel ** 2 + self.y_accel ** 2)
 
                     times.append(now - start_time)
-                    accelerations.append(accel)
+                    accelerations_x.append(self.x_accel)
+                    accelerations_y.append(self.y_accel)
 
                     self.rate.sleep()
 
@@ -175,16 +177,20 @@ class TelepresenceOperations(Node):
                 if resp2 == CODE_CONTINUE:
                     x2, y2 = self.opt_x, self.opt_y
 
-                    y_dist = y2 - y1
+                    ofs_y_dist = y2 - y1
                     # ERROR HANDLING
-                    self.get_logger().info("")
                     integrator = Integration()
-                    velocities = integrator.rollingIntegration(times, accelerations) 
-                    # actual distance in meters
-                    actual_dist = integrator.integrate(times, velocities)
+                    
+                    velocities_x = integrator.rollingIntegration(times, accelerations_x) 
+                    dist_x = integrator.integrate(times, velocities_x)
+
+                    velocities_y = integrator.rollingIntegration(times, accelerations_y) 
+                    dist_y = integrator.integrate(times, velocities_y)
+                    
+                    actual_dist = np.sqrt(dist_x ** 2 + dist_y ** 2)
                     self.get_logger().info("Actual distance travelled: " + str(actual_dist) + "m")
                     
-                    factor = Float32(data= actual_dist / y_dist)
+                    factor = Float32(data= actual_dist / ofs_y_dist)
                     self.optical_factor_pub_.publish(factor)
 
                     goal_handle.succeed()
