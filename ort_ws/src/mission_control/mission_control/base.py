@@ -141,9 +141,8 @@ class BaseNode(Node):
 
                 # list comprension to filter out None's
                 qr_final = [x for x in qreader_out if x is not None]
-                self.get_logger().info(str(qr_final))
 
-                for code in enumerate(qr_final):
+                for code in qr_final:
                     date = datetime.datetime.now()
                     fname = f"qr_{len(self.scanned_codes)}_{date.year}_{date.month}_{date.day}.jpeg"
                     self.scanned_codes[code] = {
