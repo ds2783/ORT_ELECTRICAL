@@ -1,21 +1,26 @@
 import time
 import board
 import adafruit_gps
+import serial
 
 import rclpy
 from rclpy.node import Node
 
-from elysium.config.sensors import GPS_REFRESH_PERIOD
+from elysium.config.sensors import GPS_DEV_PORT, GPS_REFRESH_PERIOD
 
 from ort_interfaces.msg import GPSStatus, SatelliteInfo
 
 class GPS(Node):
-    def __init__(self):
+    def __init__(self, baudrate, timeout):
         super().__init__('gps_publisher')
 
-        # Set up I2C connection (for GPS w/ STEMMA QT or similar)
-        i2c = board.I2C()
-        self.gps = adafruit_gps.GPS_GtopI2C(i2c, debug=False)
+        # RX = board.RX
+        # TX = board.TX
+
+        uart = serial.Serial(GPS_DEV_PORT, baudrate, timeout=timeout)
+
+        self.gps = adafruit_gps.GPS(uart, debug=False)
+        # self.gps = adafruit_gps.GPS_GtopI2C(i2c, debug=False)
 
         # Enable all sentences (including GSA/GSV)
         self.gps.send_command(b"PMTK314,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0")
