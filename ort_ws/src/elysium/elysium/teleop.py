@@ -188,12 +188,16 @@ class TelepresenceOperations(Node):
                     actual_dist = np.sqrt(dist_x ** 2 + dist_y ** 2)
                     self.get_logger().info("Actual distance travelled: " + str(actual_dist) + "m")
                     
-                    factor = Float32(data= actual_dist / ofs_y_dist)
-                    self.optical_factor_pub_.publish(factor)
+                    result = Calibrate.Result()
+                    try:
+                        factor = Float32(data= actual_dist / ofs_y_dist)
+                        self.optical_factor_pub_.publish(factor)
+                        result.result = SUCCESS
+                    except:
+                        self.get_logger().error("Error, OFS detected no movement during calibration.")
+                        result.result = FAIL
 
                     goal_handle.succeed()
-                    result = Calibrate.Result()
-                    result.result = SUCCESS
                     return result
 
             if resp1 == CODE_TERMINATE or resp2 == CODE_TERMINATE:
