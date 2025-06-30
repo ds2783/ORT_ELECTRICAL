@@ -147,7 +147,7 @@ class TelepresenceOperations(Node):
             if resp1 == CODE_CONTINUE:
                 x1, y1 = self.opt_x, self.opt_y
                 self.target.linear = 1
-                self.drive()
+                driving = False
                 
                 start_time = time.monotonic()
                 now = time.monotonic()
@@ -163,6 +163,9 @@ class TelepresenceOperations(Node):
                     accelerations_y.append(self.y_accel)
 
                     self.rate.sleep()
+                    if not driving:
+                        self.drive()
+                        driving = True
 
                 self.target.linear = 0
                 self.drive()
@@ -174,9 +177,8 @@ class TelepresenceOperations(Node):
                 self.get_logger().info("Second response is: " + str(resp2))
                 if resp2 == CODE_CONTINUE:
                     x2, y2 = self.opt_x, self.opt_y
-
                     ofs_y_dist = y2 - y1
-                    # ERROR HANDLING
+
                     integrator = Integration()
                     
                     velocities_x = integrator.rollingIntegration(times, accelerations_x) 
