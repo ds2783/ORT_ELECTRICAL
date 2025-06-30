@@ -9,7 +9,6 @@ from rclpy.qos import qos_profile_sensor_data
 from std_msgs.msg import Bool, Float32
 from sensor_msgs.msg import Joy
 from geometry_msgs.msg import Vector3
-from elysium import imu_sensor
 from ort_interfaces.msg import CameraRotation
 from ort_interfaces.srv import Vec2Pos
 from ort_interfaces.action import Calibrate
