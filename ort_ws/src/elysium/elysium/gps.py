@@ -96,7 +96,7 @@ class GPS(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    node = GPS()
+    node = GPS(baudrate=9600, timeout=5)
     rclpy.spin(node)
 
     node.destroy_node()
