@@ -9,12 +9,12 @@ from rclpy.qos import qos_profile_sensor_data
 from std_msgs.msg import Bool, Float32
 from sensor_msgs.msg import Joy
 from geometry_msgs.msg import Vector3
-from elysium import imu_sensor
 from ort_interfaces.msg import CameraRotation
 from ort_interfaces.srv import Vec2Pos
 from ort_interfaces.action import Calibrate
 
 from elysium.config.mappings import AXES
+from elysium.config.sensors import OPTICAL_MOVE_TIME, OPTICAL_ACCEL_SAMPLE_RATE
 from elysium.config.controls import (
     CAMERA_SENSITIVITY,
     CAMERA_SERVO_X,
@@ -112,7 +112,7 @@ class TelepresenceOperations(Node):
         self.cam_angles_ = rotation2D(90.0, 90.0)
 
         # Connection timer
-        self.last_connection_ = time.time_ns()
+        self.last_connection_ = time.monotonic()
         self.connection_timer_ = self.create_timer(0.4, self.shutdownCB_, node_cb_group)
         self.driver_timer_ = self.create_timer(0.02, self.driveCB_, node_cb_group)
 
@@ -124,7 +124,7 @@ class TelepresenceOperations(Node):
         self.opt_x = 0
         self.opt_y = 0
 
-        self.rate = self.create_rate(200)
+        self.rate = self.create_rate(OPTICAL_ACCEL_SAMPLE_RATE)
 
     def linearCB_(self, msg: Vector3):
         self.x_accel = msg.x
@@ -147,17 +147,15 @@ class TelepresenceOperations(Node):
             if resp1 == CODE_CONTINUE:
                 x1, y1 = self.opt_x, self.opt_y
                 self.target.linear = 1
-                self.drive()
+                driving = False
                 
-                move_seconds = 3
-
                 start_time = time.monotonic()
                 now = time.monotonic()
                 
                 times = []
                 accelerations_x = []
                 accelerations_y = []
-                while (now - start_time) < move_seconds:
+                while (now - start_time) < OPTICAL_MOVE_TIME:
                     now = time.monotonic()
 
                     times.append(now - start_time)
@@ -165,6 +163,9 @@ class TelepresenceOperations(Node):
                     accelerations_y.append(self.y_accel)
 
                     self.rate.sleep()
+                    if not driving:
+                        self.drive()
+                        driving = True
 
                 self.target.linear = 0
                 self.drive()
@@ -176,9 +177,8 @@ class TelepresenceOperations(Node):
                 self.get_logger().info("Second response is: " + str(resp2))
                 if resp2 == CODE_CONTINUE:
                     x2, y2 = self.opt_x, self.opt_y
-
                     ofs_y_dist = y2 - y1
-                    # ERROR HANDLING
+
                     integrator = Integration()
                     
                     velocities_x = integrator.rollingIntegration(times, accelerations_x) 
@@ -190,12 +190,16 @@ class TelepresenceOperations(Node):
                     actual_dist = np.sqrt(dist_x ** 2 + dist_y ** 2)
                     self.get_logger().info("Actual distance travelled: " + str(actual_dist) + "m")
                     
-                    factor = Float32(data= actual_dist / ofs_y_dist)
-                    self.optical_factor_pub_.publish(factor)
+                    result = Calibrate.Result()
+                    try:
+                        factor = Float32(data= actual_dist / ofs_y_dist)
+                        self.optical_factor_pub_.publish(factor)
+                        result.result = SUCCESS
+                    except:
+                        self.get_logger().error("Error, OFS detected no movement during calibration.")
+                        result.result = FAIL
 
                     goal_handle.succeed()
-                    result = Calibrate.Result()
-                    result.result = SUCCESS
                     return result
 
             if resp1 == CODE_TERMINATE or resp2 == CODE_TERMINATE:
@@ -259,10 +263,10 @@ class TelepresenceOperations(Node):
         self.get_logger().info("Opt distances set.")
 
     def confirmConnectionCB_(self, msg: Bool):
-        self.last_connection_ = time.time_ns()
+        self.last_connection_ = time.monotonic()
 
     def shutdownCB_(self):
-        if time.time_ns() > self.last_connection_ + 1e9:
+        if time.monotonic() > self.last_connection_ + 1.2:
             self.get_logger().warn("Lost connection, setting movement to zero.")
             self.target.linear = 0
             self.target.rotation = 0

@@ -256,8 +256,7 @@ def main(args=None):
     location_node = GeoLocator("location_service")
 
     try:
-        while rclpy.utilities.ok():
-            rclpy.spin(location_node)
+        rclpy.spin(location_node)
     except KeyboardInterrupt:
         location_node.get_logger().warn(f"KeyboardInterrupt triggered.")
     finally:

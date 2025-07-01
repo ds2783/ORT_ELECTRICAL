@@ -71,7 +71,7 @@ class GuiClient(Node):
             self, Calibrate, "/optical_flow/calibrate"
         )
 
-        self.current_step = None
+        self.current_step = 0
 
         self.reset_pos_pub_ = self.create_publisher(Bool, "/elysium/reset_pos", 10)
         self.led_pub_ = self.create_publisher(Float32, "/led", tofQoS)
@@ -384,15 +384,15 @@ class GUI(Node):
             imgui.open_popup("Calibration Client")
 
         if imgui.begin_popup_modal("Calibration Client").opened:
-            imgui.text("Feedback: " + str(self.client_.current_step))
+            imgui.text("Seconds remaining until completion: " + str(self.client_.current_step))
 
-            if imgui.button("Calibrate IMU"):
+            if imgui.button("Calibrate IMU - KEEP IMU STILL"):
                 self.client_.send_goal(CALIBRATE_IMU)
 
             elif imgui.button("Zero Axis"):
                 self.client_.send_goal(ZERO_AXIS)
 
-            elif imgui.button("Calibrate OFS"):
+            elif imgui.button("Calibrate OFS - ROVER WILL TRAVEL 1 METER FORWARD"):
                 self.client_.send_goal(CALIBRATE_OFS)
 
             elif imgui.button("Close Client"):

@@ -7,9 +7,15 @@ BMS_UNDERVOLT_WARN = 11  # threshold voltage for function. If each cell has 3V o
 BMS_UNDERVOLT_SHUTDOWN = 9.5  # threshold voltage for the Pi to function. Under this voltage the Pi should shut down. 
 BMS_SAVE_PATH = "/ros/battery_save.txt"
 BMS_LOOKUP_TABLE_PATH = "/ros/ocv_lookup.csv"
+
 IMU_SENSOR_PERIOD = 0.2
-IMU_UPDATE_FREQUENCY = 100 
+IMU_UPDATE_FREQUENCY = 80 
+IMU_ACCELEROMETER_CALIBRATION_PERIOD = 5
+
 OPTICAL_CALIBRATION = 1
+OPTICAL_MOVE_TIME = 2
+OPTICAL_ACCEL_SAMPLE_RATE = 120
+
 GPS_DEV_PORT = "/dev/ttyAMA0"
 GPS_REFRESH_PERIOD = 1
 OCV_ARRAY_SIZE = 1000
