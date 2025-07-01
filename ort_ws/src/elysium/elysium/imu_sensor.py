@@ -51,9 +51,9 @@ class Imu(Node):
         # -----------------
 
         # Variables ---------
-        self.acceleration_x = RollingAverage(50)
-        self.acceleration_y = RollingAverage(50)
-        self.acceleration_z = RollingAverage(50)
+        self.acceleration_x = RollingAverage(20)
+        self.acceleration_y = RollingAverage(20)
+        self.acceleration_z = RollingAverage(20)
 
         self.q = np.array([0.0, 0.0, 0.0, 1.0])  # Initial quaternion
         self.inverse = np.array([0.0, 0.0, 0.0, 1.0])
