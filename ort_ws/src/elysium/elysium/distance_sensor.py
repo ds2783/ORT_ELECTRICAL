@@ -94,10 +94,14 @@ def __patched_init(self, chip=None):
 def main(args=None):
     rclpy.init(args=args)
 
+    logger_node = rclpy.create_node("dist_logging_node")
+
     topic_name_1 = "/distance_sensor/qr_code"
     node_name_1 = "distance_node_qr"
     topic_name_2 = "/distance_sensor/optical_flow"
     node_name_2 = "distance_node_optical_flow"
+
+    time.sleep(1)  # I AM HOPING STAGGERING THE INITIALISATION OF SMBUS WILL PREVENT THE OTHER I2C ACCESSES FROM BREAKING. 
 
     i2c_bus = smbus.SMBus("/dev/i2c-1")
 
@@ -113,8 +117,8 @@ def main(args=None):
         both_on = True  # The i2c addresses have already been set properly and are returning correct model id 
         # values. 
     except OSError as err:
-        # sleep_node.get_logger().info(f"""[distance node] the i2c addresses of the sleep node have not been set yet, 
-        #                               (to be expected after a reboot) and will be set accordingly.""")
+        logger_node.get_logger().info(f"""[distance node] the i2c addresses of the sleep node have not been set yet, 
+                                      (to be expected after a reboot) and will be set accordingly.""")
         both_on = False  # They are not both set to the correct addresses, and have to be set accordingly. 
 
     if both_on:
