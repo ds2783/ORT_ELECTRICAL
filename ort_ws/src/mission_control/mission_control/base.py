@@ -185,7 +185,7 @@ class BaseNode(Node):
                     if not Path(QR_DIRECTORY).is_dir():
                         Path(QR_DIRECTORY).mkdir()
 
-                    im.save(Path(QR_DIRECTORY, fname))
+                    im.save(QR_DIRECTORY+fname)
                
                 if len(qr_final) >= 1:
                     self.get_logger().info("Sending JSON object.")
