@@ -1,11 +1,15 @@
 AXES = {
     "LEFTX": 0,
     "LEFTY": 1,
-    "RIGHTX": 3,
-    "RIGHTY": 4,
-    "TRIGGERLEFT": 2,
+    "RIGHTX": 2,
+    "RIGHTY": 3,
+    "TRIGGERLEFT": 4,
     "TRIGGERRIGHT": 5,
 }
+"""
+For small laptop:
+    AXES should be given indices: [0, 1, 3, 4, 2, 5]
+"""
 
 BUTTONS = {
     "CROSS": 0,
