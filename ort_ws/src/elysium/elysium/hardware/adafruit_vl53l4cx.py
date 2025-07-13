@@ -97,8 +97,6 @@ class VL53L4CX:
         if model_id != 0xEB or module_type != 0xAA:
             raise RuntimeError("Wrong sensor ID or type!")
 
-
-    def start_sensor(self):
         self._sensor_init()
 
     def _sensor_init(self):
