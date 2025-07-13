@@ -1,3 +1,4 @@
+from json import encoder
 import rclpy
 from rclpy.node import Node
 import rclpy.utilities
@@ -15,6 +16,7 @@ from elysium.config.mappings import AXES
 from elysium.config.sensors import (
     OPTICAL_MOVE_TIME,
     OPTICAL_CALIBRATION_LOOP_RATE,
+    ENCODER_OFFSET_X_AXIS,
     tofQoS,
 )
 from elysium.config.controls import (
@@ -151,7 +153,7 @@ class TelepresenceOperations(Node):
                 # cos is symmetric about /theta = 0, so no worries about direction
                 # accounts for the angle of the tof against the direction of travel
                 y1_tof = self.tof_dist * np.cos(
-                    degrees_to_rad(self.cam_angles_.x_axis - 90)
+                    degrees_to_rad(self.cam_angles_.x_axis - 90 - ENCODER_OFFSET_X_AXIS)
                 )
                 
                 self.target.linear = 1
@@ -174,7 +176,7 @@ class TelepresenceOperations(Node):
                     # cos is symmetric about /theta = 0, so no worries about direction
                     # accounts for the angle of the tof against the direction of travel
                     y2_tof = self.tof_dist * np.cos(
-                        degrees_to_rad(self.cam_angles_.x_axis - 90)
+                        degrees_to_rad(self.cam_angles_.x_axis - 90 - ENCODER_OFFSET_X_AXIS)
                     )
 
                     ofs_y_dist = y2 - y1
@@ -299,7 +301,7 @@ class TelepresenceOperations(Node):
         # publish camera rotation, note 90 degrees servo rotation -> 0 degrees around the axis
         camera_rotation_msg = CameraRotation(
             z_axis=float(degrees_to_rad(self.cam_angles_.z_axis - 90)),
-            x_axis=float(degrees_to_rad(self.cam_angles_.x_axis - 90)),
+            x_axis=float(degrees_to_rad(self.cam_angles_.x_axis - 90 - ENCODER_OFFSET_X_AXIS)),
         )
         self.cam_angles__pub_.publish(camera_rotation_msg)
 
