@@ -1,5 +1,5 @@
 # Always returns position despite request integer value
-int request
+bool request
 ---
 float32 distance
 bool data_retrieved

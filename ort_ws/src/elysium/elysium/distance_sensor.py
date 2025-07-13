@@ -56,7 +56,7 @@ class DistanceNode(Node):
 
             self.data = .0
         else:
-            self.srv = self.create_service(DistanceData, "distance_service", self.data_srv_callback)
+            self.srv = self.create_service(DistanceData, "/elysium/cam/distance_service", self.data_srv_callback)
 
 
         try:
