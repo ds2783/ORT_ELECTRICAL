@@ -39,8 +39,6 @@ class DistanceNode(Node):
         super().__init__(node_name)
 
 
-        self._start_timer = self.create_timer(DISTANCE_SENSOR_START_DELAY, self.start_sensor)  # start delay for the ToF. 
-
         if not srv:  # if the node is a service or not. 
             msg_type = Float32
             self.distance_publisher = self.create_publisher(
@@ -79,14 +77,6 @@ class DistanceNode(Node):
             self.get_logger().error(
                 f"Node {self.get_name()} I2C address is not accessible."
             )
-
-    def start_sensor(self):
-        """Run X seconds after rclpy spins the node. Destroys the timer afterwards. 
-        """
-
-        self.sensor.start_ranging()
-        self.destroy_timer(self._start_timer)
-
 
     def data_srv_callback(self, request, response):
         # Request isn't considered in this interaction.  
@@ -132,10 +122,10 @@ def main(args=None):
     topic_name_2 = "/distance_sensor/optical_flow"
     node_name_2 = "distance_node_optical_flow"
 
-    time.sleep(1)  # I AM HOPING STAGGERING THE INITIALISATION OF SMBUS WILL PREVENT THE OTHER I2C ACCESSES FROM BREAKING. 
+    time.sleep(0.5)  # I AM HOPING STAGGERING THE INITIALISATION OF SMBUS WILL PREVENT THE OTHER I2C ACCESSES FROM BREAKING. 
     i2c_bus = smbus.SMBus("/dev/i2c-1")
     # additional sleep to give SMBus a chance to boot up
-    time.sleep(1)
+    time.sleep(0.5)
 
     gpio.pins.lgpio.LGPIOFactory.__init__ = __patched_init   # setup the XSHUT pin and the green LED pins. 
     factory = LGPIOFactory()

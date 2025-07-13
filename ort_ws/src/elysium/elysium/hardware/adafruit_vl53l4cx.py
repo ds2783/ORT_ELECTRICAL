@@ -89,8 +89,6 @@ class VL53L4CX:
                  i2c_address: int = 0x29
                  ):
 
-        self.ros_start = False
-
         self.i2c_address = i2c_address
         self.i2c_bus = i2c_bus
 
@@ -103,7 +101,6 @@ class VL53L4CX:
 
     def start_sensor(self):
         self._sensor_init()
-        self.start_ranging()
 
     def _sensor_init(self):
         init_seq = (
