@@ -19,7 +19,7 @@ from elysium.config.sensors import DISTANCE_SENSOR_START_DELAY, DISTANCE_SENSOR_
 class DistanceNode(Node):
     def __init__(self, 
                  node_name: str, 
-                 topic_name: str, 
+                 topic_name: str,
                  i2c_addr: int, 
                  srv: bool = False):
         """Time of Flight Node using the VL53L4CX. 
@@ -36,6 +36,7 @@ class DistanceNode(Node):
         """
 
         super().__init__(node_name)
+
 
         if not srv:  # if the node is a service or not. 
             msg_type = Float32
@@ -75,7 +76,6 @@ class DistanceNode(Node):
             self.get_logger().error(
                 f"Node {self.get_name()} I2C address is not accessible."
             )
-
 
     def data_srv_callback(self, request, response):
         # Request isn't considered in this interaction.  
@@ -128,8 +128,8 @@ def main(args=None):
     green_led.on()  # indicate ROS2 is running. 
 
     try:
-        test_tof_1 = tof.VL53L4CD(address=0x29)
-        test_tof_2 = tof.VL53L4CD(address=0x2A)
+        test_tof_1 = tof.VL53L4CD(0x29)
+        test_tof_2 = tof.VL53L4CD(0x2A)
         del test_tof_1  # delete them after so they don't interfere with the initialisation later 
         del test_tof_2
         both_on = True  # The i2c addresses have already been set properly and are returning correct model id 
