@@ -129,8 +129,9 @@ def main(args=None):
     node_name_2 = "distance_node_optical_flow"
 
     time.sleep(1)  # I AM HOPING STAGGERING THE INITIALISATION OF SMBUS WILL PREVENT THE OTHER I2C ACCESSES FROM BREAKING. 
-
     i2c_bus = smbus.SMBus("/dev/i2c-1")
+    # additional sleep to give SMBus a chance to boot up
+    time.sleep(1)
 
     gpio.pins.lgpio.LGPIOFactory.__init__ = __patched_init   # setup the XSHUT pin and the green LED pins. 
     factory = LGPIOFactory()

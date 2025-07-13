@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 import rclpy
-from rclpy.node import Node
 import rclpy.utilities
+from rclpy.node import Node
 
-from sensor_msgs.msg import BatteryState, Joy
+from sensor_msgs.msg import Joy
 from std_msgs.msg import Bool, Float32
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Vector3
-from ort_interfaces.msg import CameraRotation, BatteryInfo
+from ort_interfaces.msg import CameraRotation, BatteryInfo, OpticalFlowCalibration
 
 from mission_control.stream.stream_client import ServerClient
 from mission_control.config.mappings import BUTTONS
@@ -23,6 +23,7 @@ from PIL import Image
 from pathlib import Path
 import json
 import time
+
 
 class BaseNode(Node):
     def __init__(self, port):
@@ -74,6 +75,9 @@ class BaseNode(Node):
         self.gps_dist_sub_ = self.create_subscription(
             Float32, "/elysium/gps_dist", self.gpsCB_, 10
         )
+        self.optical_calibration_ = self.create_subscription(
+            OpticalFlowCalibration, "/elysium/optical_factor", self.ofs_calCB_, 10
+        )
 
         # Publishers
         self.connection_pub_ = self.create_publisher(Bool, "ping", 10)
@@ -93,25 +97,34 @@ class BaseNode(Node):
         self.elysium_x = 0.0
         self.elysium_y = 0.0
         self.elysium_z = 0.0
+        self.elysium_x_raw = 0.0
+        self.elysium_y_raw = 0.0
+        self.elysium_z_raw = 0.0
 
+        # initial value is stating uncalibrated
+        self.optical_factor = 1.0
+        self.optical_calibration_points = []
+        self.number_of_calibration_samples = 0
+        
         # Elysium Battery
         self.soc = 0.0
 
         # GPS
         self.gps_dist_ = 0
+        self.last_gps_ = None
 
         # Recover Old Codes
         self.scanned_codes = {}
         try:
-            with open('qr_data.json', 'r') as fp:
+            with open("qr_data.json", "r") as fp:
                 self.scanned_codes = json.load(fp)
             self.get_logger().info(
                 "This data was recovered: " + str(self.scanned_codes)
             )
         except:
-            self.get_logger().info("No CSV to recover from.")
+            self.get_logger().info("No JSON to recover from.")
         self.start_time = time.monotonic()
-        # Added this state variable in case Python interpreter is too dump to 
+        # Added this state variable in case Python interpreter is too dump to
         # figure out that (now - self.start_time) < 1.0 will never be true
         # again after 1 second.
         self.qr_ping = True
@@ -130,7 +143,7 @@ class BaseNode(Node):
 
                 self.last_qr = str(qreader_out)
                 self.sendComms("qr---:" + self.last_qr)
-                    
+
                 # assuming y is the forward coordinate
                 # (still to be tested)
                 # raycasted vector  ->
@@ -143,42 +156,55 @@ class BaseNode(Node):
                 # Calculate the distance from the plane the rover inhabits
                 # rotation x_axis -> pitch
                 offset = displacement * np.cos(self.cam_rotation.x_axis)
+                offset_x = offset[0][0]
+                offset_y = offset[1][0]
+
+                x_ofs = self.elysium_x_raw
+                y_ofs = self.elysium_y_raw
+                
+                # make sure the ofs values are up to date
+                self.elysium_x = self.elysium_x_raw * self.optical_factor
+                self.elysium_y = self.elysium_y_raw * self.optical_factor
 
                 x_dist = self.elysium_x + offset[0][0]
                 y_dist = self.elysium_y + offset[1][0]
 
                 dist = np.sqrt(x_dist**2 + y_dist**2)
-                
-                elysium_dist = np.sqrt(self.elysium_x**2 + self.elysium_y**2)
-                qr_final = [x for x in qreader_out if x is not None]
-                # list comprension to filter out None's
-                
-                # checks the difference between gps dist and elysium dist, and checks last gps distance is 
-                # is recent.
-                if abs(self.gps_dist_ - elysium_dist) > 3.0 and (time.monotonic() - self.last_gps_) < 2.0:
-                    self.get_logger().warn(
-                        "GPS and calculated coordinates of the Rover disagree by more than 3m."
-                    )
-                    self.get_logger().warn(
-                        "Defaulting to GPS as it is deemed to be more reliable."
-                    )
-                    reliable_sensor = "gps"
-                else:
 
-                    reliable_sensor = "op-imu"
+                elysium_dist = np.sqrt(self.elysium_x**2 + self.elysium_y**2)
+                # list comprension to filter out None's
+                qr_final = [x for x in qreader_out if x is not None]
+
+                now = time.monotonic()
+                # (if no reasonable fix is aquired, the gps_dist sub won't publish)
+                if self.last_gps_:
+                    if (now - self.last_gps_) > 2.0:
+                        gps_reliability = False
+                    else:
+                        gps_reliability = True
+                else:
+                    gps_reliability = False
+                
+                reliable_sensor = self.get_more_reliable_sensor(elysium_dist, self.gps_dist_, gps_reliability)
 
                 for code in qr_final:
                     date = datetime.datetime.now()
                     fname = f"qr_{len(self.scanned_codes)}_{date.year}_{date.month}_{date.day}.jpeg"
                     self.scanned_codes[code] = {
-                            "x": x_dist,
-                            "y": y_dist,
-                            "distance-ofs-imu": dist,
-                            "distance-gps": self.gps_dist_,
-                            "filename": fname,
-                            "more-reliable": reliable_sensor,
-                            }
-                    
+                        "x": x_dist,
+                        "y": y_dist,
+                        "x-ofs": x_ofs,
+                        "y-ofs": y_ofs,
+                        "offset-x": offset_x,
+                        "offset-y": offset_y,
+                        "distance-ofs-imu": dist,
+                        "distance-gps": self.gps_dist_,
+                        "filename": fname,
+                        "more-reliable": reliable_sensor,
+                        "gps-reliability": gps_reliability,
+                        "ofs-sample-num": self.number_of_calibration_samples,
+                    }
+
                     # Rotate camera from mount point.
                     im = Image.fromarray(image).rotate(270)
 
@@ -186,14 +212,14 @@ class BaseNode(Node):
                         Path(QR_DIRECTORY).mkdir()
 
                     im.save(QR_DIRECTORY+fname)
-               
+                
                 if len(qr_final) >= 1:
                     self.get_logger().info("Sending JSON object.")
                     self.sendComms("qrdic:" + json.dumps(self.scanned_codes))
 
-                with open('qr_data.json', 'w') as fp:
+                with open("qr_data.json", "w") as fp:
                     json.dump(self.scanned_codes, fp)
-                
+
                 self.get_logger().info("Image processed and CSV updated.")
             else:
                 self.get_logger().warn("No image available for processing.")
@@ -221,6 +247,60 @@ class BaseNode(Node):
         else:
             self.qr_ping = False
 
+    def ofs_calCB_(self, msg: OpticalFlowCalibration):
+        prev_val = self.optical_factor
+        self.optical_factor = msg.optical_factor
+        self.optical_calibration_points = msg.samples
+        self.number_of_calibration_samples = msg.num_samples 
+        
+        if prev_val != self.optical_factor:
+            self.get_logger().info(
+                "Optical calibration factor successfully set to: "
+                + str(self.optical_factor)
+            )
+
+            self.update_qr_codes()
+            self.sendComms("qrdic:" + json.dumps(self.scanned_codes))
+
+            with open("qr_data.json", "w") as fp:
+                json.dump(self.scanned_codes, fp)
+
+
+    def update_qr_codes(self):
+        for key in self.scanned_codes.keys():
+            entry = self.scanned_codes[key]
+            elysium_x = entry["x-ofs"] * self.optical_factor
+            elysium_y = entry["y-ofs"] * self.optical_factor
+
+            x_dist = elysium_x + entry["offset-x"]
+            y_dist = elysium_y + entry["offset-y"]
+            entry["x"] = x_dist
+            entry["y"] = y_dist
+
+            dist = np.sqrt(x_dist**2 + y_dist**2)
+            entry["distance-ofs-imu"] = dist
+
+            entry["ofs-sample-num"] = self.number_of_calibration_samples
+
+            elysium_dist = np.sqrt(elysium_x**2 + elysium_y**2)
+            entry["more-reliable"] = self.get_more_reliable_sensor(
+                elysium_dist, entry["distance-gps"], entry["gps-reliability"]
+            )
+            self.scanned_codes[key] = entry
+
+    def get_more_reliable_sensor(self, elysium_ofs_dist, gps_dist, gps_reliability):
+        if abs(gps_dist - elysium_ofs_dist) > 3.0 and gps_reliability:
+            self.get_logger().warn(
+                "GPS and calculated coordinates of the Rover disagree by more than 3m."
+            )
+            self.get_logger().warn(
+                "Defaulting to GPS as it is deemed to be more reliable."
+            )
+            reliable_sensor = "gps"
+        else:
+            reliable_sensor = "op-imu"
+        return reliable_sensor
+
     def eulerCB_(self, msg: Vector3):
         self.eulerAngles = msg
         self.sendComms("yaw--:" + f"{rad_degrees(msg.x):2f}")
@@ -229,9 +309,13 @@ class BaseNode(Node):
 
     def odomCB_(self, msg: Odometry):
         self.odom = msg
-        self.elysium_x = msg.pose.pose.position.x
-        self.elysium_y = msg.pose.pose.position.y
-        self.elysium_z = msg.pose.pose.position.z
+        self.elysium_x_raw = msg.pose.pose.position.x
+        self.elysium_y_raw = msg.pose.pose.position.y
+        self.elysium_z_raw = msg.pose.pose.position.z
+
+        self.elysium_x = self.elysium_x_raw * self.optical_factor
+        self.elysium_y = self.elysium_y_raw * self.optical_factor
+        self.elysium_z = self.elysium_z_raw * self.optical_factor
 
         self.sendComms("x----:" + f"{self.elysium_x:2f}")
         self.sendComms("y----:" + f"{self.elysium_y:2f}")
@@ -299,4 +383,3 @@ def main(args=None):
     except:
         base.destroy_node()
         rclpy.utilities.try_shutdown()
-

@@ -1,20 +1,24 @@
+from json import encoder
 import rclpy
 from rclpy.node import Node
 import rclpy.utilities
 import rclpy.executors
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.action.server import ActionServer
-from rclpy.qos import qos_profile_sensor_data
 
 from std_msgs.msg import Bool, Float32
 from sensor_msgs.msg import Joy
-from geometry_msgs.msg import Vector3
 from ort_interfaces.msg import CameraRotation
 from ort_interfaces.srv import Vec2Pos
 from ort_interfaces.action import Calibrate
 
 from elysium.config.mappings import AXES
-from elysium.config.sensors import OPTICAL_MOVE_TIME, OPTICAL_ACCEL_SAMPLE_RATE
+from elysium.config.sensors import (
+    OPTICAL_MOVE_TIME,
+    OPTICAL_CALIBRATION_LOOP_RATE,
+    ENCODER_OFFSET_X_AXIS,
+    tofQoS,
+)
 from elysium.config.controls import (
     CAMERA_SENSITIVITY,
     CAMERA_SERVO_X,
@@ -25,11 +29,13 @@ from elysium.config.services import (
     FAIL_UNRECOGNISED_OP_CODE,
     SUCCESS,
     FAIL,
+    FAIL_TOF_DETECTED_NO_REASONABLE_RANGE,
+    FAIL_DETECTED_NO_TOF_FORWARD,
+    FAIL_DETECTED_NO_OFS_FORWARD,
     CALIBRATE_OFS,
     CODE_CONTINUE,
     CODE_TERMINATE,
 )
-from elysium.utils import Integration
 
 import time
 from functools import partial
@@ -70,13 +76,12 @@ class TelepresenceOperations(Node):
             10,
             callback_group=connection_cb_group,
         )
-
-        self.linear_accel_ = self.create_subscription(
-            Vector3,
-            "/imu/linear_accel",
-            self.linearCB_,
-            qos_profile=qos_profile_sensor_data,
-            callback_group=connection_cb_group
+        self.cam_tof_sub_ = self.create_subscription(
+            Float32,
+            "/distance_sensor/qr_code",
+            self.tofCB_,
+            qos_profile=tofQoS,
+            callback_group=connection_cb_group,
         )
 
         # Publishers
@@ -123,13 +128,12 @@ class TelepresenceOperations(Node):
         # Optical Calibration
         self.opt_x = 0
         self.opt_y = 0
+        self.tof_dist = 0
 
-        self.rate = self.create_rate(OPTICAL_ACCEL_SAMPLE_RATE)
+        self.rate = self.create_rate(OPTICAL_CALIBRATION_LOOP_RATE)
 
-    def linearCB_(self, msg: Vector3):
-        self.x_accel = msg.x
-        self.y_accel = msg.y
-        self.z_accel = msg.z
+    def tofCB_(self, msg: Float32):
+        self.tof_dist = msg.data
 
     def actionServerCB_(self, goal_handle):
         self.get_logger().info("Executing goal.")
@@ -145,59 +149,67 @@ class TelepresenceOperations(Node):
             self.get_logger().info("First response is: " + str(resp1))
 
             if resp1 == CODE_CONTINUE:
-                x1, y1 = self.opt_x, self.opt_y
-                self.target.linear = 1
-                driving = False
+                y1 = self.opt_y
+                # cos is symmetric about /theta = 0, so no worries about direction
+                # accounts for the angle of the tof against the direction of travel
+                y1_tof = self.tof_dist * np.cos(
+                    degrees_to_rad(self.cam_angles_.x_axis - 90 - ENCODER_OFFSET_X_AXIS)
+                )
                 
+                self.target.linear = 1
+                self.drive()
+
                 start_time = time.monotonic()
                 now = time.monotonic()
-                
-                times = []
-                accelerations_x = []
-                accelerations_y = []
+
                 while (now - start_time) < OPTICAL_MOVE_TIME:
                     now = time.monotonic()
-
-                    times.append(now - start_time)
-                    accelerations_x.append(self.x_accel)
-                    accelerations_y.append(self.y_accel)
-
                     self.rate.sleep()
-                    if not driving:
-                        self.drive()
-                        driving = True
 
                 self.target.linear = 0
                 self.drive()
 
                 resp2 = self.get_optical_pos()
-                self.get_logger().info(
-                    "x: " + str(self.opt_x) + " y: " + str(self.opt_y)
-                )
                 self.get_logger().info("Second response is: " + str(resp2))
                 if resp2 == CODE_CONTINUE:
-                    x2, y2 = self.opt_x, self.opt_y
+                    y2 = self.opt_y
+                    # cos is symmetric about /theta = 0, so no worries about direction
+                    # accounts for the angle of the tof against the direction of travel
+                    y2_tof = self.tof_dist * np.cos(
+                        degrees_to_rad(self.cam_angles_.x_axis - 90 - ENCODER_OFFSET_X_AXIS)
+                    )
+
                     ofs_y_dist = y2 - y1
+                    # /delta x is actually the inverse vector of the ToF measurement
+                    actual_dist = y1_tof - y2_tof
+                    self.get_logger().info(
+                        "Actual distance travelled: " + str(actual_dist) + "m"
+                    )
 
-                    integrator = Integration()
-                    
-                    velocities_x = integrator.rollingIntegration(times, accelerations_x) 
-                    dist_x = integrator.integrate(times, velocities_x)
-
-                    velocities_y = integrator.rollingIntegration(times, accelerations_y) 
-                    dist_y = integrator.integrate(times, velocities_y)
-                    
-                    actual_dist = np.sqrt(dist_x ** 2 + dist_y ** 2)
-                    self.get_logger().info("Actual distance travelled: " + str(actual_dist) + "m")
-                    
                     result = Calibrate.Result()
-                    try:
-                        factor = Float32(data= actual_dist / ofs_y_dist)
+                    if actual_dist == 0:
+                        self.get_logger().error(
+                            "TOF detected no forward movement, unable to calibrate."
+                        )
+                        result.result = FAIL_DETECTED_NO_TOF_FORWARD
+                    elif ofs_y_dist == 0:
+                        self.get_logger().error(
+                            "OFS detected no forward movement, unable to calibrate."
+                        )
+                        result.result = FAIL_DETECTED_NO_OFS_FORWARD
+                    elif 0.05 <= actual_dist <= 0.8:
+                        factor = Float32(data=float(actual_dist / ofs_y_dist))
                         self.optical_factor_pub_.publish(factor)
                         result.result = SUCCESS
-                    except:
-                        self.get_logger().error("Error, OFS detected no movement during calibration.")
-                        result.result = FAIL
+                    else:
+                        self.get_logger().error(
+                            "The distance travelled according to the TOF is outside the \
+                            reasonable range of 0.05m to 1.0m, unable to calibrate."
+                        )
+                        self.get_logger().warn(
+                            "It is likely that the TOF is not aligned with an object."
+                        )
+                        result.result = FAIL_TOF_DETECTED_NO_REASONABLE_RANGE
 
                     goal_handle.succeed()
                     return result
@@ -274,8 +286,9 @@ class TelepresenceOperations(Node):
 
     def teleopCB_(self, msg: Joy):
         # DRIVE -----------------
-        self.target.linear = msg.axes[AXES["TRIGGERRIGHT"]]
-        self.target.linear -= msg.axes[AXES["TRIGGERLEFT"]]
+        # joystick is inverted from what you would expect
+        self.target.linear = -msg.axes[AXES["TRIGGERRIGHT"]]
+        self.target.linear += msg.axes[AXES["TRIGGERLEFT"]]
         # goes from 1 to -1, therefore difference between the two
         # should be halved.
         self.target.linear /= 2
@@ -285,10 +298,10 @@ class TelepresenceOperations(Node):
         self.z_increment = msg.axes[AXES["RIGHTX"]] * CAMERA_SENSITIVITY
         self.x_increment = msg.axes[AXES["RIGHTY"]] * CAMERA_SENSITIVITY
 
-        # publish camera rotation, note 90degrees servo rotation -> 0degrees around the axis
+        # publish camera rotation, note 90 degrees servo rotation -> 0 degrees around the axis
         camera_rotation_msg = CameraRotation(
-            z_axis=float(float_to_rad(self.cam_angles_.z_axis - 90)),
-            x_axis=float(float_to_rad(self.cam_angles_.x_axis - 90)),
+            z_axis=float(degrees_to_rad(self.cam_angles_.z_axis - 90)),
+            x_axis=float(degrees_to_rad(self.cam_angles_.x_axis - 90 - ENCODER_OFFSET_X_AXIS)),
         )
         self.cam_angles__pub_.publish(camera_rotation_msg)
 
@@ -311,8 +324,8 @@ class TelepresenceOperations(Node):
         return value
 
     def drive(self):
-        left_side = self.bound_range(self.target.linear + 0.5 * self.target.rotation)
-        right_side = self.bound_range(-self.target.linear + 0.5 * self.target.rotation)
+        right_side = self.bound_range(self.target.linear + 0.5 * self.target.rotation)
+        left_side = self.bound_range(-self.target.linear + 0.5 * self.target.rotation)
 
         # TESTING TO MAKE WHEELS MORE SENSITIVE
         left_side = self.bound_180(90.0 + 60 * left_side + self.offset_)
@@ -347,7 +360,7 @@ class TelepresenceOperations(Node):
         # )
 
 
-def float_to_rad(val):
+def degrees_to_rad(val):
     return (pi / 180) * val
 
 

@@ -18,6 +18,7 @@ from mission_control.config.network import (
     PORT_SECONDARY,
     PI_IP,
     tofQoS,
+    RetCodes,
 )
 from mission_control.config.gui import (
     CALIBRATE_IMU,
@@ -72,6 +73,7 @@ class GuiClient(Node):
         )
 
         self.current_step = 0
+        self.last_result = ""
 
         self.reset_pos_pub_ = self.create_publisher(Bool, "/elysium/reset_pos", 10)
         self.led_pub_ = self.create_publisher(Float32, "/led", tofQoS)
@@ -81,13 +83,13 @@ class GuiClient(Node):
         msg.data = slider_float
         self.led_pub_.publish(msg)
 
+    def reset_axis(self):
+        msg = Bool()
+        msg.data = True
+        self.reset_pos_pub_.publish(msg)
+
     def send_goal(self, code):
         goal_msg = Calibrate.Goal()
-        if code == ZERO_AXIS:
-            msg = Bool()
-            msg.data = True
-            self.reset_pos_pub_.publish(msg)
-
         goal_msg.code = code
 
         if code == CALIBRATE_OFS:
@@ -115,13 +117,20 @@ class GuiClient(Node):
     def get_result_callback(self, future):
         result = future.result().result
         match result.result:
-            case 0:
+            case RetCodes.SUCCESS:
                 result = "Success"
-            case 1:
+            case RetCodes.FAIL:
                 result = "Fail"
-            case 2:
-                result = "Fail, uncrecognised OP-code."
+            case RetCodes.FAIL_UNRECOGNISED_OP_CODE:
+                result = "Fail, unrecognised OP-code."
+            case RetCodes.FAIL_DETECTED_NO_OFS_FORWARD:
+                result = "Fail, no change in distance measured by the OFS."
+            case RetCodes.FAIL_DETECTED_NO_TOF_FORWARD:
+                result = "Fail, no change in distance measure by the TOF."
+            case RetCodes.FAIL_TOF_DETECTED_NO_REASONABLE_RANGE:
+                result = "Fail, TOF detected an unreasonable change in distance."
         self.get_logger().info("Result: {0}".format(result))
+        self.last_result = result
 
     def feedback_callback(self, feedback_msg):
         feedback = feedback_msg.feedback
@@ -145,8 +154,6 @@ class GUI(Node):
         self.width = WIDTH
         self.height = HEIGHT
 
-        # REPLACE THESE PATHS WITH ABSOLUTE PATH OF SHADERS ON INSTALL
-        # alternative place all shader code with string in a python file
         self.dashboard = Dashboard(cams, self.get_logger)
 
         # QR
@@ -159,30 +166,30 @@ class GUI(Node):
         self.logger = self.client_.get_logger
 
         # Position
-        self.elysium_x = .0
-        self.elysium_y = .0
-        self.elysium_z = .0
+        self.elysium_x = 0.0
+        self.elysium_y = 0.0
+        self.elysium_z = 0.0
 
         # GPS
-        self.gps_dist = .0
+        self.gps_dist = 0.0
 
         # Attitude
-        self.elysium_yaw = .0
-        self.elysium_pitch = .0
-        self.elysium_roll = .0
+        self.elysium_yaw = 0.0
+        self.elysium_pitch = 0.0
+        self.elysium_roll = 0.0
 
         # Twist
-        self.elysium_x_vel = .0
-        self.elysium_y_vel = .0
-        self.elysium_z_vel = .0
+        self.elysium_x_vel = 0.0
+        self.elysium_y_vel = 0.0
+        self.elysium_z_vel = 0.0
 
         # Camera Rotation
-        self.camera_yaw = .0
-        self.camera_pitch = .0
+        self.camera_yaw = 0.0
+        self.camera_pitch = 0.0
 
         # tof
-        self.q_tof = .0
-        self.o_tof = .0
+        self.q_tof = 0.0
+        self.o_tof = 0.0
 
         # Battery
         self.soc = 0.5
@@ -226,48 +233,45 @@ class GUI(Node):
 
     def qrComms(self):
         while True:
-            try:
-                recieved_msg = self.conn.recv()
-                if recieved_msg is not None:
-                    data = str(recieved_msg)[6:]
-                    match recieved_msg[:5]:
-                        case "qr---":
-                            self.last_qr_ = data
-                        case "x----":
-                            self.elysium_x = float(data)
-                        case "y----":
-                            self.elysium_y = float(data)
-                        case "z----":
-                            self.elysium_z = float(data)
-                        case "yaw--":
-                            self.elysium_yaw = float(data)
-                        case "pitch":
-                            self.elysium_pitch = float(data)
-                        case "roll-":
-                            self.elysium_roll = float(data)
-                        case "x_vel":
-                            self.elysium_x_vel = float(data)
-                        case "y_vel":
-                            self.elysium_y_vel = float(data)
-                        case "z_vel":
-                            self.elysium_z_vel = float(data)
-                        case "cam_y":
-                            self.camera_yaw = float(data)
-                        case "cam_p":
-                            self.camera_pitch = float(data)
-                        case "q-tof":
-                            self.q_tof = float(data)
-                        case "o-tof":
-                            self.o_tof = float(data)
-                        case "soc--":
-                            self.soc = float(data)
-                        case "qrdic":
-                            self.get_logger().info("Recieved JSON file from Base Station.")
-                            self.qr_dict_ = json.loads(data)
-                        case "gps-d":
-                            self.gps_dist = float(data)
-            except:
-                self.get_logger().warn("Error in recieving data from socket.")
+            recieved_msg = self.conn.recv()
+            if recieved_msg is not None:
+                data = str(recieved_msg)[6:]
+                match recieved_msg[:5]:
+                    case "qr---":
+                        self.last_qr_ = data
+                    case "x----":
+                        self.elysium_x = float(data)
+                    case "y----":
+                        self.elysium_y = float(data)
+                    case "z----":
+                        self.elysium_z = float(data)
+                    case "yaw--":
+                        self.elysium_yaw = float(data)
+                    case "pitch":
+                        self.elysium_pitch = float(data)
+                    case "roll-":
+                        self.elysium_roll = float(data)
+                    case "x_vel":
+                        self.elysium_x_vel = float(data)
+                    case "y_vel":
+                        self.elysium_y_vel = float(data)
+                    case "z_vel":
+                        self.elysium_z_vel = float(data)
+                    case "cam_y":
+                        self.camera_yaw = float(data)
+                    case "cam_p":
+                        self.camera_pitch = float(data)
+                    case "q-tof":
+                        self.q_tof = float(data)
+                    case "o-tof":
+                        self.o_tof = float(data)
+                    case "soc--":
+                        self.soc = float(data)
+                    case "qrdic":
+                        self.get_logger().info("Recieved JSON file from Base Station.")
+                        self.qr_dict_ = json.loads(data)
+                    case "gps-d":
+                        self.gps_dist = float(data)
 
     def bind_image(self, img):
         image = np.array(img)
@@ -327,15 +331,23 @@ class GUI(Node):
         imgui.begin_group()
 
         imgui_text = [
-            "Telemetry:", 
+            "Telemetry:",
             "(All data is in degrees)\n\n",
-            "Yaw: {:.3f}\nPitch: {:.3f}\nRoll: {:.3f}\n".format(self.elysium_yaw, self.elysium_pitch, self.elysium_roll),
-            "x: {:.3f}\ny: {:.3f}\nz: {:.3f}\n".format(self.elysium_x, self.elysium_y, self.elysium_z),
-            "x_vel: {:.3f}\ny_vel: {:.3f}\nz_vel: {:.3f}\n".format(self.elysium_x_vel, self.elysium_y_vel, self.elysium_z_vel),
-            "camera-yaw: {:.3f}\ncamera-pitch: {:.3f}\n".format(self.camera_yaw, self.camera_pitch),
-            "bottom-dist: {:.3f}\ncamera-dist: {:.3f}\n".format(self.o_tof, self.q_tof)
-                      ]
-        
+            "Yaw: {:.3f}\nPitch: {:.3f}\nRoll: {:.3f}\n".format(
+                self.elysium_yaw, self.elysium_pitch, self.elysium_roll
+            ),
+            "x: {:.3f}\ny: {:.3f}\nz: {:.3f}\n".format(
+                self.elysium_x, self.elysium_y, self.elysium_z
+            ),
+            "x_vel: {:.3f}\ny_vel: {:.3f}\nz_vel: {:.3f}\n".format(
+                self.elysium_x_vel, self.elysium_y_vel, self.elysium_z_vel
+            ),
+            "camera-yaw: {:.3f}\ncamera-pitch: {:.3f}\n".format(
+                self.camera_yaw, self.camera_pitch
+            ),
+            "bottom-dist: {:.3f}\ncamera-dist: {:.3f}\n".format(self.o_tof, self.q_tof),
+        ]
+
         for text in imgui_text:
             imgui.text(text)
 
@@ -387,15 +399,19 @@ class GUI(Node):
             imgui.open_popup("Calibration Client")
 
         if imgui.begin_popup_modal("Calibration Client").opened:
-            imgui.text("Seconds remaining until completion: " + str(self.client_.current_step))
+            imgui.text(
+                "Seconds remaining until completion: " + str(self.client_.current_step)
+            )
+            imgui.text("Last result: " + str(self.client_.last_result))
+            imgui.spacing()
 
             if imgui.button("Calibrate IMU - KEEP IMU STILL"):
                 self.client_.send_goal(CALIBRATE_IMU)
 
             elif imgui.button("Zero Axis"):
-                self.client_.send_goal(ZERO_AXIS)
+                self.client_.reset_axis()
 
-            elif imgui.button("Calibrate OFS - ROVER WILL TRAVEL 1 METER FORWARD"):
+            elif imgui.button("Calibrate OFS - ROVER WILL TRAVEL APPROXIMATELY 0.5 METERS FORWARD"):
                 self.client_.send_goal(CALIBRATE_OFS)
 
             elif imgui.button("Close Client"):
@@ -422,7 +438,9 @@ class GUI(Node):
             if expanded:
                 imgui.text("x: " + str(self.qr_dict_[key]["x"]))
                 imgui.text("y: " + str(self.qr_dict_[key]["y"]))
-                imgui.text("distance-ofs-imu: " + str(self.qr_dict_[key]["distance-ofs-imu"]))
+                imgui.text(
+                    "distance-ofs-imu: " + str(self.qr_dict_[key]["distance-ofs-imu"])
+                )
                 imgui.text("distance-gps: " + str(self.qr_dict_[key]["distance-gps"]))
                 imgui.text("more-reliable: " + str(self.qr_dict_[key]["more-reliable"]))
                 if imgui.button("Show Image"):
@@ -439,10 +457,12 @@ class GUI(Node):
                     try:
                         width = 1000
                         aspect_ratio = self.qr_image.width / self.qr_image.height
-                        imgui.set_window_size(width + 10, width/aspect_ratio + 90)
-                        imgui.image(self.qr_texID, width, width/aspect_ratio)
+                        imgui.set_window_size(width + 10, width / aspect_ratio + 90)
+                        imgui.image(self.qr_texID, width, width / aspect_ratio)
                     except Exception as e:
-                        self.get_logger().warn("No image available. Exception: " + str(e))
+                        self.get_logger().warn(
+                            "No image available. Exception: " + str(e)
+                        )
                         imgui.close_current_popup()
                     if imgui.button("Close Image"):
                         imgui.close_current_popup()
