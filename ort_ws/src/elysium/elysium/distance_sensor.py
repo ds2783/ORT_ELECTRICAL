@@ -109,7 +109,7 @@ class DistanceNode(Node):
             self.get_logger().error(f"The given frequency for polling the sensor in the service callback method is not a valid value! Given: {DISTANCE_SENSOR_SRV_FREQUENCY} Hz")
 
         if DISTANCE_SENSOR_SRV_AVERAGE_SIZE < 1 or not isinstance(DISTANCE_SENSOR_SRV_AVERAGE_SIZE, int):
-            self.get_logger().error(f"The given value for the size of the averaging array in the service callback method is not a valid value! Given: {DISTANCE_SENSOR_SRV_FREQUENCY}, Type: {type(DISTANCE_SENSOR_SRV_AVERAGE_SIZE)}")
+            self.get_logger().error(f"The given value for the size of the averaging array in the service callback method is not a valid value! Given: {DISTANCE_SENSOR_SRV_AVERAGE_SIZE}, Type: {type(DISTANCE_SENSOR_SRV_AVERAGE_SIZE)}")
 
 
         while len(average_value_array) < DISTANCE_SENSOR_SRV_AVERAGE_SIZE:
