@@ -153,7 +153,7 @@ class TelepresenceOperations(Node):
                 y1_tof = self.tof_dist * np.cos(
                     degrees_to_rad(self.cam_angles_.x_axis - 90)
                 )
-
+                
                 self.target.linear = 1
                 self.drive()
 
@@ -283,8 +283,9 @@ class TelepresenceOperations(Node):
 
     def teleopCB_(self, msg: Joy):
         # DRIVE -----------------
-        self.target.linear = msg.axes[AXES["TRIGGERRIGHT"]]
-        self.target.linear -= msg.axes[AXES["TRIGGERLEFT"]]
+        # joystick is inverted from what you would expect
+        self.target.linear = -msg.axes[AXES["TRIGGERRIGHT"]]
+        self.target.linear += msg.axes[AXES["TRIGGERLEFT"]]
         # goes from 1 to -1, therefore difference between the two
         # should be halved.
         self.target.linear /= 2
@@ -320,8 +321,8 @@ class TelepresenceOperations(Node):
         return value
 
     def drive(self):
-        left_side = self.bound_range(self.target.linear + 0.5 * self.target.rotation)
-        right_side = self.bound_range(-self.target.linear + 0.5 * self.target.rotation)
+        right_side = self.bound_range(self.target.linear + 0.5 * self.target.rotation)
+        left_side = self.bound_range(-self.target.linear + 0.5 * self.target.rotation)
 
         # TESTING TO MAKE WHEELS MORE SENSITIVE
         left_side = self.bound_180(90.0 + 60 * left_side + self.offset_)
