@@ -242,6 +242,7 @@ class TelepresenceOperations(Node):
         now = time.monotonic()
         timeout = time.monotonic()
         while not self.request_complete and (now - timeout) < 5.0:
+            self.rate.sleep()
             now = time.monotonic()
             if self.server_unavailable:
                 return CODE_TERMINATE
@@ -326,8 +327,9 @@ class TelepresenceOperations(Node):
         self.x_increment = msg.axes[AXES["RIGHTY"]] * CAMERA_SENSITIVITY
 
         # publish camera rotation, note 90 degrees servo rotation -> 0 degrees around the axis
+        # negative this so it aligns with the IMU
         camera_rotation_msg = CameraRotation(
-            z_axis=float(degrees_to_rad(self.cam_angles_.z_axis - 90)),
+            z_axis=float(degrees_to_rad(-self.cam_angles_.z_axis - 90)),
             x_axis=float(
                 degrees_to_rad(self.cam_angles_.x_axis - 90 - ENCODER_OFFSET_X_AXIS)
             ),
