@@ -233,48 +233,45 @@ class GUI(Node):
 
     def qrComms(self):
         while True:
-            try:
-                recieved_msg = self.conn.recv()
-                if recieved_msg is not None:
-                    data = str(recieved_msg)[6:]
-                    match recieved_msg[:5]:
-                        case "qr---":
-                            self.last_qr_ = data
-                        case "x----":
-                            self.elysium_x = float(data)
-                        case "y----":
-                            self.elysium_y = float(data)
-                        case "z----":
-                            self.elysium_z = float(data)
-                        case "yaw--":
-                            self.elysium_yaw = float(data)
-                        case "pitch":
-                            self.elysium_pitch = float(data)
-                        case "roll-":
-                            self.elysium_roll = float(data)
-                        case "x_vel":
-                            self.elysium_x_vel = float(data)
-                        case "y_vel":
-                            self.elysium_y_vel = float(data)
-                        case "z_vel":
-                            self.elysium_z_vel = float(data)
-                        case "cam_y":
-                            self.camera_yaw = float(data)
-                        case "cam_p":
-                            self.camera_pitch = float(data)
-                        case "q-tof":
-                            self.q_tof = float(data)
-                        case "o-tof":
-                            self.o_tof = float(data)
-                        case "soc--":
-                            self.soc = float(data)
-                        case "qrdic":
-                            self.get_logger().info("Recieved JSON file from Base Station.")
-                            self.qr_dict_ = json.loads(data)
-                        case "gps-d":
-                            self.gps_dist = float(data)
-            except:
-                self.get_logger().warn("Error in recieving data from socket.")
+            recieved_msg = self.conn.recv()
+            if recieved_msg is not None:
+                data = str(recieved_msg)[6:]
+                match recieved_msg[:5]:
+                    case "qr---":
+                        self.last_qr_ = data
+                    case "x----":
+                        self.elysium_x = float(data)
+                    case "y----":
+                        self.elysium_y = float(data)
+                    case "z----":
+                        self.elysium_z = float(data)
+                    case "yaw--":
+                        self.elysium_yaw = float(data)
+                    case "pitch":
+                        self.elysium_pitch = float(data)
+                    case "roll-":
+                        self.elysium_roll = float(data)
+                    case "x_vel":
+                        self.elysium_x_vel = float(data)
+                    case "y_vel":
+                        self.elysium_y_vel = float(data)
+                    case "z_vel":
+                        self.elysium_z_vel = float(data)
+                    case "cam_y":
+                        self.camera_yaw = float(data)
+                    case "cam_p":
+                        self.camera_pitch = float(data)
+                    case "q-tof":
+                        self.q_tof = float(data)
+                    case "o-tof":
+                        self.o_tof = float(data)
+                    case "soc--":
+                        self.soc = float(data)
+                    case "qrdic":
+                        self.get_logger().info("Recieved JSON file from Base Station.")
+                        self.qr_dict_ = json.loads(data)
+                    case "gps-d":
+                        self.gps_dist = float(data)
 
     def bind_image(self, img):
         image = np.array(img)

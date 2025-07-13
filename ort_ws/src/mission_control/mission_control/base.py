@@ -111,6 +111,7 @@ class BaseNode(Node):
 
         # GPS
         self.gps_dist_ = 0
+        self.last_gps_ = None
 
         # Recover Old Codes
         self.scanned_codes = {}
@@ -176,10 +177,13 @@ class BaseNode(Node):
 
                 now = time.monotonic()
                 # (if no reasonable fix is aquired, the gps_dist sub won't publish)
-                if (now - self.last_gps_) > 2.0:
-                    gps_reliability = False
+                if self.last_gps_:
+                    if (now - self.last_gps_) > 2.0:
+                        gps_reliability = False
+                    else:
+                        gps_reliability = True
                 else:
-                    gps_reliability = True
+                    gps_reliability = False
                 
                 reliable_sensor = self.get_more_reliable_sensor(elysium_dist, self.gps_dist_, gps_reliability)
 
@@ -208,7 +212,7 @@ class BaseNode(Node):
                         Path(QR_DIRECTORY).mkdir()
 
                     im.save(QR_DIRECTORY+fname)
-               
+                
                 if len(qr_final) >= 1:
                     self.get_logger().info("Sending JSON object.")
                     self.sendComms("qrdic:" + json.dumps(self.scanned_codes))
@@ -295,7 +299,6 @@ class BaseNode(Node):
             reliable_sensor = "gps"
         else:
             reliable_sensor = "op-imu"
-
         return reliable_sensor
 
     def eulerCB_(self, msg: Vector3):
