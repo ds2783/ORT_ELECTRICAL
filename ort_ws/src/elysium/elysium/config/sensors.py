@@ -1,11 +1,12 @@
 DISTANCE_SENSOR_START_DELAY = 2
 DISTANCE_SENSOR_REFRESH_PERIOD = 0.2
+DISTANCE_SENSOR_POLL_PERIOD = 0.1
 
 BMS_REFRESH_PERIOD = 1
 BMS_DELTA_T = 0.02
 BMS_ROLLING_AVERAGE_SECONDS = 5
 BMS_BATTERY_CAPACITY = 5000  # in mAh
-BMS_UNDERVOLT_WARN = 11  # threshold voltage for function. If each cell has 3V or less, the rover should not be moving. 
+BMS_UNDERVOLT_WARN = 10.5  # threshold voltage for function. If each cell has 3.5V or less, the rover should not be moving. 
 BMS_UNDERVOLT_SHUTDOWN = 9.5  # threshold voltage for the Pi to function. Under this voltage the Pi should shut down. 
 BMS_SAVE_PATH = "/ros/battery_save.txt"
 BMS_LOOKUP_TABLE_PATH = "/ros/ocv_lookup.csv"

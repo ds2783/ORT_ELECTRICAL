@@ -13,7 +13,7 @@ from ort_interfaces.srv import DistanceData
 
 import time
 import elysium.hardware.adafruit_vl53l4cd as tof
-from elysium.config.sensors import DISTANCE_SENSOR_START_DELAY, DISTANCE_SENSOR_REFRESH_PERIOD, tofQoS
+from elysium.config.sensors import DISTANCE_SENSOR_START_DELAY, DISTANCE_SENSOR_POLL_PERIOD, DISTANCE_SENSOR_REFRESH_PERIOD, tofQoS
 
 
 class DistanceNode(Node):
@@ -51,7 +51,7 @@ class DistanceNode(Node):
                 refresh_period, self.get_data, autostart=True
             )
 
-            poll_period = DISTANCE_SENSOR_POLL_PERIOD = 0.1
+            poll_period = DISTANCE_SENSOR_POLL_PERIOD
             self.poll_data = self.create_timer(poll_period, self._poll_data, autostart=False)
 
             self.data = .0
