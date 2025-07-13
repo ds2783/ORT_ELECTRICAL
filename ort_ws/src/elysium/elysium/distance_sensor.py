@@ -56,7 +56,7 @@ class DistanceNode(Node):
             )
 
             poll_period = DISTANCE_SENSOR_POLL_PERIOD
-            self.poll_data = self.create_timer(poll_period, self._poll_data, autostart=False)
+            self.poll_data_timer = self.create_timer(poll_period, self._poll_data, autostart=False)
 
             self.data = .0
         else:
@@ -69,22 +69,33 @@ class DistanceNode(Node):
 
         except Exception as err:
             self.get_logger().error(
-                f"[{self.get_name()}] Could not open i2c bus/initialise TOF. Error: {err}"
+                f"Could not open i2c bus/initialise TOF. Error: {err}"
             )
         
         if not srv:
             self.sensor.start_ranging()
-            self.poll_data.reset()
+            self.poll_data_timer.reset()
 
     def test_i2c(self):
         try:
             tmp = self.sensor._read_register(0x010F, 2)
         except OSError:
             self.get_logger().error(
-                f"Node {self.get_name()} I2C address is not accessible."
+                f"I2C address is not accessible."
             )
 
     def data_srv_callback(self, request, response):
+        """Service callback that receives a request and returns a response 
+        that includes the distance of the QR ToF sensor. 
+
+        :param request: Request, no purpose in this service interaction. Ignore. 
+        :type request: bool
+        :param response: DistanceData service object, has the distance and data_received attributes (look in the .srv file if curious)
+        :type response: DistanceData
+        :return: response, the same input parameter response object. 
+        :rtype: DistanceData
+        """        
+        
         # Request isn't considered in this interaction.  
 
         self.sensor.start_ranging() 
@@ -94,11 +105,19 @@ class DistanceNode(Node):
         timed_out = False
         timeout_time = .0
 
+        if DISTANCE_SENSOR_SRV_FREQUENCY <= 0:
+            self.get_logger().error(f"The given frequency for polling the sensor in the service callback method is not a valid value! Given: {DISTANCE_SENSOR_SRV_FREQUENCY} Hz")
+
+        if DISTANCE_SENSOR_SRV_AVERAGE_SIZE < 1 or not isinstance(DISTANCE_SENSOR_SRV_AVERAGE_SIZE, int):
+            self.get_logger().error(f"The given value for the size of the averaging array in the service callback method is not a valid value! Given: {DISTANCE_SENSOR_SRV_FREQUENCY}, Type: {type(DISTANCE_SENSOR_SRV_AVERAGE_SIZE)}")
+
+
         while len(average_value_array) < DISTANCE_SENSOR_SRV_AVERAGE_SIZE:
             if self.sensor.data_ready:
                 timeout_time = .0
                 average_value_array.append(self.sensor.distance)
                 self.sensor.clear_interrupt()
+
             else:
                 self.polling_rate.sleep()
                 timeout_time += 1/DISTANCE_SENSOR_SRV_FREQUENCY
@@ -113,7 +132,7 @@ class DistanceNode(Node):
             response.data_retrieved = True
         else:
             error_msg = f"""
-            [{self.get_name()}] ToF timed out trying to get data in the service node (exceeded {DISTANCE_SENSOR_SRV_TIMEOUT} seconds).
+            ToF timed out trying to get data in the service node (exceeded {DISTANCE_SENSOR_SRV_TIMEOUT} seconds).
             Current stored values in the array: {average_value_array}
             """
             
@@ -126,6 +145,8 @@ class DistanceNode(Node):
         return response
 
     def _poll_data(self):
+        """Poll and save the data from the ToF sensor. 
+        """
         if self.sensor.data_ready:
             self.data = self.sensor.distance
             self.sensor.clear_interrupt()
