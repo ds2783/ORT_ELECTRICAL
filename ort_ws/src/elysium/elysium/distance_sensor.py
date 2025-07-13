@@ -139,7 +139,13 @@ def main(args=None):
     except OSError as err:
         logger_node.get_logger().info(f"""[distance node] the i2c addresses of the sleep node have not been set yet, 
                                       (to be expected after a reboot) and will be set accordingly.""")
+        both_on = False 
+    except ValueError as err:
+        logger_node.get_logger().info(f"""[distance node] the i2c addresses of the sleep node have not been set yet, 
+                                      (to be expected after a reboot) and will be set accordingly.""")
         both_on = False  # They are not both set to the correct addresses, and have to be set accordingly. 
+
+
 
     if both_on:
         _distance_sensor_1 = DistanceNode(
