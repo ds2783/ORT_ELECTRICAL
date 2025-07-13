@@ -183,7 +183,7 @@ def main(args=None):
     green_led = gpio.DigitalOutputDevice(26, pin_factory=factory)
     green_led.on()  # indicate ROS2 is running. 
 
-    time.sleep(0.3)  # Let the xshut pin/ToF settle as on. 
+    time.sleep(2)  # Let the xshut pin/ToF settle as on. 
 
     try:
         test_tof_1 = tof.VL53L4CD(0x29)
