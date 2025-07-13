@@ -179,76 +179,97 @@ def main(args=None):
 
     gpio.pins.lgpio.LGPIOFactory.__init__ = __patched_init   # setup the XSHUT pin and the green LED pins. 
     factory = LGPIOFactory()
-    xshut_pin = gpio.DigitalOutputDevice(17, initial_value=True, pin_factory=factory)  # active low to turn off ToF
+    xshut_pin_ofs = gpio.DigitalOutputDevice(17, initial_value=False, pin_factory=factory)  # active low to turn off ToF
+    xshut_pin_qr = gpio.DigitalOutputDevice(27, initial_value=False, pin_factory=factory)
     green_led = gpio.DigitalOutputDevice(26, pin_factory=factory)
     green_led.on()  # indicate ROS2 is running. 
 
+    xshut_pin_ofs.on()
+    time.sleep(0.2) # let the ToF boot
+
+    _distance_sensor_ofs = DistanceNode(
+    node_name_1, topic_name_1, i2c_addr=0x29, srv=True
+    )
+
+    _distance_sensor_ofs.sensor.set_address(0x2B)
+
+    xshut_pin_qr.on()
+    time.sleep(0.2) # let the ToF boot
+
+    _distance_sensor_qr = DistanceNode(
+    node_name_2, topic_name_2, i2c_addr=0x29 
+    )
+
+    _distance_sensor_qr.sensor.set_address(0x2C)
+
+    
+
     # time.sleep(2)  # Let the xshut pin/ToF settle as on. 
 
-    try:
-        test_tof_1 = tof.VL53L4CD(0x29)
-        del test_tof_1  # delete them after so they don't interfere with the initialisation later 
-        test_tof_2 = tof.VL53L4CD(0x2A)
-        del test_tof_2
-        both_on = True  # The i2c addresses have already been set properly and are returning correct model id 
-        # values. 
-    except OSError as err:
-        logger_node.get_logger().info(f"""the i2c addresses have not been set yet, 
-                                      (to be expected after a reboot) and will be set accordingly. OSError: {err}""")
-        both_on = False 
+    # try:
+    #     test_tof_1 = tof.VL53L4CD(0x29)
+    #     del test_tof_1  # delete them after so they don't interfere with the initialisation later 
+    #     test_tof_2 = tof.VL53L4CD(0x2A)
+    #     del test_tof_2
+    #     both_on = True  # The i2c addresses have already been set properly and are returning correct model id 
+    #     # values. 
+    # except OSError as err:
+    #     logger_node.get_logger().info(f"""the i2c addresses have not been set yet, 
+    #                                   (to be expected after a reboot) and will be set accordingly. OSError: {err}""")
+    #     both_on = False 
 
-    except ValueError as err:
-        logger_node.get_logger().info(f"""the i2c addresses have not been set yet, 
-                                      (to be expected after a reboot) and will be set accordingly. ValueError: {err} """)
-        both_on = False  # They are not both set to the correct addresses, and have to be set accordingly. 
+    # except ValueError as err:
+    #     logger_node.get_logger().info(f"""the i2c addresses have not been set yet, 
+    #                                   (to be expected after a reboot) and will be set accordingly. ValueError: {err} """)
+    #     both_on = False  # They are not both set to the correct addresses, and have to be set accordingly. 
     
 
-    if both_on:
-        _distance_sensor_1 = DistanceNode(
-        node_name_1, topic_name_1, i2c_addr=0x2A, srv=True
-        )
-        _distance_sensor_2 = DistanceNode(
-        node_name_2, topic_name_2, i2c_addr=0x29 
-        )
+    # if both_on:
+    #     _distance_sensor_1 = DistanceNode(
+    #     node_name_1, topic_name_1, i2c_addr=0x2A, srv=True
+    #     )
+    #     _distance_sensor_2 = DistanceNode(
+    #     node_name_2, topic_name_2, i2c_addr=0x29 
+    #     )
 
-    else:
-        try:
-            shared_address = 0x29
-            alt_address = 0x2A
-            test_tof = tof.VL53L4CD(0x29)
-            del test_tof
-        except Exception as err:
-            shared_address = 0x2A
-            alt_address = 0x29
-            logger_node.get_logger().info(str(err))
+    # else:
+    #     try:
+    #         shared_address = 0x29
+    #         alt_address = 0x2A
+    #         test_tof = tof.VL53L4CD(0x29)
+    #         del test_tof
+    #     except Exception as err:
+    #         shared_address = 0x2A
+    #         alt_address = 0x29
+    #         logger_node.get_logger().info(str(err))
     
-        logger_node.get_logger().info("Both devices share the address: " + hex(shared_address))
+    #     logger_node.get_logger().info("Both devices share the address: " + hex(shared_address))
 
-        xshut_pin.off()
+    #     xshut_pin.off()
 
-        _distance_sensor_1 = DistanceNode(
-            node_name_1, topic_name_1, i2c_addr=shared_address, srv=True)
-        # we accept the cursed for what it is. It's 300ms each on startup only anyway it's fineeee.
-        time.sleep(0.3) 
+    #     _distance_sensor_1 = DistanceNode(
+    #         node_name_1, topic_name_1, i2c_addr=shared_address, srv=True)
+    #     # we accept the cursed for what it is. It's 300ms each on startup only anyway it's fineeee.
+    #     time.sleep(0.3) 
 
-        _distance_sensor_1.sensor.set_address(alt_address)
-        time.sleep(0.3)
-        xshut_pin.on()
+    #     _distance_sensor_1.sensor.set_address(alt_address)
+    #     time.sleep(0.3)
+    #     xshut_pin.on()
 
-        _distance_sensor_2 = DistanceNode(
-            node_name_2, topic_name_2, i2c_addr=shared_address
-            )
+    #     _distance_sensor_2 = DistanceNode(
+    #         node_name_2, topic_name_2, i2c_addr=shared_address
+    #         )
 
     executor = rclpy.executors.MultiThreadedExecutor()
-    executor.add_node(_distance_sensor_1)
-    executor.add_node(_distance_sensor_2)
+    executor.add_node(_distance_sensor_ofs)
+    executor.add_node(_distance_sensor_qr)
     
     try:
         executor.spin()
     except KeyboardInterrupt:
-        _distance_sensor_1.get_logger().warn(f"KeyboardInterrupt triggered.")
-        _distance_sensor_2.get_logger().warn(f"KeyboardInterrupt triggered.")
+        _distance_sensor_ofs.get_logger().warn(f"KeyboardInterrupt triggered.")
+        _distance_sensor_qr.get_logger().warn(f"KeyboardInterrupt triggered.")
     finally:
-        _distance_sensor_1.destroy_node()
-        _distance_sensor_2.destroy_node()
+        _distance_sensor_ofs.destroy_node()
+        _distance_sensor_qr.destroy_node()
         rclpy.utilities.try_shutdown()
