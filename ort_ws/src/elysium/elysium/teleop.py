@@ -1,4 +1,3 @@
-from json import encoder
 import rclpy
 from rclpy.node import Node
 import rclpy.utilities
@@ -9,7 +8,7 @@ from rclpy.action.server import ActionServer
 from std_msgs.msg import Bool, Float32
 from sensor_msgs.msg import Joy
 from ort_interfaces.msg import CameraRotation
-from ort_interfaces.srv import Vec2Pos
+from ort_interfaces.srv import Vec2Pos, DistanceData
 from ort_interfaces.action import Calibrate
 
 from elysium.config.mappings import AXES
@@ -76,14 +75,6 @@ class TelepresenceOperations(Node):
             10,
             callback_group=connection_cb_group,
         )
-        self.cam_tof_sub_ = self.create_subscription(
-            Float32,
-            "/distance_sensor/qr_code",
-            self.tofCB_,
-            qos_profile=tofQoS,
-            callback_group=connection_cb_group,
-        )
-
         # Publishers
         self.cam_angles__pub_ = self.create_publisher(
             CameraRotation, "/elysium/cam_angles", 10
@@ -95,6 +86,11 @@ class TelepresenceOperations(Node):
         # Services
         self.optical_client_ = self.create_client(
             Vec2Pos, "/elysium/srv/position", callback_group=service_cb_group
+        )
+        self.tof_client_ = self.create_client(
+            DistanceData,
+            "/elysium/cam/distance_service",
+            callback_group=service_cb_group,
         )
 
         # Action Server
@@ -132,9 +128,6 @@ class TelepresenceOperations(Node):
 
         self.rate = self.create_rate(OPTICAL_CALIBRATION_LOOP_RATE)
 
-    def tofCB_(self, msg: Float32):
-        self.tof_dist = msg.data
-
     def actionServerCB_(self, goal_handle):
         self.get_logger().info("Executing goal.")
 
@@ -143,19 +136,21 @@ class TelepresenceOperations(Node):
             self.target.rotation = 0
             self.drive()
 
-            resp1 = self.get_optical_pos()
-            resp2 = None
+            optical_resp1 = self.get_request(self.request_optical_pos)
+            optical_resp2 = None
+            distance_resp1 = self.get_request(self.request_tof_dist)
+            distance_resp2 = None
             self.get_logger().info("x: " + str(self.opt_x) + " y: " + str(self.opt_y))
-            self.get_logger().info("First response is: " + str(resp1))
+            self.get_logger().info("dist: " + str(self.tof_dist))
 
-            if resp1 == CODE_CONTINUE:
+            if optical_resp1 == CODE_CONTINUE and distance_resp1 == CODE_CONTINUE:
                 y1 = self.opt_y
                 # cos is symmetric about /theta = 0, so no worries about direction
                 # accounts for the angle of the tof against the direction of travel
                 y1_tof = self.tof_dist * np.cos(
                     degrees_to_rad(self.cam_angles_.x_axis - 90 - ENCODER_OFFSET_X_AXIS)
                 )
-                
+
                 self.target.linear = 1
                 self.drive()
 
@@ -169,14 +164,16 @@ class TelepresenceOperations(Node):
                 self.target.linear = 0
                 self.drive()
 
-                resp2 = self.get_optical_pos()
-                self.get_logger().info("Second response is: " + str(resp2))
-                if resp2 == CODE_CONTINUE:
+                optical_resp2 = self.get_request(self.request_optical_pos)
+                distance_resp2 = self.get_request(self.request_tof_dist)
+                if optical_resp2 == CODE_CONTINUE and distance_resp2 == CODE_CONTINUE:
                     y2 = self.opt_y
                     # cos is symmetric about /theta = 0, so no worries about direction
                     # accounts for the angle of the tof against the direction of travel
                     y2_tof = self.tof_dist * np.cos(
-                        degrees_to_rad(self.cam_angles_.x_axis - 90 - ENCODER_OFFSET_X_AXIS)
+                        degrees_to_rad(
+                            self.cam_angles_.x_axis - 90 - ENCODER_OFFSET_X_AXIS
+                        )
                     )
 
                     ofs_y_dist = y2 - y1
@@ -214,7 +211,12 @@ class TelepresenceOperations(Node):
                     goal_handle.succeed()
                     return result
 
-            if resp1 == CODE_TERMINATE or resp2 == CODE_TERMINATE:
+            if (
+                optical_resp1 == CODE_TERMINATE
+                or optical_resp2 == CODE_TERMINATE
+                or distance_resp1 == CODE_CONTINUE
+                or distance_resp2 == CODE_CONTINUE
+            ):
                 self.get_logger().warn(
                     "Initial and final positions could not be obtained. No calibration was aquired."
                 )
@@ -232,10 +234,10 @@ class TelepresenceOperations(Node):
             )
             return result
 
-    def get_optical_pos(self):
+    def get_request(self, server_func):
         self.request_complete = False
         self.server_unavailable = False
-        self.request_optical_pos()
+        server_func()
 
         now = time.monotonic()
         timeout = time.monotonic()
@@ -252,27 +254,52 @@ class TelepresenceOperations(Node):
     def request_optical_pos(self):
         timeout = time.monotonic()
         now = time.monotonic()
-        while not self.optical_client_.wait_for_service(1.0) and (now - timeout) < 2.0:
+        while not self.optical_client_.wait_for_service(1.5) and (now - timeout) < 1.5:
             now = time.monotonic()
             self.get_logger().warn("Waiting for connection to position service.")
 
-        if (now - timeout) < 2.0:
+        if (now - timeout) < 1.0:
             request = Vec2Pos.Request()
             request.request = True
             future = self.optical_client_.call_async(request)
-            future.add_done_callback(partial(self.complete_requestCB_))
+            future.add_done_callback(partial(self.complete_optical_requestCB_))
         else:
             self.get_logger().warn(
                 "Optical position calibration service is unavailable."
             )
             self.server_unavailable = True
 
-    def complete_requestCB_(self, future):
+    def complete_optical_requestCB_(self, future):
         response = future.result()
         self.opt_x = response.x
         self.opt_y = response.y
         self.request_complete = True
         self.get_logger().info("Opt distances set.")
+
+    def request_tof_dist(self):
+        timeout = time.monotonic()
+        now = time.monotonic()
+        while not self.tof_client_.wait_for_service(1.5) and (now - timeout) < 1.5:
+            now = time.monotonic()
+            self.get_logger().warn("Waiting for connection to distance service.")
+        if (now - timeout) < 1.5:
+            request = DistanceData.Request()
+            request.request = True
+            future = self.tof_client_.call_async(request)
+            future.add_done_callback(partial(self.complete_tof_requestCB_))
+        else:
+            self.get_logger().warn("Distance calibration service is unavailable.")
+            self.server_unavailable = True
+
+    def complete_tof_requestCB_(self, future):
+        response = future.result()
+        if response.data_retrieved:
+            self.tof_dist = response.distance
+            self.get_logger().info("Camera distance set.")
+        else:
+            self.get_logger().error("ToF could not obtain a reading.")
+            self.server_unavailable = True
+        self.request_complete = True
 
     def confirmConnectionCB_(self, msg: Bool):
         self.last_connection_ = time.monotonic()
@@ -301,7 +328,9 @@ class TelepresenceOperations(Node):
         # publish camera rotation, note 90 degrees servo rotation -> 0 degrees around the axis
         camera_rotation_msg = CameraRotation(
             z_axis=float(degrees_to_rad(self.cam_angles_.z_axis - 90)),
-            x_axis=float(degrees_to_rad(self.cam_angles_.x_axis - 90 - ENCODER_OFFSET_X_AXIS)),
+            x_axis=float(
+                degrees_to_rad(self.cam_angles_.x_axis - 90 - ENCODER_OFFSET_X_AXIS)
+            ),
         )
         self.cam_angles__pub_.publish(camera_rotation_msg)
 

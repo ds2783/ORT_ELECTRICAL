@@ -19,7 +19,8 @@ from elysium.config.sensors import DISTANCE_SENSOR_START_DELAY, DISTANCE_SENSOR_
 class DistanceNode(Node):
     def __init__(self, 
                  node_name: str, 
-                 topic_name: str, 
+                 topic_name: str,
+                 i2c_bus,
                  i2c_addr: int, 
                  srv: bool = False):
         """Time of Flight Node using the VL53L4CX. 
@@ -38,8 +39,6 @@ class DistanceNode(Node):
         super().__init__(node_name)
 
 
-        self._start_timer = self.create_timer(DISTANCE_SENSOR_START_DELAY, self.start_sensor)  # start delay for the ToF. 
-
         if not srv:  # if the node is a service or not. 
             msg_type = Float32
             self.distance_publisher = self.create_publisher(
@@ -56,12 +55,12 @@ class DistanceNode(Node):
 
             self.data = .0
         else:
-            self.srv = self.create_service(DistanceData, "distance_service", self.data_srv_callback)
+            self.srv = self.create_service(DistanceData, "/elysium/cam/distance_service", self.data_srv_callback)
 
 
         try:
             self.i2c_addr = i2c_addr
-            self.sensor = tof.VL53L4CD(self.i2c_addr)
+            self.sensor = tof.VL53L4CX(i2c_bus, i2c_address=self.i2c_addr)
 
         except Exception as err:
             self.get_logger().error(
@@ -69,6 +68,7 @@ class DistanceNode(Node):
             )
         
         if not srv:
+            self.sensor.start_ranging()
             self.poll_data.reset()
 
     def test_i2c(self):
@@ -79,15 +79,8 @@ class DistanceNode(Node):
                 f"Node {self.get_name()} I2C address is not accessible."
             )
 
-    def start_sensor(self):
-        """Run X seconds after rclpy spins the node. Destroys the timer afterwards. 
-        """
-
-        self.sensor.start_ranging()
-        self.destroy_timer(self._start_timer)
-
-
     def data_srv_callback(self, request, response):
+        self.sensor.start_ranging() 
         # Request isn't considered in this interaction.  
         if self.sensor.data_ready:  # checks if data is ready from the ToF
             response.distance = self.sensor.distance
@@ -97,6 +90,7 @@ class DistanceNode(Node):
         else: 
             response.distance = -1.0  # otherwise sets the dist to -1
             response.data_retrieved = False 
+        self.sensor.stop_ranging()
 
         return response
 
@@ -131,6 +125,11 @@ def main(args=None):
     topic_name_2 = "/distance_sensor/optical_flow"
     node_name_2 = "distance_node_optical_flow"
 
+    time.sleep(0.5)  # I AM HOPING STAGGERING THE INITIALISATION OF SMBUS WILL PREVENT THE OTHER I2C ACCESSES FROM BREAKING. 
+    i2c_bus = smbus.SMBus("/dev/i2c-1")
+    # additional sleep to give SMBus a chance to boot up
+    time.sleep(0.5)
+
     gpio.pins.lgpio.LGPIOFactory.__init__ = __patched_init   # setup the XSHUT pin and the green LED pins. 
     factory = LGPIOFactory()
     xshut_pin = gpio.DigitalOutputDevice(17, initial_value=True, pin_factory=factory)  # active low to turn off ToF
@@ -138,8 +137,8 @@ def main(args=None):
     green_led.on()  # indicate ROS2 is running. 
 
     try:
-        test_tof_1 = tof.VL53L4CD(address=0x29)
-        test_tof_2 = tof.VL53L4CD(address=0x2A)
+        test_tof_1 = tof.VL53L4CX(i2c_bus, i2c_address=0x29)
+        test_tof_2 = tof.VL53L4CX(i2c_bus, i2c_address=0x2A)
         del test_tof_1  # delete them after so they don't interfere with the initialisation later 
         del test_tof_2
         both_on = True  # The i2c addresses have already been set properly and are returning correct model id 
@@ -151,17 +150,17 @@ def main(args=None):
 
     if both_on:
         _distance_sensor_1 = DistanceNode(
-        node_name_1, topic_name_1, i2c_addr=0x2A, srv=True
+        node_name_1, topic_name_1, i2c_bus, i2c_addr=0x2A, srv=True
         )
         _distance_sensor_2 = DistanceNode(
-        node_name_2, topic_name_2, i2c_addr=0x29 
+        node_name_2, topic_name_2, i2c_bus, i2c_addr=0x29 
         )
 
     else:
         xshut_pin.off()
 
         _distance_sensor_1 = DistanceNode(
-            node_name_1, topic_name_1, i2c_addr=0x29, srv=True)
+            node_name_1, topic_name_1, i2c_bus, i2c_addr=0x29, srv=True)
         # we accept the cursed for what it is. It's 300ms each on startup only anyway it's fineeee.
         time.sleep(0.3) 
 
@@ -170,7 +169,7 @@ def main(args=None):
         xshut_pin.on()
 
         _distance_sensor_2 = DistanceNode(
-            node_name_2, topic_name_2, i2c_addr=0x29
+            node_name_2, topic_name_2, i2c_bus, i2c_addr=0x29
             )
 
     executor = rclpy.executors.MultiThreadedExecutor()

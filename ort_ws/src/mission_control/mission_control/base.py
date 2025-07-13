@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 import rclpy
 import rclpy.utilities
+import rclpy.executors
 from rclpy.node import Node
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Bool, Float32
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Vector3
 from ort_interfaces.msg import CameraRotation, BatteryInfo, OpticalFlowCalibration
+from ort_interfaces.srv import DistanceData
 
 from mission_control.stream.stream_client import ServerClient
 from mission_control.config.mappings import BUTTONS
@@ -23,11 +26,15 @@ from PIL import Image
 from pathlib import Path
 import json
 import time
+from functools import partial
 
 
 class BaseNode(Node):
     def __init__(self, port):
         super().__init__("base")
+        # CB groups 
+        ping_group = MutuallyExclusiveCallbackGroup()
+        # ---------------
         # STATE OBJECTS
         self.main_cam = ServerClient(PI_IP, PORT_MAIN_BASE)
         self.qreader_ = QReader()
@@ -42,16 +49,13 @@ class BaseNode(Node):
         # ---
 
         # TIMERS
-        self.ping_timer_ = self.create_timer(0.2, self.pingCB_)
+        self.ping_timer_ = self.create_timer(0.2, self.pingCB_, callback_group=ping_group)
+        self.cam_timer_ = self.create_timer(0.3, self.get_cam_distCB_)
         # ----
 
         # Topics ---------------------
         # Subscriptions
         self.controller_sub_ = self.create_subscription(Joy, "joy", self.controlCB_, 10)
-
-        self.qr_tof_sub_ = self.create_subscription(
-            Float32, "/distance_sensor/qr_code", self.qTofCB_, qos_profile=tofQoS
-        )
 
         self.bottom_tof_sub_ = self.create_subscription(
             Float32, "/distance_sensor/optical_flow", self.oTofCB_, qos_profile=tofQoS
@@ -82,6 +86,13 @@ class BaseNode(Node):
         # Publishers
         self.connection_pub_ = self.create_publisher(Bool, "ping", 10)
         # ----------------------------
+
+        # Services
+        self.cam_tof_client_ = self.create_client(
+            DistanceData,
+            "/elysium/cam/distance_service",
+        )
+        # -----------------------
 
         # Variables ------------------
         self.qr_button_ = False
@@ -301,6 +312,26 @@ class BaseNode(Node):
             reliable_sensor = "op-imu"
         return reliable_sensor
 
+    def get_cam_distCB_(self):
+        timeout = time.monotonic()
+        now = time.monotonic()
+        while not self.cam_tof_client_.wait_for_service(0.1) and (now - timeout) < 0.1 :
+            now = time.monotonic()
+        if (now - timeout) < 0.1:
+            request = DistanceData.Request()
+            request.request = True
+            future = self.cam_tof_client_.call_async(request)
+            future.add_done_callback(partial(self.complete_tof_requestCB_))
+        else:
+            self.get_logger().warn("Distance service is unavailable.")
+
+    def complete_tof_requestCB_(self, future):
+        response = future.result()
+        if response.data_retrieved:
+            self.tof_dist = response.distance
+        else:
+            self.get_logger().error("ToF could not obtain a reading.")
+
     def eulerCB_(self, msg: Vector3):
         self.eulerAngles = msg
         self.sendComms("yaw--:" + f"{rad_degrees(msg.x):2f}")
@@ -325,14 +356,10 @@ class BaseNode(Node):
         self.sendComms("y_vel:" + f"{msg.twist.twist.linear.y:2f}")
         self.sendComms("z_vel:" + f"{msg.twist.twist.linear.z:2f}")
 
-        self.sendComms("q-tof:" + f"{self.qr_tof_dist.data:2f}")
-        self.sendComms("o-tof:" + f"{self.op_tof_dist.data:2f}")
-
-    def qTofCB_(self, msg: Float32):
-        self.qr_tof_dist = msg
-
     def oTofCB_(self, msg: Float32):
         self.op_tof_dist = msg
+        self.sendComms("o-tof:" + f"{self.op_tof_dist.data:2f}")
+        self.sendComms("q-tof:" + f"{self.qr_tof_dist.data:2f}")
 
     def camCB_(self, msg: CameraRotation):
         self.cam_rotation = msg
@@ -375,11 +402,11 @@ def rotate_vector2D(euler_angle, vector2D):
 def main(args=None):
     rclpy.init(args=args)
 
-    # has to be initialised this way round!
     base = BaseNode(COMM_PORT)
+    executor = rclpy.executors.MultiThreadedExecutor()
+    executor.add_node(base)
     try:
-        rclpy.spin(base)
-    # Cleanup After Shutdown
+        executor.spin()
     except:
         base.destroy_node()
         rclpy.utilities.try_shutdown()

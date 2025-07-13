@@ -89,8 +89,6 @@ class VL53L4CX:
                  i2c_address: int = 0x29
                  ):
 
-        self.ros_start = False
-
         self.i2c_address = i2c_address
         self.i2c_bus = i2c_bus
 
@@ -99,11 +97,7 @@ class VL53L4CX:
         if model_id != 0xEB or module_type != 0xAA:
             raise RuntimeError("Wrong sensor ID or type!")
 
-        self._ranging = False   
-
-    def start_sensor(self):
         self._sensor_init()
-        self.start_ranging()
 
     def _sensor_init(self):
         init_seq = (
