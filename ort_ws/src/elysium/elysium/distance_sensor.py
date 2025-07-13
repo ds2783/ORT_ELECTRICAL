@@ -147,9 +147,12 @@ class DistanceNode(Node):
     def _poll_data(self):
         """Poll and save the data from the ToF sensor. 
         """
-        if self.sensor.data_ready:
-            self.data = self.sensor.distance
-            self.sensor.clear_interrupt()
+        try:
+            if self.sensor.data_ready:
+                self.data = self.sensor.distance
+                self.sensor.clear_interrupt()
+        except OSError as err:
+            self.get_logger().warn(f"ERROR: {err}, ADDRESS: {self.sensor.i2c_device.device_address}")
 
     def get_data(self):
         """Get the data from the ToF sensors.
@@ -176,7 +179,6 @@ def main(args=None):
     node_name_1 = "distance_node_optical_flow"
     topic_name_2 = "/distance_sensor/qr_code"
     node_name_2 = "distance_node_qr"
-    
 
     gpio.pins.lgpio.LGPIOFactory.__init__ = __patched_init   # setup the XSHUT pin and the green LED pins. 
     factory = LGPIOFactory()
