@@ -201,16 +201,7 @@ def main(args=None):
         logger_node.get_logger().info(f"""the i2c addresses have not been set yet, 
                                       (to be expected after a reboot) and will be set accordingly. ValueError: {err} """)
         both_on = False  # They are not both set to the correct addresses, and have to be set accordingly. 
-
-    try:
-        shared_address = 0x29
-        alt_address = 0x2A
-        test_tof = tof.VL53L4CD(0x29)
-        del test_tof
-    except:
-        shared_address = 0x2A
-        alt_address = 0x29
-
+    
 
     if both_on:
         _distance_sensor_1 = DistanceNode(
@@ -221,6 +212,18 @@ def main(args=None):
         )
 
     else:
+        try:
+            shared_address = 0x29
+            alt_address = 0x2A
+            test_tof = tof.VL53L4CD(0x29)
+            del test_tof
+        except Exception as err:
+            shared_address = 0x2A
+            alt_address = 0x29
+            logger_node.get_logger().info(str(err))
+    
+        logger_node.get_logger().info("Both devices share the address: " + str(shared_address))
+
         xshut_pin.off()
 
         _distance_sensor_1 = DistanceNode(
