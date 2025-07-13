@@ -84,7 +84,7 @@ class DistanceNode(Node):
         """Run X seconds after rclpy spins the node. Destroys the timer afterwards. 
         """
 
-        self.sensor.start_ranging()
+        self.sensor.start_sensor()
         self.destroy_timer(self._start_timer)
 
 
