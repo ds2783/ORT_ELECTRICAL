@@ -13,7 +13,13 @@ from ort_interfaces.srv import DistanceData
 
 import time
 import elysium.hardware.adafruit_vl53l4cd as tof
-from elysium.config.sensors import DISTANCE_SENSOR_START_DELAY, DISTANCE_SENSOR_POLL_PERIOD, DISTANCE_SENSOR_REFRESH_PERIOD, tofQoS
+from elysium.config.sensors import (DISTANCE_SENSOR_START_DELAY, 
+                                    DISTANCE_SENSOR_POLL_PERIOD, 
+                                    DISTANCE_SENSOR_REFRESH_PERIOD,
+                                    DISTANCE_SENSOR_SRV_AVERAGE_SIZE,
+                                    DISTANCE_SENSOR_SRV_FREQUENCY,
+                                    DISTANCE_SENSOR_SRV_TIMEOUT,
+                                    tofQoS)
 
 
 class DistanceNode(Node):
@@ -55,7 +61,7 @@ class DistanceNode(Node):
             self.data = .0
         else:
             self.srv = self.create_service(DistanceData, "/elysium/cam/distance_service", self.data_srv_callback)
-
+            self.polling_rate = self.create_rate(DISTANCE_SENSOR_SRV_FREQUENCY)
 
         try:
             self.i2c_addr = i2c_addr
@@ -79,16 +85,37 @@ class DistanceNode(Node):
             )
 
     def data_srv_callback(self, request, response):
-        self.sensor.start_ranging() 
         # Request isn't considered in this interaction.  
-        if self.sensor.data_ready:  # checks if data is ready from the ToF
-            response.distance = self.sensor.distance
-            response.data_retrieved = True
-            self.sensor.clear_interrupt()
 
-        else: 
+        self.sensor.start_ranging() 
+
+        average_value_array = []
+
+        timed_out = False
+        timeout_time = .0
+
+        while len(average_value_array) < DISTANCE_SENSOR_SRV_AVERAGE_SIZE:
+            if self.sensor.data_ready:
+                timeout_time = .0
+                average_value_array.append(self.sensor.distance)
+                self.sensor.clear_interrupt()
+            else:
+                self.polling_rate.sleep()
+                timeout_time += 1/DISTANCE_SENSOR_SRV_FREQUENCY
+
+            if timeout_time > DISTANCE_SENSOR_SRV_TIMEOUT:
+                timed_out = True
+                break
+                
+            
+        if not timed_out:
+            response.distance = sum(average_value_array) / DISTANCE_SENSOR_SRV_AVERAGE_SIZE        
+            response.data_retrieved = True
+        else:
+            self.get_logger().warn(f"[{self.get_name()}] ToF timed out trying to get data in the service node (exceeded {DISTANCE_SENSOR_SRV_TIMEOUT} seconds).")
             response.distance = -1.0  # otherwise sets the dist to -1
             response.data_retrieved = False 
+
         self.sensor.stop_ranging()
 
         return response
