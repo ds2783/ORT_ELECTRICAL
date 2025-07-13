@@ -37,9 +37,6 @@ class DistanceNode(Node):
 
         super().__init__(node_name)
 
-
-        self._start_timer = self.create_timer(DISTANCE_SENSOR_START_DELAY, self.start_sensor)  # start delay for the ToF. 
-
         if not srv:  # if the node is a service or not. 
             msg_type = Float32
             self.distance_publisher = self.create_publisher(
@@ -78,13 +75,6 @@ class DistanceNode(Node):
             self.get_logger().error(
                 f"Node {self.get_name()} I2C address is not accessible."
             )
-
-    def start_sensor(self):
-        """Run X seconds after rclpy spins the node. Destroys the timer afterwards. 
-        """
-
-        self.sensor.start_ranging()
-        self.destroy_timer(self._start_timer)
 
 
     def data_srv_callback(self, request, response):
