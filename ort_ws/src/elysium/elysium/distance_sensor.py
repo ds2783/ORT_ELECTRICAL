@@ -12,7 +12,7 @@ from std_msgs.msg import Float32
 from ort_interfaces.srv import DistanceData
 
 import time
-import elysium.hardware.adafruit_vl53l4cd as tof
+import elysium.hardware.adafruit_vl53l4cx as tof
 from elysium.config.sensors import DISTANCE_SENSOR_START_DELAY, DISTANCE_SENSOR_REFRESH_PERIOD, tofQoS
 
 
@@ -61,7 +61,7 @@ class DistanceNode(Node):
 
         try:
             self.i2c_addr = i2c_addr
-            self.sensor = tof.VL53L4CD(self.i2c_addr)
+            self.sensor = tof.VL53L4CX(self.i2c_addr)
 
         except Exception as err:
             self.get_logger().error(
@@ -131,6 +131,11 @@ def main(args=None):
     topic_name_2 = "/distance_sensor/optical_flow"
     node_name_2 = "distance_node_optical_flow"
 
+    time.sleep(1)  # I AM HOPING STAGGERING THE INITIALISATION OF SMBUS WILL PREVENT THE OTHER I2C ACCESSES FROM BREAKING. 
+    i2c_bus = smbus.SMBus("/dev/i2c-1")
+    # additional sleep to give SMBus a chance to boot up
+    time.sleep(1)
+
     gpio.pins.lgpio.LGPIOFactory.__init__ = __patched_init   # setup the XSHUT pin and the green LED pins. 
     factory = LGPIOFactory()
     xshut_pin = gpio.DigitalOutputDevice(17, initial_value=True, pin_factory=factory)  # active low to turn off ToF
@@ -138,8 +143,8 @@ def main(args=None):
     green_led.on()  # indicate ROS2 is running. 
 
     try:
-        test_tof_1 = tof.VL53L4CD(address=0x29)
-        test_tof_2 = tof.VL53L4CD(address=0x2A)
+        test_tof_1 = tof.VL53L4CX(i2c_bus, i2c_address=0x29)
+        test_tof_2 = tof.VL53L4CX(i2c_bus, i2c_address=0x2A)
         del test_tof_1  # delete them after so they don't interfere with the initialisation later 
         del test_tof_2
         both_on = True  # The i2c addresses have already been set properly and are returning correct model id 

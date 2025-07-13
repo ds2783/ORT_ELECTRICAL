@@ -317,7 +317,6 @@ class BaseNode(Node):
         now = time.monotonic()
         while not self.cam_tof_client_.wait_for_service(0.1) and (now - timeout) < 0.1 :
             now = time.monotonic()
-            self.get_logger().warn("Waiting for connection to distance service.")
         if (now - timeout) < 0.1:
             request = DistanceData.Request()
             request.request = True
