@@ -185,8 +185,8 @@ def main(args=None):
 
     try:
         test_tof_1 = tof.VL53L4CD(0x29)
-        test_tof_2 = tof.VL53L4CD(0x2A)
         del test_tof_1  # delete them after so they don't interfere with the initialisation later 
+        test_tof_2 = tof.VL53L4CD(0x2A)
         del test_tof_2
         both_on = True  # The i2c addresses have already been set properly and are returning correct model id 
         # values. 
@@ -199,6 +199,14 @@ def main(args=None):
                                       (to be expected after a reboot) and will be set accordingly.""")
         both_on = False  # They are not both set to the correct addresses, and have to be set accordingly. 
 
+    try:
+        shared_address = 0x29
+        alt_address = 0x2A
+        test_tof = tof.VL53L4CD(0x29)
+        del test_tof
+    except:
+        shared_address = 0x2A
+        alt_address = 0x29
 
 
     if both_on:
@@ -213,16 +221,16 @@ def main(args=None):
         xshut_pin.off()
 
         _distance_sensor_1 = DistanceNode(
-            node_name_1, topic_name_1, i2c_addr=0x29, srv=True)
+            node_name_1, topic_name_1, i2c_addr=shared_address, srv=True)
         # we accept the cursed for what it is. It's 300ms each on startup only anyway it's fineeee.
         time.sleep(0.3) 
 
-        _distance_sensor_1.sensor.set_address(0x2A)
+        _distance_sensor_1.sensor.set_address(alt_address)
         time.sleep(0.3)
         xshut_pin.on()
 
         _distance_sensor_2 = DistanceNode(
-            node_name_2, topic_name_2, i2c_addr=0x29
+            node_name_2, topic_name_2, i2c_addr=shared_address
             )
 
     executor = rclpy.executors.MultiThreadedExecutor()

@@ -50,7 +50,6 @@ class BaseNode(Node):
 
         # TIMERS
         self.ping_timer_ = self.create_timer(0.2, self.pingCB_, callback_group=ping_group)
-        self.cam_timer_ = self.create_timer(0.3, self.get_cam_distCB_)
         # ----
 
         # Topics ---------------------
@@ -146,6 +145,7 @@ class BaseNode(Node):
         trigger_pressed = msg.buttons[BUTTONS["CIRCLE"]]
         if trigger_pressed and not self.qr_button_:
             # CAPTURE QR-CODE
+            self.get_cam_distCB_()
             self.qr_button_ = True
             image = self.main_cam.get_picture(self.get_logger)
             if image is not None:
