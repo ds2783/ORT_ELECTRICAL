@@ -12,7 +12,7 @@ from std_msgs.msg import Float32
 from ort_interfaces.srv import DistanceData
 
 import time
-import elysium.hardware.adafruit_vl53l4cx as tof
+import elysium.hardware.adafruit_vl53l4cd as tof
 from elysium.config.sensors import DISTANCE_SENSOR_START_DELAY, DISTANCE_SENSOR_REFRESH_PERIOD, tofQoS
 
 
@@ -20,7 +20,6 @@ class DistanceNode(Node):
     def __init__(self, 
                  node_name: str, 
                  topic_name: str,
-                 i2c_bus,
                  i2c_addr: int, 
                  srv: bool = False):
         """Time of Flight Node using the VL53L4CX. 
@@ -60,7 +59,7 @@ class DistanceNode(Node):
 
         try:
             self.i2c_addr = i2c_addr
-            self.sensor = tof.VL53L4CX(i2c_bus, i2c_address=self.i2c_addr)
+            self.sensor = tof.VL53L4CD(self.i2c_addr)
 
         except Exception as err:
             self.get_logger().error(
@@ -134,8 +133,8 @@ def main(args=None):
     green_led.on()  # indicate ROS2 is running. 
 
     try:
-        test_tof_1 = tof.VL53L4CX(i2c_bus, i2c_address=0x29)
-        test_tof_2 = tof.VL53L4CX(i2c_bus, i2c_address=0x2A)
+        test_tof_1 = tof.VL53L4CD(0x29)
+        test_tof_2 = tof.VL53L4CD(0x2A)
         del test_tof_1  # delete them after so they don't interfere with the initialisation later 
         del test_tof_2
         both_on = True  # The i2c addresses have already been set properly and are returning correct model id 
@@ -147,17 +146,17 @@ def main(args=None):
 
     if both_on:
         _distance_sensor_1 = DistanceNode(
-        node_name_1, topic_name_1, i2c_bus, i2c_addr=0x2A, srv=True
+        node_name_1, topic_name_1, i2c_addr=0x2A, srv=True
         )
         _distance_sensor_2 = DistanceNode(
-        node_name_2, topic_name_2, i2c_bus, i2c_addr=0x29 
+        node_name_2, topic_name_2, i2c_addr=0x29 
         )
 
     else:
         xshut_pin.off()
 
         _distance_sensor_1 = DistanceNode(
-            node_name_1, topic_name_1, i2c_bus, i2c_addr=0x29, srv=True)
+            node_name_1, topic_name_1, i2c_addr=0x29, srv=True)
         # we accept the cursed for what it is. It's 300ms each on startup only anyway it's fineeee.
         time.sleep(0.3) 
 
@@ -166,7 +165,7 @@ def main(args=None):
         xshut_pin.on()
 
         _distance_sensor_2 = DistanceNode(
-            node_name_2, topic_name_2, i2c_bus, i2c_addr=0x29
+            node_name_2, topic_name_2, i2c_addr=0x29
             )
 
     executor = rclpy.executors.MultiThreadedExecutor()

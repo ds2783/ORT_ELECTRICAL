@@ -329,7 +329,6 @@ class BaseNode(Node):
         response = future.result()
         if response.data_retrieved:
             self.tof_dist = response.distance
-            self.sendComms("q-tof:" + f"{self.qr_tof_dist.data:2f}")
         else:
             self.get_logger().error("ToF could not obtain a reading.")
 
@@ -360,6 +359,7 @@ class BaseNode(Node):
     def oTofCB_(self, msg: Float32):
         self.op_tof_dist = msg
         self.sendComms("o-tof:" + f"{self.op_tof_dist.data:2f}")
+        self.sendComms("q-tof:" + f"{self.qr_tof_dist.data:2f}")
 
     def camCB_(self, msg: CameraRotation):
         self.cam_rotation = msg
