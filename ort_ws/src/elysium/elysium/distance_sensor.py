@@ -189,7 +189,7 @@ def main(args=None):
     time.sleep(0.2) # let the ToF boot
 
     _distance_sensor_ofs = DistanceNode(
-    node_name_1, topic_name_1, i2c_addr=0x29, srv=True
+    node_name_1, topic_name_1, i2c_addr=0x29
     )
 
     _distance_sensor_ofs.sensor.set_address(0x2B)
@@ -198,7 +198,7 @@ def main(args=None):
     time.sleep(0.2) # let the ToF boot
 
     _distance_sensor_qr = DistanceNode(
-    node_name_2, topic_name_2, i2c_addr=0x29 
+    node_name_2, topic_name_2, i2c_addr=0x29, srv=True
     )
 
     _distance_sensor_qr.sensor.set_address(0x2C)
