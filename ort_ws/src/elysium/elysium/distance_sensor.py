@@ -128,7 +128,7 @@ class DistanceNode(Node):
                 
             
         if not timed_out:
-            response.distance = sum(average_value_array) / DISTANCE_SENSOR_SRV_AVERAGE_SIZE  # averaging the value to remove some measuring error.
+            response.distance = sum(average_value_array) / (100 * DISTANCE_SENSOR_SRV_AVERAGE_SIZE)  # averaging the value to remove some measuring error + converting to metres.
             response.data_retrieved = True
         else:
             error_msg = f"""
@@ -149,7 +149,7 @@ class DistanceNode(Node):
         """
         try:
             if self.sensor.data_ready:
-                self.data = self.sensor.distance
+                self.data = self.sensor.distance / 100  # convert to metres 
                 self.sensor.clear_interrupt()
         except OSError as err:
             self.get_logger().warn(f"ERROR: {err}, ADDRESS: {self.sensor.i2c_device.device_address}")
