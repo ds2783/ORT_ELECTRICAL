@@ -194,14 +194,14 @@ class TelepresenceOperations(Node):
                             "OFS detected no forward movement, unable to calibrate."
                         )
                         result.result = FAIL_DETECTED_NO_OFS_FORWARD
-                    elif 0.15 <= actual_dist <= 1.8:
+                    elif 0.05 <= actual_dist <= 0.8:
                         factor = Float32(data=float(actual_dist / ofs_y_dist))
                         self.optical_factor_pub_.publish(factor)
                         result.result = SUCCESS
                     else:
                         self.get_logger().error(
                             "The distance travelled according to the TOF is outside the \
-                            reasonable range of 0.15m to 1.8m, unable to calibrate."
+                            reasonable range of 0.05m to 1.0m, unable to calibrate."
                         )
                         self.get_logger().warn(
                             "It is likely that the TOF is not aligned with an object."
