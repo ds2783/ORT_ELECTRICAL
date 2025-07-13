@@ -65,11 +65,8 @@ class DistanceNode(Node):
 
         except Exception as err:
             self.get_logger().error(
-                f"[{self.get_name()}] Could not open i2c bus/initialise TOF. Falling back onto the original firmware library. Error: {err}"
+                f"[{self.get_name()}] Could not open i2c bus/initialise TOF. Error: {err}"
             )
-            import elysium.hardware.adafruit_vl53l4cd as tof_fallback
-
-            self.sensor = tof_fallback.VL53L4CD(address=i2c_addr)
         
         if not srv:
             self.poll_data.reset()
@@ -111,9 +108,6 @@ class DistanceNode(Node):
     def get_data(self):
         """Get the data from the ToF sensors.
         """
-        
-        self.sensor.start_sensor()  # we can't have the TOF sensor initialise fully in the __init__ because the sleep node hasn't spun up yet (it uses rate.sleep)
-
         msg = Float32()
         msg.data = self.data
         self.distance_publisher.publish(msg)
