@@ -1,5 +1,4 @@
 import time
-import board
 import adafruit_gps
 import serial
 
@@ -97,8 +96,9 @@ def main(args=None):
     rclpy.init(args=args)
 
     node = GPS(baudrate=9600, timeout=5)
-    rclpy.spin(node)
-
-    node.destroy_node()
-    rclpy.shutdown()
+    try:
+        rclpy.spin(node)
+    except:
+        node.destroy_node()
+        rclpy.shutdown()
 

@@ -9,7 +9,6 @@ from geometry_msgs.msg import Quaternion, Vector3
 from ort_interfaces.action import Calibrate
 
 import numpy as np
-from pyrr import quaternion
 import time
 
 from elysium.config.sensors import IMU_SENSOR_PERIOD, IMU_UPDATE_FREQUENCY, IMU_ACCELEROMETER_CALIBRATION_PERIOD
@@ -63,12 +62,8 @@ class Imu(Node):
         self.linear_offset_z = 0
 
         self.q = np.array([0.0, 0.0, 0.0, 1.0])  # Initial quaternion
-        self.inverse = np.array([0.0, 0.0, 0.0, 1.0])
 
         self.calibration_rate = self.create_rate(IMU_UPDATE_FREQUENCY)
-
-    def zero_axis(self):
-        self.inverse = quaternion.inverse(self.q)
 
     def calibrate_imu(self, goal_handle):
         feedback = Calibrate.Feedback()
@@ -104,14 +99,12 @@ class Imu(Node):
 
     def sendDataCB_(self):
         self.q = np.array(self.bno.quaternion)
-
-        corrected_q = quaternion.cross(self.q, self.inverse)
         # Create message
         quat = Quaternion()
-        quat.x = corrected_q[1]
-        quat.y = corrected_q[2]
-        quat.z = corrected_q[3]
-        quat.w = corrected_q[0]
+        quat.x = self.q[1]
+        quat.y = self.q[2]
+        quat.z = self.q[3]
+        quat.w = self.q[0]
         self.quaternion_pub_.publish(quat)
 
         if (
@@ -140,9 +133,7 @@ class Imu(Node):
         # Accelerometer + Gyrometer calibration.
         if goal_handle.request.code == CALIBRATE_IMU:
             self.calibrate_imu(goal_handle)
-        elif goal_handle.request.code == ZERO_AXIS:
-            self.zero_axis()
-        if goal_handle.request.code in [CALIBRATE_IMU, ZERO_AXIS]:
+        if goal_handle.request.code in [CALIBRATE_IMU]:
             goal_handle.succeed()
             result = Calibrate.Result()
             result.result = SUCCESS

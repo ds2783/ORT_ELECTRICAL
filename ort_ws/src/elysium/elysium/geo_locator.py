@@ -1,9 +1,9 @@
 import rclpy
+import rclpy.utilities
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
-import rclpy.utilities
 
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, Float32, Header
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import (
     Quaternion,
@@ -14,8 +14,7 @@ from geometry_msgs.msg import (
     PoseWithCovariance,
     TwistWithCovariance,
 )
-from std_msgs.msg import Float32, Header
-from ort_interfaces.msg import OpticalFlow, GPSStatus
+from ort_interfaces.msg import OpticalFlow, GPSStatus, OpticalFlowCalibration
 from ort_interfaces.srv import Vec2Pos
 
 from elysium.config.sensors import (
@@ -24,14 +23,15 @@ from elysium.config.sensors import (
     tofQoS,
 )
 from elysium.config.network import DIAGNOSTIC_PERIOD
+from elysium.config.services import GEO_BACKUP_PERIOD
 
 import numpy as np
+import json
 from scipy.spatial.transform import Rotation as R
+from pyrr import quaternion
 
 
-# TO DO: Integrate GPS, OpticalFlow and IMU to all use the same coordinate system.
-
-
+# ADD STATE SAVING, from previous position etc...
 class GeoLocator(Node):
     def __init__(self, node_name):
         super().__init__(node_name)
@@ -52,15 +52,14 @@ class GeoLocator(Node):
             self.opticalCB_,
             qos_profile=qos_profile_sensor_data,
         )
-        self.reset_pos_ = self.create_subscription(
-            Bool, "/elysium/reset_pos", self.resetCB_, 10
+        self.reset_pos_sub_ = self.create_subscription(
+            Bool, "/elysium/reset_pos", self.zero_resetCB_, 10
         )
 
         self.gps_sub_ = self.create_subscription(
             GPSStatus, "/elysium/gps_data", self.gpsCB_, 10
         )
-
-        self.optical_calibration_ = self.create_subscription(
+        self.optical_calibration_sub_ = self.create_subscription(
             Float32, "/elysium/ofs_calibration", self.ofs_calCB_, 10
         )
         # ----------------------
@@ -72,6 +71,10 @@ class GeoLocator(Node):
         self.odom_pub_ = self.create_publisher(Odometry, "/elysium/odom", 10)
 
         self.gps_dist_pub_ = self.create_publisher(Float32, "/elysium/gps_dist", 10)
+
+        self.optical_factor_pub_ = self.create_publisher(
+            OpticalFlowCalibration, "/elysium/optical_factor", 10
+        )
         # ----------------------
 
         self.position_service_ = self.create_service(
@@ -79,44 +82,96 @@ class GeoLocator(Node):
         )
 
         # Timers ----------------
-        self.create_timer(DIAGNOSTIC_PERIOD, self.publish_)
+        self.diagnostic_timer_ = self.create_timer(DIAGNOSTIC_PERIOD, self.publish_)
+        self.backup_timer = self.create_timer(GEO_BACKUP_PERIOD, self.backup_)
         # ------------------------
-
-        self.euler_angles = Vector3()
-        self.rotation_ = Quaternion()
-        self.quat_ = np.array([1.0, 0.0, 0.0, 0.0])
-        self.distance_sensor_dt_ = DISTANCE_SENSOR_REFRESH_PERIOD
-
-        # Cartesian Displacement - Initiale Values
-        # TO DO:
-        # Add csv file to load previous displacements incase of crash
-        self.z_prev_ = 0.0
-        self.z_pos = 0.0
-        self.x_pos = 0.0
-        self.y_pos = 0.0
 
         self.dx = 0
         self.dy = 0
         # avoids division by zero error
         self.dt = 0.0001
 
+        self.distance_sensor_dt_ = DISTANCE_SENSOR_REFRESH_PERIOD
+
+        self.z_pos = 0.0
+        self.z_prev_ = 0.0
+
         # Calibration
         self.calibration_y_move = 0
         self.calibration_x_move = 0
 
-        self.optical_factor = OPTICAL_CALIBRATION
-
         # GPS Vars
-        self.start_lat = None
-        self.start_lon = None
-
         self.lat = None
         self.long = None
 
-    def resetCB_(self, msg: Bool):
+        # IMU Vars
+        self.euler_angles = Vector3()
+        self.rotation_ = Quaternion()
+        self.quat_ = np.array([0.0, 0.0, 0.0, 1.0])
+        self.raw_quat_ = np.array([0.0, 0.0, 0.0, 1.0])
+
+        # raw signifies that the OFS sensor has not been calibrated,
+        # this allows retrodiction of position at base station.
+        try:
+            with open("geo_data.json", "r") as fp:
+                recovery = json.load(fp)
+
+            self.raw_x_pos = recovery["raw-x-pos"]
+            self.raw_y_pos = recovery["raw-y-pos"]
+
+            self.optical_calibration_points = np.array(
+                recovery["optical-calibration-points"]
+            )
+            if self.optical_calibration_points.size >= 1:
+                self.optical_factor = np.mean(self.optical_calibration_points)
+            else:
+                self.optical_factor = 1.0
+            self.optical_calibration_points = list(self.optical_calibration_points)
+
+            self.start_lat = recovery["start-lat"]
+            self.start_lon = recovery["start-lon"]
+
+            self.inverse_offset = np.array(recovery["quat-offset"])
+
+            self.get_logger().info("This data was recovered: " + str(recovery))
+        except:
+            self.get_logger().info("No JSON to recover from.")
+
+            self.raw_x_pos = 0.0
+            self.raw_y_pos = 0.0
+
+            self.optical_calibration_points = []
+            self.optical_factor = OPTICAL_CALIBRATION
+
+            self.start_lat = None
+            self.start_lon = None
+
+            self.inverse_offset = np.array([0.0, 0.0, 0.0, 1.0])
+
+    def backup_(self):
+        # Periodically sync base with Geo_locator
+        calibration = OpticalFlowCalibration()
+        calibration.samples = np.array(self.optical_calibration_points)
+        calibration.optical_factor = float(self.optical_factor)
+        calibration.num_samples = len(self.optical_calibration_points)
+        self.optical_factor_pub_.publish(calibration)
+
+        backup = {
+            "raw-x-pos": self.raw_x_pos,
+            "raw-y-pos": self.raw_y_pos,
+            "optical-calibration-points": np.array(self.optical_calibration_points),
+            "start-lat": self.start_lat,
+            "start-lon": self.start_lon,
+            "quat-offset": np.array(self.inverse_offset),
+        }
+        with open("geo_data.json", "w") as fp:
+            json.dump(backup, fp, cls=NPEncoder)
+
+    def zero_resetCB_(self, msg: Bool):
+        self.inverse_offset = quaternion.inverse(self.raw_quat_)
         if msg.data == True:
-            self.x_pos = 0.0
-            self.y_pos = 0.0
+            self.raw_x_pos = 0.0
+            self.raw_y_pos = 0.0
 
             self.start_lat = self.lat
             self.start_lon = self.long
@@ -130,10 +185,20 @@ class GeoLocator(Node):
         return response
 
     def ofs_calCB_(self, msg: Float32):
-        self.optical_factor = msg.data
+        # Forcing back to list incase type mutation
+        self.optical_calibration_points = list(self.optical_calibration_points)
+        self.optical_calibration_points.append(msg.data)
+        self.optical_factor = np.mean(self.optical_calibration_points)
         self.get_logger().info(
-            "Optical calibration factor successfuly set to: " + str(self.optical_factor)
+            "Optical calibration factor successfully set to: "
+            + str(self.optical_factor)
         )
+
+        calibration = OpticalFlowCalibration()
+        calibration.samples = np.array(self.optical_calibration_points)
+        calibration.optical_factor = float(self.optical_factor)
+        calibration.num_samples = len(self.optical_calibration_points)
+        self.optical_factor_pub_.publish(calibration)
 
     def tofCB_(self, msg: Float32):
         self.z_prev_ = self.z_pos
@@ -142,13 +207,15 @@ class GeoLocator(Node):
     def imuCB_(self, msg: Quaternion):
         self.rotation_ = msg
         # x,y,z,w
-        self.quat_ = np.array(
-            [self.rotation_.x, self.rotation_.y, self.rotation_.z, self.rotation_.w]
+        rec_quat = np.array(
+            [self.rotation_.w, self.rotation_.x, self.rotation_.y, self.rotation_.z]
         )
+        self.raw_quat_ = rec_quat
+        self.quat_ = quaternion.cross(rec_quat, self.inverse_offset)
 
     def opticalCB_(self, msg: OpticalFlow):
         euler = R.from_quat(
-            [self.rotation_.x, self.rotation_.y, self.rotation_.z, self.rotation_.w]
+            [self.quat_[1], self.quat_[2], self.quat_[3], self.quat_[0]]
         ).as_euler("zyx", degrees=False)
         roll, pitch, yaw = euler
 
@@ -162,21 +229,13 @@ class GeoLocator(Node):
 
         self.dx = rotated_increment[0][0]
         self.dy = rotated_increment[1][0]
-        self.x_pos += self.dx * self.optical_factor
-        self.y_pos += self.dy * self.optical_factor
-
+        self.raw_x_pos += self.dx
+        self.raw_y_pos += self.dy
         self.dt = msg.dt
 
     def gpsCB_(self, msg):
         # conditions to define a reasonable fix
-        if (
-            msg.fix_quality > 0
-            and msg.latitude
-            and msg.longitude
-            and msg.pdop < 10
-            and msg.hdop < 10
-            and msg.vdop < 10
-        ):
+        if msg.fix_quality > 0 and msg.latitude and msg.longitude and msg.hdop < 5:
             self.lat = msg.latitude
             self.long = msg.longitude
 
@@ -203,15 +262,19 @@ class GeoLocator(Node):
             pose=PoseWithCovariance(
                 pose=Pose(
                     position=Point(
-                        x=float(self.x_pos), y=float(self.y_pos), z=float(self.z_pos)
+                        # using raw optical flow values allow retrodiction
+                        # of true distances
+                        x=float(self.raw_x_pos),
+                        y=float(self.raw_y_pos),
+                        z=float(self.z_pos),
                     )
                 )
             ),
             twist=TwistWithCovariance(
                 twist=Twist(
                     linear=Vector3(
-                        x=float(self.dx / self.dt),
-                        y=float(self.dy / self.dt),
+                        x=float(self.dx * self.optical_factor / self.dt),
+                        y=float(self.dy * self.optical_factor / self.dt),
                         z=float((self.z_pos - self.z_prev_) / self.distance_sensor_dt_),
                     )
                 )
@@ -248,6 +311,16 @@ def rotate_vector2D(euler_angle, vector2D):
         ]
     )
     return np.matmul(rotation, vector2D)
+
+
+class NPEncoder(json.JSONEncoder):
+    def default(self, o):
+        try:
+            return o.tolist()  # works with any object that has .tolist() method
+        except AttributeError:
+            pass
+        # Let the base class default method raise the TypeError
+        return json.JSONEncoder.default(self, o)
 
 
 def main(args=None):

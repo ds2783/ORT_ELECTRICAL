@@ -8,6 +8,14 @@ PORT_MAIN_BASE = 5008
 PORT_MAIN = 5020
 PORT_SECONDARY = 5030
 
+class RetCodes:
+    SUCCESS=0
+    FAIL = 1
+    FAIL_UNRECOGNISED_OP_CODE = 2
+    FAIL_DETECTED_NO_TOF_FORWARD = 3
+    FAIL_DETECTED_NO_OFS_FORWARD = 4
+    FAIL_TOF_DETECTED_NO_REASONABLE_RANGE = 5
+
 
 from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
 

@@ -29,6 +29,7 @@ find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Time.msg"
   "msg/OpticalFlow.msg"
+  "msg/OpticalFlowCalibration.msg"
   "msg/Vec2.msg"
   "msg/CameraRotation.msg"
   "msg/BatteryInfo.msg"
