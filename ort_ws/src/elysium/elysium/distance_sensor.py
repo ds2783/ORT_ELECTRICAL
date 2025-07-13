@@ -109,10 +109,15 @@ class DistanceNode(Node):
                 
             
         if not timed_out:
-            response.distance = sum(average_value_array) / DISTANCE_SENSOR_SRV_AVERAGE_SIZE        
+            response.distance = sum(average_value_array) / DISTANCE_SENSOR_SRV_AVERAGE_SIZE  # averaging the value to remove some measuring error.
             response.data_retrieved = True
         else:
-            self.get_logger().warn(f"[{self.get_name()}] ToF timed out trying to get data in the service node (exceeded {DISTANCE_SENSOR_SRV_TIMEOUT} seconds).")
+            error_msg = f"""
+            [{self.get_name()}] ToF timed out trying to get data in the service node (exceeded {DISTANCE_SENSOR_SRV_TIMEOUT} seconds).
+            Current stored values in the array: {average_value_array}
+            """
+            
+            self.get_logger().warn(error_msg)
             response.distance = -1.0  # otherwise sets the dist to -1
             response.data_retrieved = False 
 
