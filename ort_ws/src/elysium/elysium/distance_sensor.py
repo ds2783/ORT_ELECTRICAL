@@ -111,7 +111,6 @@ class DistanceNode(Node):
         if DISTANCE_SENSOR_SRV_AVERAGE_SIZE < 1 or not isinstance(DISTANCE_SENSOR_SRV_AVERAGE_SIZE, int):
             self.get_logger().error(f"The given value for the size of the averaging array in the service callback method is not a valid value! Given: {DISTANCE_SENSOR_SRV_AVERAGE_SIZE}, Type: {type(DISTANCE_SENSOR_SRV_AVERAGE_SIZE)}")
 
-
         while len(average_value_array) < DISTANCE_SENSOR_SRV_AVERAGE_SIZE:
             if self.sensor.data_ready:
                 timeout_time = .0
@@ -136,7 +135,7 @@ class DistanceNode(Node):
             Current stored values in the array: {average_value_array}
             """
             
-            self.get_logger().warn(error_msg)
+            self.get_logger().error(error_msg)
             response.distance = -1.0  # otherwise sets the dist to -1
             response.data_retrieved = False 
 
