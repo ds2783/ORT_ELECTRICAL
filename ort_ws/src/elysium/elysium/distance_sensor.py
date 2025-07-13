@@ -183,6 +183,8 @@ def main(args=None):
     green_led = gpio.DigitalOutputDevice(26, pin_factory=factory)
     green_led.on()  # indicate ROS2 is running. 
 
+    # time.sleep(2)  # Let the xshut pin/ToF settle as on. 
+
     try:
         test_tof_1 = tof.VL53L4CD(0x29)
         del test_tof_1  # delete them after so they don't interfere with the initialisation later 
@@ -191,12 +193,13 @@ def main(args=None):
         both_on = True  # The i2c addresses have already been set properly and are returning correct model id 
         # values. 
     except OSError as err:
-        logger_node.get_logger().info(f"""[distance node] the i2c addresses of the sleep node have not been set yet, 
-                                      (to be expected after a reboot) and will be set accordingly.""")
+        logger_node.get_logger().info(f"""the i2c addresses have not been set yet, 
+                                      (to be expected after a reboot) and will be set accordingly. OSError: {err}""")
         both_on = False 
+
     except ValueError as err:
-        logger_node.get_logger().info(f"""[distance node] the i2c addresses of the sleep node have not been set yet, 
-                                      (to be expected after a reboot) and will be set accordingly.""")
+        logger_node.get_logger().info(f"""the i2c addresses have not been set yet, 
+                                      (to be expected after a reboot) and will be set accordingly. ValueError: {err} """)
         both_on = False  # They are not both set to the correct addresses, and have to be set accordingly. 
 
     try:

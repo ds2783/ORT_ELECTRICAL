@@ -133,14 +133,21 @@ class BatteryMonitorNode(Node):
         ).is_file():  # Under the assumption that there isn't a SOC to be had, refer to the lookup table.
             with open(path, "r") as fs:
                 data = fs.readline()  # for now we are just keeping the data as a string
-            self.soc = float(data)  # typecast the chars into a float
+
+            try:
+                self.soc = float(data)  # typecast the chars into a float
+            except ValueError:
+                tmp = self.bms.voltage  # if there doesn't exist ANY value in the batterysave file. 
+                self.soc = self._find_ocv_soc(tmp)
+
 
         else:
+
             tmp = self.bms.voltage
 
             if (
                 self.lookup_table == 0
-            ).sum().sum() > 2000:  # if the number of zeroes is above 2000, assume that
+            ).sum().sum() > 2000 and self.lookup:  # if the number of zeroes is above 2000, assume that
                 # the table has NOT been populated yet.
                 return 1, 1
             else:
