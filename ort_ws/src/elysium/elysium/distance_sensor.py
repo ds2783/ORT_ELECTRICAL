@@ -111,7 +111,6 @@ class DistanceNode(Node):
         if DISTANCE_SENSOR_SRV_AVERAGE_SIZE < 1 or not isinstance(DISTANCE_SENSOR_SRV_AVERAGE_SIZE, int):
             self.get_logger().error(f"The given value for the size of the averaging array in the service callback method is not a valid value! Given: {DISTANCE_SENSOR_SRV_AVERAGE_SIZE}, Type: {type(DISTANCE_SENSOR_SRV_AVERAGE_SIZE)}")
 
-
         while len(average_value_array) < DISTANCE_SENSOR_SRV_AVERAGE_SIZE:
             if self.sensor.data_ready:
                 timeout_time = .0
@@ -128,7 +127,7 @@ class DistanceNode(Node):
                 
             
         if not timed_out:
-            response.distance = sum(average_value_array) / DISTANCE_SENSOR_SRV_AVERAGE_SIZE  # averaging the value to remove some measuring error.
+            response.distance = sum(average_value_array) / (100 * DISTANCE_SENSOR_SRV_AVERAGE_SIZE)  # averaging the value to remove some measuring error + converting to metres.
             response.data_retrieved = True
         else:
             error_msg = f"""
@@ -136,7 +135,7 @@ class DistanceNode(Node):
             Current stored values in the array: {average_value_array}
             """
             
-            self.get_logger().warn(error_msg)
+            self.get_logger().error(error_msg)
             response.distance = -1.0  # otherwise sets the dist to -1
             response.data_retrieved = False 
 
@@ -147,9 +146,12 @@ class DistanceNode(Node):
     def _poll_data(self):
         """Poll and save the data from the ToF sensor. 
         """
-        if self.sensor.data_ready:
-            self.data = self.sensor.distance
-            self.sensor.clear_interrupt()
+        try:
+            if self.sensor.data_ready:
+                self.data = self.sensor.distance / 100  # convert to metres 
+                self.sensor.clear_interrupt()
+        except OSError as err:
+            self.get_logger().warn(f"ERROR: {err}, ADDRESS: {self.sensor.i2c_device.device_address}")
 
     def get_data(self):
         """Get the data from the ToF sensors.
@@ -176,7 +178,6 @@ def main(args=None):
     node_name_1 = "distance_node_optical_flow"
     topic_name_2 = "/distance_sensor/qr_code"
     node_name_2 = "distance_node_qr"
-    
 
     gpio.pins.lgpio.LGPIOFactory.__init__ = __patched_init   # setup the XSHUT pin and the green LED pins. 
     factory = LGPIOFactory()
