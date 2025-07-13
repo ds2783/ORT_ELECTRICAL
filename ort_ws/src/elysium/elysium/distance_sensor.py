@@ -19,7 +19,8 @@ from elysium.config.sensors import DISTANCE_SENSOR_START_DELAY, DISTANCE_SENSOR_
 class DistanceNode(Node):
     def __init__(self, 
                  node_name: str, 
-                 topic_name: str, 
+                 topic_name: str,
+                 i2c_bus,
                  i2c_addr: int, 
                  srv: bool = False):
         """Time of Flight Node using the VL53L4CX. 
@@ -61,7 +62,7 @@ class DistanceNode(Node):
 
         try:
             self.i2c_addr = i2c_addr
-            self.sensor = tof.VL53L4CX(self.i2c_addr)
+            self.sensor = tof.VL53L4CX(i2c_bus, i2c_address=self.i2c_addr)
 
         except Exception as err:
             self.get_logger().error(
@@ -156,17 +157,17 @@ def main(args=None):
 
     if both_on:
         _distance_sensor_1 = DistanceNode(
-        node_name_1, topic_name_1, i2c_addr=0x2A, srv=True
+        node_name_1, topic_name_1, i2c_bus, i2c_addr=0x2A, srv=True
         )
         _distance_sensor_2 = DistanceNode(
-        node_name_2, topic_name_2, i2c_addr=0x29 
+        node_name_2, topic_name_2, i2c_bus, i2c_addr=0x29 
         )
 
     else:
         xshut_pin.off()
 
         _distance_sensor_1 = DistanceNode(
-            node_name_1, topic_name_1, i2c_addr=0x29, srv=True)
+            node_name_1, topic_name_1, i2c_bus, i2c_addr=0x29, srv=True)
         # we accept the cursed for what it is. It's 300ms each on startup only anyway it's fineeee.
         time.sleep(0.3) 
 
@@ -175,7 +176,7 @@ def main(args=None):
         xshut_pin.on()
 
         _distance_sensor_2 = DistanceNode(
-            node_name_2, topic_name_2, i2c_addr=0x29
+            node_name_2, topic_name_2, i2c_bus, i2c_addr=0x29
             )
 
     executor = rclpy.executors.MultiThreadedExecutor()
