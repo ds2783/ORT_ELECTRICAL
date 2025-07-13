@@ -178,7 +178,8 @@ class TelepresenceOperations(Node):
                     )
 
                     ofs_y_dist = y2 - y1
-                    actual_dist = y2_tof - y1_tof
+                    # /delta x is actually the inverse vector of the ToF measurement
+                    actual_dist = y1_tof - y2_tof
                     self.get_logger().info(
                         "Actual distance travelled: " + str(actual_dist) + "m"
                     )
