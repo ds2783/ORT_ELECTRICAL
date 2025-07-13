@@ -172,10 +172,11 @@ def main(args=None):
 
     logger_node = rclpy.create_node("dist_logging_node")
 
-    topic_name_1 = "/distance_sensor/qr_code"
-    node_name_1 = "distance_node_qr"
-    topic_name_2 = "/distance_sensor/optical_flow"
-    node_name_2 = "distance_node_optical_flow"
+    topic_name_1 = "/distance_sensor/optical_flow"
+    node_name_1 = "distance_node_optical_flow"
+    topic_name_2 = "/distance_sensor/qr_code"
+    node_name_2 = "distance_node_qr"
+    
 
     gpio.pins.lgpio.LGPIOFactory.__init__ = __patched_init   # setup the XSHUT pin and the green LED pins. 
     factory = LGPIOFactory()
