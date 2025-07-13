@@ -68,6 +68,7 @@ class DistanceNode(Node):
             )
         
         if not srv:
+            self.sensor.start_ranging()
             self.poll_data.reset()
 
     def test_i2c(self):
@@ -79,6 +80,7 @@ class DistanceNode(Node):
             )
 
     def data_srv_callback(self, request, response):
+        self.sensor.start_ranging() 
         # Request isn't considered in this interaction.  
         if self.sensor.data_ready:  # checks if data is ready from the ToF
             response.distance = self.sensor.distance
@@ -88,6 +90,7 @@ class DistanceNode(Node):
         else: 
             response.distance = -1.0  # otherwise sets the dist to -1
             response.data_retrieved = False 
+        self.sensor.stop_ranging()
 
         return response
 
