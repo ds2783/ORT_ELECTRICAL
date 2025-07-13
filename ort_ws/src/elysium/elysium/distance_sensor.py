@@ -67,6 +67,7 @@ class DistanceNode(Node):
             )
         
         if not srv:
+            self.sensor.start_ranging()
             self.poll_data.reset()
 
     def test_i2c(self):
