@@ -222,7 +222,7 @@ def main(args=None):
             alt_address = 0x29
             logger_node.get_logger().info(str(err))
     
-        logger_node.get_logger().info("Both devices share the address: " + str(shared_address))
+        logger_node.get_logger().info("Both devices share the address: " + hex(shared_address))
 
         xshut_pin.off()
 
