@@ -36,6 +36,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/SatelliteInfo.msg"
   "srv/SetMode.srv"
   "srv/Vec2Pos.srv"
+  "srv/DistanceData.srv"
   "action/Calibrate.action"
 )
 

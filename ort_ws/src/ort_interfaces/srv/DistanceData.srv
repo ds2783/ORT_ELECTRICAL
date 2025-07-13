@@ -1,0 +1,6 @@
+# Always returns position despite request integer value
+int request
+---
+float32 distance
+bool data_retrieved
+# boolean to confirm if the data was ready when requested.

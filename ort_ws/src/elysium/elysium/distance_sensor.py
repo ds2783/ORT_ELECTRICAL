@@ -9,10 +9,11 @@ import lgpio
 from gpiozero.pins.lgpio import LGPIOFactory
 
 from std_msgs.msg import Float32
+from ort_interfaces.srv import DistanceData
 
 import time
 import elysium.hardware.adafruit_vl53l4cx as tof
-from elysium.config.sensors import DISTANCE_SENSOR_REFRESH_PERIOD, tofQoS
+from elysium.config.sensors import DISTANCE_SENSOR_START_DELAY, tofQoS
 
 
 class DistanceNode(Node):
@@ -30,20 +31,24 @@ class DistanceNode(Node):
 
         super().__init__(node_name)
 
-        msg_type = Float32
-        self.distance_publisher = self.create_publisher(
-            msg_type=msg_type, topic=topic_name, qos_profile=tofQoS
-        )
+        self.srv = self.create_service(DistanceData, "distance_service", self.data_srv_callback)
 
-        refresh_period = DISTANCE_SENSOR_REFRESH_PERIOD  # 200ms data retrieval rate
-        self.send_data = self.create_timer(
-            refresh_period, self.get_data, autostart=True
-        )
+        self._start_timer = self.create_timer(DISTANCE_SENSOR_START_DELAY, self.start_sensor)  # start delay for the ToF. 
 
-        poll_period = DISTANCE_SENSOR_POLL_PERIOD = 0.1
-        self.poll_data = self.create_timer(poll_period, self._poll_data, autostart=False)
+        # msg_type = Float32
+        # self.distance_publisher = self.create_publisher(
+        #     msg_type=msg_type, topic=topic_name, qos_profile=tofQoS
+        # )
 
-        self.data = .0
+        # refresh_period = DISTANCE_SENSOR_REFRESH_PERIOD  # 200ms data retrieval rate
+        # self.send_data = self.create_timer(
+        #     refresh_period, self.get_data, autostart=True
+        # )
+
+        # poll_period = DISTANCE_SENSOR_POLL_PERIOD = 0.1
+        # self.poll_data = self.create_timer(poll_period, self._poll_data, autostart=False)
+
+        # self.data = .0
 
         try:
             self.bus = i2c_bus
@@ -58,7 +63,7 @@ class DistanceNode(Node):
 
             self.sensor = tof_fallback.VL53L4CD(address=i2c_addr)
 
-        self.poll_data.reset()
+        # self.poll_data.reset()
 
     def test_i2c(self):
         try:
@@ -68,20 +73,42 @@ class DistanceNode(Node):
                 f"Node {self.get_name()} I2C address is not accessible."
             )
 
-    def _poll_data(self):
-        if self.sensor.data_ready:
-            self.data = self.sensor.distance
+    def start_sensor(self):
+        """Run X seconds after rclpy spins the node. Destroys the timer afterwards. 
+        """
+
+        self.sensor.start_sensor()
+        self.destroy_timer(self._start_timer)
+
+
+    def data_srv_callback(self, request, response):
+        # Request isn't considered in this interaction.  
+        if self.sensor.data_ready:  # checks if data is ready from the ToF
+            response.distance = self.sensor.distance
+            response.data_retrieved = True
             self.sensor.clear_interrupt()
 
-    def get_data(self):
-        """Get the data from the ToF sensors.
-        """
-        
-        self.sensor.start_sensor()  # we can't have the TOF sensor initialise fully in the __init__ because the sleep node hasn't spun up yet (it uses rate.sleep)
+        else: 
+            response.distance = -1.0  # otherwise sets the dist to -1
+            response.data_retrieved = False 
 
-        msg = Float32()
-        msg.data = self.data
-        self.distance_publisher.publish(msg)
+        return response
+
+
+    # def _poll_data(self):
+    #     if self.sensor.data_ready:
+    #         self.data = self.sensor.distance
+    #         self.sensor.clear_interrupt()
+
+    # def get_data(self):
+    #     """Get the data from the ToF sensors.
+    #     """
+        
+    #     self.sensor.start_sensor()  # we can't have the TOF sensor initialise fully in the __init__ because the sleep node hasn't spun up yet (it uses rate.sleep)
+
+    #     msg = Float32()
+    #     msg.data = self.data
+    #     self.distance_publisher.publish(msg)
 
 def __patched_init(self, chip=None):
     gpio.pins.lgpio.LGPIOFactory.__bases__[0].__init__(self)
