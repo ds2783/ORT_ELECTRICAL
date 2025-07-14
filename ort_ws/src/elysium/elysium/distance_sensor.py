@@ -26,7 +26,8 @@ class DistanceNode(Node):
     def __init__(self, 
                  node_name: str, 
                  topic_name: str,
-                 i2c_addr: int, 
+                 i2c_addr: int,
+                 pin, 
                  srv: bool = False):
         """Time of Flight Node using the VL53L4CX. 
         Measures the distance off the sensor and returns the value.
@@ -43,6 +44,7 @@ class DistanceNode(Node):
 
         super().__init__(node_name)
 
+        self.pin = pin
 
         if not srv:  # if the node is a service or not. 
             msg_type = Float32
@@ -83,6 +85,18 @@ class DistanceNode(Node):
             self.get_logger().error(
                 f"I2C address is not accessible."
             )
+
+    def reset_tof(self):
+        self.pin.off()  # Set the pin low to reset the ToF
+        time.sleep(0.01)  # data times for wake and data transfer are on the order of us/ns, so 10ms should be more than enough for Pi latency + actual communication with the chip. 
+        self.pin.on()  # Set the pin high to wake the ToF up with default settings
+        time.sleep(0.01)
+        self.sensor = tof.VL53L4CD(0x29)  # init the ToF
+        time.sleep(0.01)
+        self.sensor.set_address(self.i2c_addr)  # set the address to the correct i2c address
+        time.sleep(0.01)
+        self.get_logger().info(f"Reset the ToF with the new address {self.i2c_addr}.")
+        self.poll_data_timer.reset()  # start up the timer again. 
 
     def data_srv_callback(self, request, response):
         """Service callback that receives a request and returns a response 
@@ -152,6 +166,8 @@ class DistanceNode(Node):
                 self.sensor.clear_interrupt()
         except OSError as err:
             self.get_logger().warn(f"ERROR: {err}, ADDRESS: {self.sensor.i2c_device.device_address}")
+            self.poll_data_timer.cancel()  # pause the timer
+            self.reset_tof()  # reset the ToF
 
     def get_data(self):
         """Get the data from the ToF sensors.
@@ -187,19 +203,19 @@ def main(args=None):
     green_led.on()  # indicate ROS2 is running. 
 
     xshut_pin_ofs.on()
-    time.sleep(0.2) # let the ToF boot
+    time.sleep(0.01) # let the ToF boot
 
     _distance_sensor_ofs = DistanceNode(
-    node_name_1, topic_name_1, i2c_addr=0x29
+    node_name_1, topic_name_1, pin=xshut_pin_ofs, i2c_addr=0x29
     )
 
     _distance_sensor_ofs.sensor.set_address(0x2B)
 
     xshut_pin_qr.on()
-    time.sleep(0.2) # let the ToF boot
+    time.sleep(0.01) # let the ToF boot
 
     _distance_sensor_qr = DistanceNode(
-    node_name_2, topic_name_2, i2c_addr=0x29, srv=True
+    node_name_2, topic_name_2, i2c_addr=0x29, pin=xshut_pin_qr, srv=True
     )
 
     _distance_sensor_qr.sensor.set_address(0x2C)
