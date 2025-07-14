@@ -108,9 +108,10 @@ class StreamServer:
             StreamServer.active_cams.append(False)
         print(StreamServer.cam_list)
 
-    def configure(self, width, height, video_format=None):
+    def configure(self, width, height, framerate=20, video_format=None):
         if not self.cam is None:
             config = {"size": (width, height)}
+            controls = {"FrameRate": 20}
             if not video_format is None:
                 config["format"] = video_format
             # if self.usb:
@@ -122,7 +123,7 @@ class StreamServer:
 
             # for now use default config
             self.capture_config = self.cam.create_still_configuration()
-            self.video_config = self.cam.create_video_configuration(config)
+            self.video_config = self.cam.create_video_configuration(config, controls=controls)
 
             self.cam.configure(self.video_config)
             self.output.write("INFO", f"Applied config to camera {self.model}", True)

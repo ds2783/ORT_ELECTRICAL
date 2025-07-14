@@ -13,8 +13,8 @@ PORT_MAIN_BASE=5008
 PORT_MAIN=5020
 
 MODEL="imx708_noir" # camera model name (find using libcamera-vid --list-cameras)
-WIDTH=1296
-HEIGHT=972
+WIDTH=1200
+HEIGHT=800
 NAME="camera" # stream name for display in console
 
 MODEL2="imx219"
@@ -26,13 +26,13 @@ out=Output("None") # console output, with optional TCP forwarding
 
 # Initialise stream
 stream=StreamServer(out,MODEL,NAME) # system finds the camera based upon the model number (assumes no duplicates)
-stream.configure(WIDTH,HEIGHT)
+stream.configure(WIDTH,HEIGHT, framerate=20)
 stream.start_stream(IP_MAIN, PORT_MAIN) # using a multicast address 224.1.1.1:5008
 stream.start_server(PI_IP, PORT_MAIN_BASE)
 stream.set_bitrate(5000000)
 
 stream2=StreamServer(out,MODEL2,NAME2)
-stream2.configure(WIDTH, HEIGHT)
+stream2.configure(WIDTH, HEIGHT, framerate=20)
 stream2.start_stream(IP_SECONDARY, PORT_SECONDARY)
 stream2.set_bitrate(5000000)
 
