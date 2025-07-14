@@ -16,6 +16,10 @@ class RetCodes:
     FAIL_DETECTED_NO_OFS_FORWARD = 4
     FAIL_TOF_DETECTED_NO_REASONABLE_RANGE = 5
 
+# Service
+CODE_TERMINATE = 0
+CODE_CONTINUE = 1
+
 
 from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
 from rclpy.duration import Duration

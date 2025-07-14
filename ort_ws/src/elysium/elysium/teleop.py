@@ -16,7 +16,6 @@ from elysium.config.sensors import (
     OPTICAL_MOVE_TIME,
     OPTICAL_CALIBRATION_LOOP_RATE,
     ENCODER_OFFSET_X_AXIS,
-    tofQoS,
 )
 from elysium.config.controls import (
     CAMERA_SENSITIVITY,

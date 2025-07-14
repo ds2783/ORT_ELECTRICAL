@@ -14,7 +14,15 @@ from ort_interfaces.srv import DistanceData
 
 from mission_control.stream.stream_client import ServerClient
 from mission_control.config.mappings import BUTTONS
-from mission_control.config.network import COMM_PORT, PORT_MAIN_BASE, PI_IP, tofQoS, baseQoS
+from mission_control.config.network import (
+    COMM_PORT,
+    PORT_MAIN_BASE,
+    PI_IP,
+    CODE_CONTINUE,
+    CODE_TERMINATE,
+    tofQoS,
+    baseQoS,
+)
 from mission_control.config.gui import QR_DIRECTORY
 
 from qreader import QReader
@@ -32,7 +40,7 @@ from functools import partial
 class BaseNode(Node):
     def __init__(self, port):
         super().__init__("base")
-        # CB groups 
+        # CB groups
         ping_group = MutuallyExclusiveCallbackGroup()
         # ---------------
         # STATE OBJECTS
@@ -49,7 +57,9 @@ class BaseNode(Node):
         # ---
 
         # TIMERS
-        self.ping_timer_ = self.create_timer(0.2, self.pingCB_, callback_group=ping_group)
+        self.ping_timer_ = self.create_timer(
+            0.2, self.pingCB_, callback_group=ping_group
+        )
         # ----
 
         # Topics ---------------------
@@ -87,7 +97,7 @@ class BaseNode(Node):
         # ----------------------------
 
         # Services
-        self.cam_tof_client_ = self.create_client(
+        self.tof_client_ = self.create_client(
             DistanceData,
             "/elysium/cam/distance_service",
         )
@@ -99,8 +109,8 @@ class BaseNode(Node):
 
         self.eulerAngles = Vector3(x=0.0, y=0.0, z=0.0)
         self.odom = Odometry()
-        self.qr_tof_dist = Float32(data=0.0)
         self.op_tof_dist = Float32(data=0.0)
+        self.qr_tof_dist = 0.0
         self.cam_rotation = CameraRotation(z_axis=0.0, x_axis=0.0)
 
         # Elysium Position
@@ -115,7 +125,7 @@ class BaseNode(Node):
         self.optical_factor = 1.0
         self.optical_calibration_points = []
         self.number_of_calibration_samples = 0
-        
+
         # Elysium Battery
         self.soc = 0.0
 
@@ -138,14 +148,23 @@ class BaseNode(Node):
         # figure out that (now - self.start_time) < 1.0 will never be true
         # again after 1 second.
         self.qr_ping = True
+
+        # 80Hz rate
+        TIGHT_LOOP_RATE = 80
+        self.rate = self.create_rate(TIGHT_LOOP_RATE)
         # ----------------------------
         self.get_logger().info("The Base Station has been initialised.")
 
     def controlCB_(self, msg: Joy):
-        trigger_pressed = msg.buttons[BUTTONS["CIRCLE"]]
-        if trigger_pressed and not self.qr_button_:
+        circle = msg.buttons[BUTTONS["CIRCLE"]]
+        if circle and not self.qr_button_:
             # CAPTURE QR-CODE
-            self.get_cam_distCB_()
+            resp = self.get_request(self.request_tof_dist)
+            if resp == CODE_TERMINATE:
+                self.get_logger().error(
+                    "Distance measured from ToF not available. Measurement not updated."
+                )
+
             self.qr_button_ = True
             image = self.main_cam.get_picture(self.get_logger)
             if image is not None:
@@ -158,7 +177,7 @@ class BaseNode(Node):
                 # assuming y is the forward coordinate
                 # (still to be tested)
                 # raycasted vector  ->
-                relative_elysium_pos = np.array([[0.0], [self.qr_tof_dist.data]])
+                relative_elysium_pos = np.array([[0.0], [self.qr_tof_dist]])
                 # x -> yaw, which is rotation around the z_axis
                 xy_plane_rotation = self.eulerAngles.x + self.cam_rotation.z_axis
 
@@ -172,7 +191,7 @@ class BaseNode(Node):
 
                 x_ofs = self.elysium_x_raw
                 y_ofs = self.elysium_y_raw
-                
+
                 # make sure the ofs values are up to date
                 self.elysium_x = self.elysium_x_raw * self.optical_factor
                 self.elysium_y = self.elysium_y_raw * self.optical_factor
@@ -195,8 +214,10 @@ class BaseNode(Node):
                         gps_reliability = True
                 else:
                     gps_reliability = False
-                
-                reliable_sensor = self.get_more_reliable_sensor(elysium_dist, self.gps_dist_, gps_reliability)
+
+                reliable_sensor = self.get_more_reliable_sensor(
+                    elysium_dist, self.gps_dist_, gps_reliability
+                )
 
                 for code in qr_final:
                     date = datetime.datetime.now()
@@ -222,8 +243,8 @@ class BaseNode(Node):
                     if not Path(QR_DIRECTORY).is_dir():
                         Path(QR_DIRECTORY).mkdir()
 
-                    im.save(QR_DIRECTORY+fname)
-                
+                    im.save(QR_DIRECTORY + fname)
+
                 if len(qr_final) >= 1:
                     self.get_logger().info("Sending JSON object.")
                     self.sendComms("qrdic:" + json.dumps(self.scanned_codes))
@@ -235,9 +256,14 @@ class BaseNode(Node):
             else:
                 self.get_logger().warn("No image available for processing.")
 
-        elif not trigger_pressed and self.qr_button_:
+        elif not circle and self.qr_button_:
             # Ensure only one capture even per press
             self.qr_button_ = False
+
+        square = msg.buttons[BUTTONS["SQUARE"]]
+        if square:
+            self.get_logger().info("Attempting to read cam distance.")
+            self.get_request(self.request_tof_dist)
 
     def pingCB_(self):
         msg = Bool()
@@ -262,8 +288,8 @@ class BaseNode(Node):
         prev_val = self.optical_factor
         self.optical_factor = msg.optical_factor
         self.optical_calibration_points = msg.samples
-        self.number_of_calibration_samples = msg.num_samples 
-        
+        self.number_of_calibration_samples = msg.num_samples
+
         if prev_val != self.optical_factor:
             self.get_logger().info(
                 "Optical calibration factor successfully set to: "
@@ -275,7 +301,6 @@ class BaseNode(Node):
 
             with open("qr_data.json", "w") as fp:
                 json.dump(self.scanned_codes, fp)
-
 
     def update_qr_codes(self):
         for key in self.scanned_codes.keys():
@@ -312,26 +337,6 @@ class BaseNode(Node):
             reliable_sensor = "op-imu"
         return reliable_sensor
 
-    def get_cam_distCB_(self):
-        timeout = time.monotonic()
-        now = time.monotonic()
-        while not self.cam_tof_client_.wait_for_service(0.1) and (now - timeout) < 0.1 :
-            now = time.monotonic()
-        if (now - timeout) < 0.1:
-            request = DistanceData.Request()
-            request.request = True
-            future = self.cam_tof_client_.call_async(request)
-            future.add_done_callback(partial(self.complete_tof_requestCB_))
-        else:
-            self.get_logger().warn("Distance service is unavailable.")
-
-    def complete_tof_requestCB_(self, future):
-        response = future.result()
-        if response.data_retrieved:
-            self.tof_dist = response.distance
-        else:
-            self.get_logger().error("ToF could not obtain a reading.")
-
     def eulerCB_(self, msg: Vector3):
         self.eulerAngles = msg
         self.sendComms("yaw--:" + f"{rad_degrees(msg.x):2f}")
@@ -359,7 +364,6 @@ class BaseNode(Node):
     def oTofCB_(self, msg: Float32):
         self.op_tof_dist = msg
         self.sendComms("o-tof:" + f"{self.op_tof_dist.data:2f}")
-        self.sendComms("q-tof:" + f"{self.qr_tof_dist.data:2f}")
 
     def camCB_(self, msg: CameraRotation):
         self.cam_rotation = msg
@@ -381,6 +385,50 @@ class BaseNode(Node):
                 self.comms_.send(msg)
             except:
                 self.get_logger().warn("Non comms link found.")
+
+    def get_request(self, server_func):
+        self.request_complete = False
+        self.server_unavailable = False
+        server_func()
+
+        now = time.monotonic()
+        timeout = time.monotonic()
+        while not self.request_complete and (now - timeout) < 2.0:
+            self.rate.sleep()
+            now = time.monotonic()
+            if self.server_unavailable:
+                return CODE_TERMINATE
+
+        if self.request_complete:
+            return CODE_CONTINUE
+        else:
+            return CODE_TERMINATE
+
+    def request_tof_dist(self):
+        timeout = time.monotonic()
+        now = time.monotonic()
+        while not self.tof_client_.wait_for_service(1.5) and (now - timeout) < 1.5:
+            now = time.monotonic()
+            self.get_logger().warn("Waiting for connection to distance service.")
+        if (now - timeout) < 1.5:
+            request = DistanceData.Request()
+            request.request = True
+            future = self.tof_client_.call_async(request)
+            future.add_done_callback(partial(self.complete_tof_requestCB_))
+        else:
+            self.get_logger().warn("Distance calibration service is unavailable.")
+            self.server_unavailable = True
+
+    def complete_tof_requestCB_(self, future):
+        response = future.result()
+        if response.data_retrieved:
+            self.qr_tof_dist = response.distance
+            self.get_logger().info("Camera distance set.")
+            self.sendComms("q-tof:" + f"{self.qr_tof_dist:2f}")
+        else:
+            self.get_logger().error("ToF could not obtain a reading.")
+            self.server_unavailable = True
+        self.request_complete = True
 
 
 def rad_degrees(num):
