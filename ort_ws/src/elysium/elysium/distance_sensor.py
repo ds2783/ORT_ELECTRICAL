@@ -126,7 +126,15 @@ class DistanceNode(Node):
             self.get_logger().error(f"The given value for the size of the averaging array in the service callback method is not a valid value! Given: {DISTANCE_SENSOR_SRV_AVERAGE_SIZE}, Type: {type(DISTANCE_SENSOR_SRV_AVERAGE_SIZE)}")
 
         while len(average_value_array) < DISTANCE_SENSOR_SRV_AVERAGE_SIZE:
-            if self.sensor.data_ready:
+
+            try:
+                data_rdy = self.sensor.data_ready
+            except OSError as err:
+                self.get_logger().warn(f"OSERROR: {err}, ADDRESS: {self.sensor.i2c_device.device_address}")
+                self.reset_tof()  # reset the ToF
+                data_rdy = False
+
+            if data_rdy:
                 timeout_time = .0
                 average_value_array.append(self.sensor.distance)
                 self.sensor.clear_interrupt()
@@ -165,7 +173,7 @@ class DistanceNode(Node):
                 self.data = self.sensor.distance / 100  # convert to metres 
                 self.sensor.clear_interrupt()
         except OSError as err:
-            self.get_logger().warn(f"ERROR: {err}, ADDRESS: {self.sensor.i2c_device.device_address}")
+            self.get_logger().warn(f"OSERROR: {err}, ADDRESS: {self.sensor.i2c_device.device_address}")
             self.poll_data_timer.cancel()  # pause the timer
             self.reset_tof()  # reset the ToF
 
