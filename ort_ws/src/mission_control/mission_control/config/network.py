@@ -18,6 +18,7 @@ class RetCodes:
 
 
 from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
+from rclpy.duration import Duration
 
 tofQoS = QoSProfile(
     history=HistoryPolicy.KEEP_LAST,  # Keep only up to the last 10 samples
@@ -38,6 +39,6 @@ baseQoS = QoSProfile(
         depth=1,
         reliability=ReliabilityPolicy.RELIABLE,
         durability=DurabilityPolicy.VOLATILE,
-        deadline=0.2,
-        lifespan=0.2,
+        deadline=Duration(seconds=0.2),
+        lifespan=Duration(seconds=0.2),
         )
