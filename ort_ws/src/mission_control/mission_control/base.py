@@ -14,7 +14,7 @@ from ort_interfaces.srv import DistanceData
 
 from mission_control.stream.stream_client import ServerClient
 from mission_control.config.mappings import BUTTONS
-from mission_control.config.network import COMM_PORT, PORT_MAIN_BASE, PI_IP, tofQoS
+from mission_control.config.network import COMM_PORT, PORT_MAIN_BASE, PI_IP, tofQoS, baseQoS
 from mission_control.config.gui import QR_DIRECTORY
 
 from qreader import QReader
@@ -83,7 +83,7 @@ class BaseNode(Node):
         )
 
         # Publishers
-        self.connection_pub_ = self.create_publisher(Bool, "ping", 10)
+        self.connection_pub_ = self.create_publisher(Bool, "ping", qos_profile=baseQoS)
         # ----------------------------
 
         # Services

@@ -32,3 +32,12 @@ tofQoS = QoSProfile(
     # refer to QoS ros documentation and
     # QoSProfile source code for kwargs and what they do
 )
+
+baseQoS = QoSProfile(
+        history=HistoryPolicy.KEEP_LAST,
+        depth=1,
+        reliability=ReliabilityPolicy.RELIABLE,
+        durability=DurabilityPolicy.VOLATILE,
+        deadline=0.2,
+        lifespan=0.2,
+        )

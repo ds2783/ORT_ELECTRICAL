@@ -35,6 +35,7 @@ from elysium.config.services import (
     CODE_CONTINUE,
     CODE_TERMINATE,
 )
+from elysium.config.network import baseQoS
 
 import time
 from functools import partial
@@ -72,7 +73,7 @@ class TelepresenceOperations(Node):
             Bool,
             "ping",
             self.confirmConnectionCB_,
-            10,
+            qos_profile=baseQoS,
             callback_group=connection_cb_group,
         )
         # Publishers
@@ -114,7 +115,7 @@ class TelepresenceOperations(Node):
 
         # Connection timer
         self.last_connection_ = time.monotonic()
-        self.connection_timer_ = self.create_timer(0.4, self.shutdownCB_, node_cb_group)
+        self.connection_timer_ = self.create_timer(0.5, self.shutdownCB_, node_cb_group)
         self.driver_timer_ = self.create_timer(0.02, self.driveCB_, node_cb_group)
 
         # Servo Offset control
