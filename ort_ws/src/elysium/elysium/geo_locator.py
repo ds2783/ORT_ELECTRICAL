@@ -202,6 +202,7 @@ class GeoLocator(Node):
                 response.ret_code = FAIL
             self.optical_factor = np.mean(self.optical_calibration_points)
 
+            self.publish_ofs_calibration()
 
     def ofs_calCB_(self, msg: Float32):
         # Forcing back to list incase type mutation
@@ -213,6 +214,9 @@ class GeoLocator(Node):
             + str(self.optical_factor)
         )
 
+        self.publish_ofs_calibration()
+
+    def publish_ofs_calibration(self):
         calibration = OpticalFlowCalibration()
         calibration.samples = np.array(self.optical_calibration_points)
         calibration.optical_factor = float(self.optical_factor)
