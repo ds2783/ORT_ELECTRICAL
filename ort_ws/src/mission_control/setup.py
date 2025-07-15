@@ -23,6 +23,7 @@ setup(
         'console_scripts': [
             'base =  mission_control.base:main',
             'control_gui = mission_control.control_gui:main',
+            'connection_server = mission_control.connection_server:main',
         ],
     },
 )

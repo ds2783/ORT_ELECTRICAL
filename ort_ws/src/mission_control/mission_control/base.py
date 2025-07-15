@@ -21,7 +21,6 @@ from mission_control.config.network import (
     CODE_CONTINUE,
     CODE_TERMINATE,
     tofQoS,
-    baseQoS,
 )
 from mission_control.config.gui import QR_DIRECTORY
 
@@ -35,13 +34,14 @@ from pathlib import Path
 import json
 import time
 from functools import partial
+import pickle
 
 
 class BaseNode(Node):
     def __init__(self, port):
         super().__init__("base")
         # CB groups
-        ping_group = MutuallyExclusiveCallbackGroup()
+        comms_group = MutuallyExclusiveCallbackGroup()
         # ---------------
         # STATE OBJECTS
         self.main_cam = ServerClient(PI_IP, PORT_MAIN_BASE)
@@ -57,8 +57,8 @@ class BaseNode(Node):
         # ---
 
         # TIMERS
-        self.ping_timer_ = self.create_timer(
-            0.2, self.pingCB_, callback_group=ping_group
+        self.comms_timer_ = self.create_timer(
+            0.5, self.commsCB_, callback_group=comms_group
         )
         # ----
 
@@ -91,10 +91,6 @@ class BaseNode(Node):
         self.optical_calibration_ = self.create_subscription(
             OpticalFlowCalibration, "/elysium/optical_factor", self.ofs_calCB_, 10
         )
-
-        # Publishers
-        self.connection_pub_ = self.create_publisher(Bool, "ping", qos_profile=baseQoS)
-        # ----------------------------
 
         # Services
         self.tof_client_ = self.create_client(
@@ -247,7 +243,8 @@ class BaseNode(Node):
 
                 if len(qr_final) >= 1:
                     self.get_logger().info("Sending JSON object.")
-                    self.sendComms("qrdic:" + json.dumps(self.scanned_codes))
+                    self.sendComms("qrdic")
+                    self.sendComms(self.scanned_codes)
 
                 with open("qr_data.json", "w") as fp:
                     json.dump(self.scanned_codes, fp)
@@ -265,11 +262,7 @@ class BaseNode(Node):
             self.get_logger().info("Attempting to read cam distance.")
             self.get_request(self.request_tof_dist)
 
-    def pingCB_(self):
-        msg = Bool()
-        msg.data = True
-        self.connection_pub_.publish(msg)
-
+    def commsCB_(self):
         if self.try_again == True:
             try:
                 self.comms_ = Client(self.address, authkey=b"123")
@@ -280,9 +273,31 @@ class BaseNode(Node):
 
         # Allow time for GUI to fully load.
         if (now - self.start_time) < 1.0 and self.qr_ping:
-            self.sendComms("qrdic:" + json.dumps(self.scanned_codes))
+            self.sendComms("qrdic")
+            self.sendComms(self.scanned_codes)
+
         else:
             self.qr_ping = False
+
+        data_dump = {
+            "x": self.elysium_x,
+            "y": self.elysium_y,
+            "z": self.elysium_z,
+            "x_vel": self.odom.twist.twist.linear.x,
+            "y_vel": self.odom.twist.twist.linear.y,
+            "z_vel": self.odom.twist.twist.linear.z,
+            "yaw": rad_degrees(self.eulerAngles.x),
+            "pitch": rad_degrees(self.eulerAngles.y),
+            "roll": rad_degrees(self.eulerAngles.z),
+            "cam_y": self.cam_rotation.z_axis,
+            "cam_p": self.cam_rotation.x_axis,
+            "o-tof": self.op_tof_dist.data,
+            "gps-d": self.gps_dist_,
+            "soc": self.soc,
+        }
+
+        self.sendComms("dump")
+        self.sendComms(data_dump)
 
     def ofs_calCB_(self, msg: OpticalFlowCalibration):
         prev_val = self.optical_factor
@@ -297,7 +312,8 @@ class BaseNode(Node):
             )
 
             self.update_qr_codes()
-            self.sendComms("qrdic:" + json.dumps(self.scanned_codes))
+            self.sendComms("qrdic")
+            self.sendComms(self.scanned_codes)
 
             with open("qr_data.json", "w") as fp:
                 json.dump(self.scanned_codes, fp)
@@ -339,9 +355,6 @@ class BaseNode(Node):
 
     def eulerCB_(self, msg: Vector3):
         self.eulerAngles = msg
-        self.sendComms("yaw--:" + f"{rad_degrees(msg.x):2f}")
-        self.sendComms("pitch:" + f"{rad_degrees(msg.y):2f}")
-        self.sendComms("roll-:" + f"{rad_degrees(msg.z):2f}")
 
     def odomCB_(self, msg: Odometry):
         self.odom = msg
@@ -353,31 +366,18 @@ class BaseNode(Node):
         self.elysium_y = self.elysium_y_raw * self.optical_factor
         self.elysium_z = self.elysium_z_raw * self.optical_factor
 
-        self.sendComms("x----:" + f"{self.elysium_x:2f}")
-        self.sendComms("y----:" + f"{self.elysium_y:2f}")
-        self.sendComms("z----:" + f"{self.elysium_z:2f}")
-
-        self.sendComms("x_vel:" + f"{msg.twist.twist.linear.x:2f}")
-        self.sendComms("y_vel:" + f"{msg.twist.twist.linear.y:2f}")
-        self.sendComms("z_vel:" + f"{msg.twist.twist.linear.z:2f}")
-
     def oTofCB_(self, msg: Float32):
         self.op_tof_dist = msg
-        self.sendComms("o-tof:" + f"{self.op_tof_dist.data:2f}")
 
     def camCB_(self, msg: CameraRotation):
         self.cam_rotation = msg
-        self.sendComms("cam_y:" + f"{self.cam_rotation.z_axis:2f}")
-        self.sendComms("cam_p:" + f"{self.cam_rotation.x_axis:2f}")
 
     def battCB_(self, msg: BatteryInfo):
         self.soc = msg.soc
-        self.sendComms("soc--:" + f"{self.soc:2f}")
 
     def gpsCB_(self, msg: Float32):
         self.gps_dist_ = msg.data
         self.last_gps_ = time.monotonic()
-        self.sendComms("gps-d:" + f"{self.gps_dist_:2f}")
 
     def sendComms(self, msg):
         if self.try_again == False:

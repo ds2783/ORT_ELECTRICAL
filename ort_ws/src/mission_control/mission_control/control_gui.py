@@ -25,13 +25,11 @@ from mission_control.config.gui import (
     QR_DIRECTORY,
     WIDTH,
     HEIGHT,
-    ZERO_AXIS,
     CALIBRATE_OFS,
 )
 
 from threading import Thread
 from multiprocessing.connection import Listener
-import json
 from PIL import Image
 import numpy as np
 
@@ -156,6 +154,25 @@ class GUI(Node):
 
         self.dashboard = Dashboard(cams, self.get_logger)
 
+        # Network
+        self.last_msg = None
+        self.bulk = {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0,
+            "x_vel": 0.0,
+            "y_vel": 0.0,
+            "z_vel": 0.0,
+            "yaw": 0.0,
+            "pitch": 0.0,
+            "roll": 0.0,
+            "cam_y": 0.0,
+            "cam_p": 0.0,
+            "o-tof": 0.0,
+            "gps-d": 0.0,
+            "soc": 0.0,
+        }
+
         # QR
         self.last_qr_ = "None"
         self.qr_dict_ = {}
@@ -165,34 +182,11 @@ class GUI(Node):
         self.client_ = GuiClient()
         self.logger = self.client_.get_logger
 
-        # Position
-        self.elysium_x = 0.0
-        self.elysium_y = 0.0
-        self.elysium_z = 0.0
-
         # GPS
         self.gps_dist = 0.0
 
-        # Attitude
-        self.elysium_yaw = 0.0
-        self.elysium_pitch = 0.0
-        self.elysium_roll = 0.0
-
-        # Twist
-        self.elysium_x_vel = 0.0
-        self.elysium_y_vel = 0.0
-        self.elysium_z_vel = 0.0
-
-        # Camera Rotation
-        self.camera_yaw = 0.0
-        self.camera_pitch = 0.0
-
         # tof
         self.q_tof = 0.0
-        self.o_tof = 0.0
-
-        # Battery
-        self.soc = 0.5
 
         # IR LED
         self.led = 0.0
@@ -235,43 +229,22 @@ class GUI(Node):
         while True:
             recieved_msg = self.conn.recv()
             if recieved_msg is not None:
-                data = str(recieved_msg)[6:]
-                match recieved_msg[:5]:
-                    case "qr---":
-                        self.last_qr_ = data
-                    case "x----":
-                        self.elysium_x = float(data)
-                    case "y----":
-                        self.elysium_y = float(data)
-                    case "z----":
-                        self.elysium_z = float(data)
-                    case "yaw--":
-                        self.elysium_yaw = float(data)
-                    case "pitch":
-                        self.elysium_pitch = float(data)
-                    case "roll-":
-                        self.elysium_roll = float(data)
-                    case "x_vel":
-                        self.elysium_x_vel = float(data)
-                    case "y_vel":
-                        self.elysium_y_vel = float(data)
-                    case "z_vel":
-                        self.elysium_z_vel = float(data)
-                    case "cam_y":
-                        self.camera_yaw = float(data)
-                    case "cam_p":
-                        self.camera_pitch = float(data)
-                    case "q-tof":
-                        self.q_tof = float(data)
-                    case "o-tof":
-                        self.o_tof = float(data)
-                    case "soc--":
-                        self.soc = float(data)
-                    case "qrdic":
-                        self.get_logger().info("Recieved JSON file from Base Station.")
-                        self.qr_dict_ = json.loads(data)
-                    case "gps-d":
-                        self.gps_dist = float(data)
+                if (
+                    self.last_msg == "dump"
+                    and type(recieved_msg) is dict
+                ):
+                    self.bulk = recieved_msg
+                elif (self.last_msg == "qrdic" and type(recieved_msg) is dict):
+                    self.qr_dict_ = recieved_msg
+                    self.get_logger().info("Recieved qr codes from Base Station.")
+                elif type(recieved_msg) is str:
+                    data = str(recieved_msg)[6:]
+                    match recieved_msg[:5]:
+                        case "qr---":
+                            self.last_qr_ = data
+                        case "q-tof":
+                            self.q_tof = float(data)
+                self.last_msg = recieved_msg
 
     def bind_image(self, img):
         image = np.array(img)
@@ -334,18 +307,20 @@ class GUI(Node):
             "Telemetry:",
             "(All data is in degrees)\n\n",
             "Yaw: {:.3f}\nPitch: {:.3f}\nRoll: {:.3f}\n".format(
-                self.elysium_yaw, self.elysium_pitch, self.elysium_roll
+                self.bulk["yaw"], self.bulk["pitch"], self.bulk["roll"]
             ),
             "x: {:.3f}\ny: {:.3f}\nz: {:.3f}\n".format(
-                self.elysium_x, self.elysium_y, self.elysium_z
+                self.bulk["x"], self.bulk["y"], self.bulk["z"]
             ),
             "x_vel: {:.3f}\ny_vel: {:.3f}\nz_vel: {:.3f}\n".format(
-                self.elysium_x_vel, self.elysium_y_vel, self.elysium_z_vel
+                self.bulk["x_vel"], self.bulk["y_vel"], self.bulk["z_vel"]
             ),
             "camera-yaw: {:.3f}\ncamera-pitch: {:.3f}\n".format(
-                self.camera_yaw, self.camera_pitch
+                self.bulk["cam_y"], self.bulk["cam_p"]
             ),
-            "bottom-dist: {:.3f}\ncamera-dist: {:.3f}\n".format(self.o_tof, self.q_tof),
+            "bottom-dist: {:.3f}\ncamera-dist: {:.3f}\n".format(
+                self.bulk["o-tof"], self.q_tof
+            ),
         ]
 
         for text in imgui_text:
@@ -364,7 +339,7 @@ class GUI(Node):
         high_bat_colour = (31, 161, 91)
 
         batt_colour_rgb = colour_interpolate(
-            low_bat_colour, high_bat_colour, self.soc, linear
+            low_bat_colour, high_bat_colour, self.bulk["soc"], linear
         )
         display_batt_colour = normalise_rgb(batt_colour_rgb)
 
@@ -372,10 +347,12 @@ class GUI(Node):
             imgui.COLOR_PLOT_HISTOGRAM,
             *display_batt_colour,
         )
-        imgui.progress_bar(self.soc, (self.width / 14, 18 + 1 / 200 * self.height), "")
+        imgui.progress_bar(
+            self.bulk["soc"], (self.width / 14, 18 + 1 / 200 * self.height), ""
+        )
         imgui.pop_style_color(1)
         imgui.same_line()
-        imgui.text(f"{self.soc * 100:.1f}%")
+        imgui.text(f"{self.bulk["soc"] * 100:.1f}%")
 
         imgui.new_line()
 
@@ -411,7 +388,9 @@ class GUI(Node):
             elif imgui.button("Zero Axis"):
                 self.client_.reset_axis()
 
-            elif imgui.button("Calibrate OFS - ROVER WILL TRAVEL APPROXIMATELY 0.5 METERS FORWARD"):
+            elif imgui.button(
+                "Calibrate OFS - ROVER WILL TRAVEL APPROXIMATELY 0.5 METERS FORWARD"
+            ):
                 self.client_.send_goal(CALIBRATE_OFS)
 
             elif imgui.button("Close Client"):
