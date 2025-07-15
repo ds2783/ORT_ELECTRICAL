@@ -15,7 +15,7 @@ class ConnectionServer(Node):
             0.2, self.pingCB_
         )
         # Connection Timer
-        self.connection_pub_ = self.create_publisher(Bool, "ping", qos_profile=baseQoS)
+        self.connection_pub_ = self.create_publisher(Bool, "/ping", qos_profile=baseQoS)
 
     def pingCB_(self):
         msg = Bool()

@@ -66,11 +66,11 @@ class TelepresenceOperations(Node):
 
         # Topics
         self.controller_commands_sub_ = self.create_subscription(
-            Joy, "joy", self.teleopCB_, 10, callback_group=node_cb_group
+            Joy, "/joy", self.teleopCB_, 10, callback_group=node_cb_group
         )
         self.base_ping_sub_ = self.create_subscription(
             Bool,
-            "ping",
+            "/ping",
             self.confirmConnectionCB_,
             qos_profile=baseQoS,
             callback_group=connection_cb_group,

@@ -43,6 +43,4 @@ baseQoS = QoSProfile(
         depth=1,
         reliability=ReliabilityPolicy.RELIABLE,
         durability=DurabilityPolicy.VOLATILE,
-        deadline=Duration(seconds=0.2),
-        lifespan=Duration(seconds=0.2),
         )
