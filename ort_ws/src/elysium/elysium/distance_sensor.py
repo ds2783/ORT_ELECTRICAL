@@ -45,6 +45,7 @@ class DistanceNode(Node):
         super().__init__(node_name)
 
         self.pin = pin
+        self.srv = srv
 
         if not srv:  # if the node is a service or not. 
             msg_type = Float32
@@ -96,7 +97,9 @@ class DistanceNode(Node):
         self.sensor.set_address(self.i2c_addr)  # set the address to the correct i2c address
         time.sleep(0.01)
         self.get_logger().info(f"Reset the ToF with the new address {self.i2c_addr}.")
-        self.poll_data_timer.reset()  # start up the timer again. 
+        
+        if not self.srv:
+            self.poll_data_timer.reset()  # start up the timer again. 
 
     def data_srv_callback(self, request, response):
         """Service callback that receives a request and returns a response 
