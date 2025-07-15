@@ -214,8 +214,8 @@ class TelepresenceOperations(Node):
             if (
                 optical_resp1 == CODE_TERMINATE
                 or optical_resp2 == CODE_TERMINATE
-                or distance_resp1 == CODE_CONTINUE
-                or distance_resp2 == CODE_CONTINUE
+                or distance_resp1 == CODE_TERMINATE
+                or distance_resp2 == CODE_TERMINATE
             ):
                 self.get_logger().warn(
                     "Initial and final positions could not be obtained. No calibration was aquired."
