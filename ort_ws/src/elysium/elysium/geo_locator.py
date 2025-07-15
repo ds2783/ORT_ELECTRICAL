@@ -15,7 +15,7 @@ from geometry_msgs.msg import (
     TwistWithCovariance,
 )
 from ort_interfaces.msg import OpticalFlow, GPSStatus, OpticalFlowCalibration
-from ort_interfaces.srv import Vec2Pos
+from ort_interfaces.srv import Vec2Pos, CullCalibration
 
 from elysium.config.sensors import (
     DISTANCE_SENSOR_REFRESH_PERIOD,
@@ -23,7 +23,7 @@ from elysium.config.sensors import (
     tofQoS,
 )
 from elysium.config.network import DIAGNOSTIC_PERIOD
-from elysium.config.services import GEO_BACKUP_PERIOD
+from elysium.config.services import GEO_BACKUP_PERIOD, SUCCESS, FAIL
 
 import numpy as np
 import json
@@ -79,6 +79,10 @@ class GeoLocator(Node):
 
         self.position_service_ = self.create_service(
             Vec2Pos, "/elysium/srv/position", self.positionCB_
+        )
+
+        self.cull_optical_flow_calibration_service_ = self.create_service(
+            CullCalibration, "/elysium/srv/cull_calibration", self.cullCB_
         )
 
         # Timers ----------------
@@ -183,6 +187,21 @@ class GeoLocator(Node):
         response.x = self.calibration_x_move
         response.y = self.calibration_y_move
         return response
+
+    def cullCB_(self, req, response):
+        if req.clear_all:
+            self.optical_calibration_points = []
+            self.optical_factor = 1.0
+            response.ret_code = SUCCESS
+        else:
+            self.optical_calibration_points = list(self.optical_calibration_points)
+            try:
+                self.optical_calibration_points.pop(req.index)
+                response.ret_code = SUCCESS
+            except IndexError:
+                response.ret_code = FAIL
+            self.optical_factor = np.mean(self.optical_calibration_points)
+
 
     def ofs_calCB_(self, msg: Float32):
         # Forcing back to list incase type mutation

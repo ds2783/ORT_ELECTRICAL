@@ -32,8 +32,10 @@ from threading import Thread
 from multiprocessing.connection import Listener
 from PIL import Image
 import numpy as np
+import time
 
 # Messages ---
+from ort_interfaces.srv import CullCalibration
 from ort_interfaces.action import Calibrate
 from std_msgs.msg import Bool, Float32
 
@@ -75,6 +77,41 @@ class GuiClient(Node):
 
         self.reset_pos_pub_ = self.create_publisher(Bool, "/elysium/reset_pos", 10)
         self.led_pub_ = self.create_publisher(Float32, "/led", tofQoS)
+
+        # Services
+        self.reset_optical_calibration_client_ = self.create_client(
+            CullCalibration, "/elysium/srv/cull_calibration"
+        )
+
+    def cull_calibration(self, index=0, clear_all=True):
+        timeout = time.monotonic()
+        now = time.monotonic()
+        while (
+            not self.reset_optical_calibration_client_.wait_for_service(1.5)
+            and (now - timeout) < 1.5
+        ):
+            now = time.monotonic()
+            self.get_logger().warn(
+                "Waiting for connection to optical calibration service."
+            )
+
+        if (now - timeout) < 1.0:
+            request = CullCalibration.Request()
+            request.clear_all = clear_all
+            request.index = index
+            future = self.reset_optical_calibration_client_.call_async(request)
+            future.add_done_callback(self.complete_cullCB_)
+        else:
+            self.get_logger().warn("Optical cull calibration service is unavailable.")
+
+    def complete_cullCB_(self, future):
+        response = future.result()
+        if response.ret_code == RetCodes.SUCCESS:
+            self.get_logger().info(
+                "Calibration of optical flow sensor successfully culled."
+            )
+        elif response.ret_code == RetCodes.FAIL:
+            self.get_logger().error("Calibration of optical flow sensro failed.")
 
     def publish_led(self, slider_float: float):
         msg = Float32()
@@ -229,12 +266,9 @@ class GUI(Node):
         while True:
             recieved_msg = self.conn.recv()
             if recieved_msg is not None:
-                if (
-                    self.last_msg == "dump"
-                    and type(recieved_msg) is dict
-                ):
+                if self.last_msg == "dump" and type(recieved_msg) is dict:
                     self.bulk = recieved_msg
-                elif (self.last_msg == "qrdic" and type(recieved_msg) is dict):
+                elif self.last_msg == "qrdic" and type(recieved_msg) is dict:
                     self.qr_dict_ = recieved_msg
                     self.get_logger().info("Recieved qr codes from Base Station.")
                 elif type(recieved_msg) is str:
@@ -382,16 +416,21 @@ class GUI(Node):
             imgui.text("Last result: " + str(self.client_.last_result))
             imgui.spacing()
 
-            if imgui.button("Calibrate IMU - KEEP IMU STILL"):
-                self.client_.send_goal(CALIBRATE_IMU)
+            # if imgui.button("Calibrate IMU - KEEP IMU STILL"):
+            #     self.client_.send_goal(CALIBRATE_IMU)
 
-            elif imgui.button("Zero Axis"):
+            if imgui.button("Zero Axis"):
                 self.client_.reset_axis()
 
             elif imgui.button(
                 "Calibrate OFS - ROVER WILL TRAVEL APPROXIMATELY 0.5 METERS FORWARD"
             ):
                 self.client_.send_goal(CALIBRATE_OFS)
+
+            elif imgui.button(
+                "Hard Reset OFS Calibration - To be done for new surfaces."
+            ):
+                self.client_.cull_calibration(clear_all=True)
 
             elif imgui.button("Close Client"):
                 imgui.close_current_popup()

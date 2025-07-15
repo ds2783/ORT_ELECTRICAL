@@ -1,0 +1,10 @@
+bool clear_all
+# if clear is is false, the given index is cleared
+uint8 index
+---
+# SUCCESS = 0
+# FAIL = 1
+# FAIL_UNRECOGNISED_OP_CODE = 2
+uint8 ret_code
+
+
