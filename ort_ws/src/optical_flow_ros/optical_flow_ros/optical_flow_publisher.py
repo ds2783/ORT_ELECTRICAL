@@ -118,7 +118,7 @@ class OpticalFlowPublisher(Node):
             elif self.get_parameter("board").value == "pmw3901":
                 # ROS and Sensor frames are assumed to align for PMW3901, to be tested
                 dist_x = cf * dx
-                dist_y = -cf * dy
+                dist_y = cf * dy
 
             optical_msg = OpticalFlow(dx=dist_x, dy=dist_y, dt=self._dt)
             self._optical_pub.publish(optical_msg)

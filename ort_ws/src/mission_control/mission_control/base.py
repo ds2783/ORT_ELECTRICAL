@@ -313,7 +313,7 @@ class BaseNode(Node):
     def ofs_calCB_(self, msg: OpticalFlowCalibration):
         prev_val = self.optical_factor
         self.optical_factor = msg.optical_factor
-        self.optical_angle = msg.optical_angle
+        self.optical_angle = msg.angle
         self.optical_calibration_factors = msg.sample_factors
         self.optical_calibration_angles = msg.sample_angles
         self.number_of_calibration_samples = msg.num_samples
