@@ -7,7 +7,7 @@ from rclpy.action.server import ActionServer
 
 from std_msgs.msg import Bool, Float32
 from sensor_msgs.msg import Joy
-from ort_interfaces.msg import CameraRotation
+from ort_interfaces.msg import CameraRotation, OpticalFlowCalibration
 from ort_interfaces.srv import Vec2Pos, DistanceData
 from ort_interfaces.action import Calibrate
 
@@ -40,6 +40,7 @@ import time
 from functools import partial
 from numpy import pi
 import numpy as np
+from math import atan2
 from dataclasses import dataclass
 from adafruit_servokit import ServoKit
 
@@ -80,7 +81,7 @@ class TelepresenceOperations(Node):
             CameraRotation, "/elysium/cam_angles", 10
         )
         self.optical_factor_pub_ = self.create_publisher(
-            Float32, "/elysium/ofs_calibration", 10
+            OpticalFlowCalibration, "/elysium/ofs_calibration", 10
         )
 
         # Services
@@ -144,7 +145,7 @@ class TelepresenceOperations(Node):
             self.get_logger().info("dist: " + str(self.tof_dist))
 
             if optical_resp1 == CODE_CONTINUE and distance_resp1 == CODE_CONTINUE:
-                y1 = self.opt_y
+                x1, y1 = self.opt_x, self.opt_y
                 # cos is symmetric about /theta = 0, so no worries about direction
                 # accounts for the angle of the tof against the direction of travel
                 y1_tof = self.tof_dist * np.cos(
@@ -167,7 +168,7 @@ class TelepresenceOperations(Node):
                 optical_resp2 = self.get_request(self.request_optical_pos)
                 distance_resp2 = self.get_request(self.request_tof_dist)
                 if optical_resp2 == CODE_CONTINUE and distance_resp2 == CODE_CONTINUE:
-                    y2 = self.opt_y
+                    x2, y2 = self.opt_x, self.opt_y
                     # cos is symmetric about /theta = 0, so no worries about direction
                     # accounts for the angle of the tof against the direction of travel
                     y2_tof = self.tof_dist * np.cos(
@@ -175,8 +176,11 @@ class TelepresenceOperations(Node):
                             self.cam_angles_.x_axis - 90 - ENCODER_OFFSET_X_AXIS
                         )
                     )
+                     
+                    delta_y = y2 - y1
+                    delta_x = x2 - x1
 
-                    ofs_y_dist = y2 - y1
+                    ofs_dist = np.sqrt(delta_x ** 2 + delta_y ** 2) 
                     # /delta x is actually the inverse vector of the ToF measurement
                     actual_dist = y1_tof - y2_tof
                     self.get_logger().info(
@@ -189,14 +193,16 @@ class TelepresenceOperations(Node):
                             "TOF detected no forward movement, unable to calibrate."
                         )
                         result.result = FAIL_DETECTED_NO_TOF_FORWARD
-                    elif ofs_y_dist == 0:
+                    elif ofs_dist == 0:
                         self.get_logger().error(
                             "OFS detected no forward movement, unable to calibrate."
                         )
                         result.result = FAIL_DETECTED_NO_OFS_FORWARD
                     elif 0.05 <= actual_dist <= 0.8:
-                        factor = Float32(data=float(actual_dist / ofs_y_dist))
-                        self.optical_factor_pub_.publish(factor)
+                        msg = OpticalFlowCalibration()
+                        msg.optical_factor = float(actual_dist / ofs_dist)
+                        msg.angle = atan2(delta_x, delta_y)
+                        self.optical_factor_pub_.publish(msg)
                         result.result = SUCCESS
                     else:
                         self.get_logger().error(

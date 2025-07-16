@@ -60,7 +60,7 @@ class GeoLocator(Node):
             GPSStatus, "/elysium/gps_data", self.gpsCB_, 10
         )
         self.optical_calibration_sub_ = self.create_subscription(
-            Float32, "/elysium/ofs_calibration", self.ofs_calCB_, 10
+            OpticalFlowCalibration, "/elysium/ofs_calibration", self.ofs_calCB_, 10
         )
         # ----------------------
 
@@ -123,14 +123,23 @@ class GeoLocator(Node):
             self.raw_x_pos = recovery["raw-x-pos"]
             self.raw_y_pos = recovery["raw-y-pos"]
 
-            self.optical_calibration_points = np.array(
-                recovery["optical-calibration-points"]
+            self.optical_calibration_factors = np.array(
+                recovery["optical-calibration-factors"]
             )
-            if self.optical_calibration_points.size >= 1:
-                self.optical_factor = np.mean(self.optical_calibration_points)
+            self.optical_calibration_angles = np.array(
+                recovery["optical-calibration-angles"]
+            )
+            if self.optical_calibration_factors.size >= 1:
+                self.optical_factor = np.mean(self.optical_calibration_factors)
             else:
                 self.optical_factor = 1.0
-            self.optical_calibration_points = list(self.optical_calibration_points)
+            self.optical_calibration_factors = list(self.optical_calibration_factors)
+
+            if self.optical_calibration_angles.size >= 1:
+                self.optical_angle = np.mean(self.optical_calibration_factors)
+            else:
+                self.optical_angle = 0.0
+            self.optical_calibration_angles = list(self.optical_calibration_angles)
 
             self.start_lat = recovery["start-lat"]
             self.start_lon = recovery["start-lon"]
@@ -144,8 +153,10 @@ class GeoLocator(Node):
             self.raw_x_pos = 0.0
             self.raw_y_pos = 0.0
 
-            self.optical_calibration_points = []
+            self.optical_calibration_factors = []
+            self.optical_calibration_angles = []
             self.optical_factor = OPTICAL_CALIBRATION
+            self.optical_angle = 0.0
 
             self.start_lat = None
             self.start_lon = None
@@ -154,16 +165,13 @@ class GeoLocator(Node):
 
     def backup_(self):
         # Periodically sync base with Geo_locator
-        calibration = OpticalFlowCalibration()
-        calibration.samples = np.array(self.optical_calibration_points)
-        calibration.optical_factor = float(self.optical_factor)
-        calibration.num_samples = len(self.optical_calibration_points)
-        self.optical_factor_pub_.publish(calibration)
+        self.publish_ofs_calibration() 
 
         backup = {
             "raw-x-pos": self.raw_x_pos,
             "raw-y-pos": self.raw_y_pos,
-            "optical-calibration-points": np.array(self.optical_calibration_points),
+            "optical-calibration-factors": np.array(self.optical_calibration_factors),
+            "optical-calibration-angles": np.array(self.optical_calibration_angles),
             "start-lat": self.start_lat,
             "start-lon": self.start_lon,
             "quat-offset": np.array(self.inverse_offset),
@@ -190,26 +198,37 @@ class GeoLocator(Node):
 
     def cullCB_(self, req, response):
         if req.clear_all:
-            self.optical_calibration_points = []
+            self.optical_calibration_factors = []
             self.optical_factor = 1.0
+            
+            self.optical_calibration_angles = []
+            self.optical_angle = 0.0
             response.ret_code = SUCCESS
         else:
-            self.optical_calibration_points = list(self.optical_calibration_points)
+            self.optical_calibration_factors = list(self.optical_calibration_factors)
+            self.optical_calibration_angles = list(self.optical_calibration_angles)
             try:
-                self.optical_calibration_points.pop(req.index)
+                self.optical_calibration_factors.pop(req.index)
+                self.optical_calibration_angles.pop(req.index)
                 response.ret_code = SUCCESS
             except IndexError:
                 response.ret_code = FAIL
-            self.optical_factor = np.mean(self.optical_calibration_points)
+            self.optical_factor = np.mean(self.optical_calibration_factors)
+            self.optical_angle = np.mean(self.optical_calibration_angles)
 
             self.publish_ofs_calibration()
         return response
 
-    def ofs_calCB_(self, msg: Float32):
+    def ofs_calCB_(self, msg: OpticalFlowCalibration):
         # Forcing back to list incase type mutation
-        self.optical_calibration_points = list(self.optical_calibration_points)
-        self.optical_calibration_points.append(msg.data)
-        self.optical_factor = np.mean(self.optical_calibration_points)
+        self.optical_calibration_factors = list(self.optical_calibration_factors)
+        self.optical_calibration_factors.append(msg.optical_factor)
+
+        self.optical_calibration_angles = list(self.optical_calibration_angles)
+        self.optical_calibration_angles.append(msg.angle)
+
+        self.optical_factor = np.mean(self.optical_calibration_factors)
+        self.optical_angle = np.mean(self.optical_calibration_angles)
         self.get_logger().info(
             "Optical calibration factor successfully set to: "
             + str(self.optical_factor)
@@ -219,9 +238,13 @@ class GeoLocator(Node):
 
     def publish_ofs_calibration(self):
         calibration = OpticalFlowCalibration()
-        calibration.samples = np.array(self.optical_calibration_points)
+        calibration.sample_factors = np.array(self.optical_calibration_factors)
+        calibration.sample_angles = np.array(self.optical_calibration_angles)
+        
+        calibration.angle = float(self.optical_angle)
         calibration.optical_factor = float(self.optical_factor)
-        calibration.num_samples = len(self.optical_calibration_points)
+
+        calibration.num_samples = len(self.optical_calibration_factors)
         self.optical_factor_pub_.publish(calibration)
 
     def tofCB_(self, msg: Float32):

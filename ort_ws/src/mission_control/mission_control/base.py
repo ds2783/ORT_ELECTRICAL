@@ -34,7 +34,6 @@ from pathlib import Path
 import json
 import time
 from functools import partial
-import pickle
 
 
 class BaseNode(Node):
@@ -42,6 +41,7 @@ class BaseNode(Node):
         super().__init__("base")
         # CB groups
         comms_group = MutuallyExclusiveCallbackGroup()
+        service_group = MutuallyExclusiveCallbackGroup()
         # ---------------
         # STATE OBJECTS
         self.main_cam = ServerClient(PI_IP, PORT_MAIN_BASE)
@@ -94,14 +94,14 @@ class BaseNode(Node):
 
         # Services
         self.tof_client_ = self.create_client(
-            DistanceData,
-            "/elysium/cam/distance_service",
+            DistanceData, "/elysium/cam/distance_service", callback_group=service_group
         )
         # -----------------------
 
         # Variables ------------------
         self.qr_button_ = False
         self.last_qr = "None"
+        self.capture_num_ = 0
 
         self.eulerAngles = Vector3(x=0.0, y=0.0, z=0.0)
         self.odom = Odometry()
@@ -119,7 +119,9 @@ class BaseNode(Node):
 
         # initial value is stating uncalibrated
         self.optical_factor = 1.0
-        self.optical_calibration_points = []
+        self.optical_angle = 0.0
+        self.optical_calibration_factors = []
+        self.optical_calibration_angles = []
         self.number_of_calibration_samples = 0
 
         # Elysium Battery
@@ -168,7 +170,8 @@ class BaseNode(Node):
                 qreader_out = self.qreader_.detect_and_decode(image=image)
 
                 self.last_qr = str(qreader_out)
-                self.sendComms("qr---:" + self.last_qr)
+                self.capture_num_ += 1
+                self.sendComms("qr---:" + self.last_qr + " : " + str(self.capture_num_))
 
                 # assuming y is the forward coordinate
                 # (still to be tested)
@@ -189,8 +192,16 @@ class BaseNode(Node):
                 y_ofs = self.elysium_y_raw
 
                 # make sure the ofs values are up to date
-                self.elysium_x = self.elysium_x_raw * self.optical_factor
-                self.elysium_y = self.elysium_y_raw * self.optical_factor
+                elysium_pos_pre_correction = np.array(
+                    [[self.elysium_x_raw], [self.elysium_y_raw]]
+                )
+                elysium_pos = (
+                    rotate_vector2D(-self.optical_angle, elysium_pos_pre_correction)
+                    * self.optical_factor
+                )
+
+                self.elysium_x = elysium_pos[0][0]
+                self.elysium_y = elysium_pos[1][0]
 
                 x_dist = self.elysium_x + offset[0][0]
                 y_dist = self.elysium_y + offset[1][0]
@@ -302,7 +313,9 @@ class BaseNode(Node):
     def ofs_calCB_(self, msg: OpticalFlowCalibration):
         prev_val = self.optical_factor
         self.optical_factor = msg.optical_factor
-        self.optical_calibration_points = msg.samples
+        self.optical_angle = msg.optical_angle
+        self.optical_calibration_factors = msg.sample_factors
+        self.optical_calibration_angles = msg.sample_angles
         self.number_of_calibration_samples = msg.num_samples
 
         if prev_val != self.optical_factor:
@@ -321,8 +334,18 @@ class BaseNode(Node):
     def update_qr_codes(self):
         for key in self.scanned_codes.keys():
             entry = self.scanned_codes[key]
-            elysium_x = entry["x-ofs"] * self.optical_factor
-            elysium_y = entry["y-ofs"] * self.optical_factor
+
+            # make sure the ofs values are up to date
+            elysium_pos_pre_correction = np.array(
+                [[entry["x-ofs"]], [entry["y-ofs"]]]
+            )
+            elysium_pos = (
+                rotate_vector2D(-self.optical_angle, elysium_pos_pre_correction)
+                * self.optical_factor
+            )
+
+            elysium_x = elysium_pos[0][0]
+            elysium_y = elysium_pos[1][0]
 
             x_dist = elysium_x + entry["offset-x"]
             y_dist = elysium_y + entry["offset-y"]
@@ -407,8 +430,9 @@ class BaseNode(Node):
     def request_tof_dist(self):
         timeout = time.monotonic()
         now = time.monotonic()
-        while not self.tof_client_.wait_for_service(1.5) and (now - timeout) < 1.5:
+        while not self.tof_client_.wait_for_service(1.5):
             now = time.monotonic()
+            self.rate.sleep()
             self.get_logger().warn("Waiting for connection to distance service.")
         if (now - timeout) < 1.5:
             request = DistanceData.Request()

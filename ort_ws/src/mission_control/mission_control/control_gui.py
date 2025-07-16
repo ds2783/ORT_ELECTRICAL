@@ -110,8 +110,10 @@ class GuiClient(Node):
             self.get_logger().info(
                 "Calibration of optical flow sensor successfully culled."
             )
+            self.last_result = "Success: culled OFS Calibration"
         elif response.ret_code == RetCodes.FAIL:
             self.get_logger().error("Calibration of optical flow sensro failed.")
+            self.last_result = "Failure: could not Cull OFS Calibration." 
 
     def publish_led(self, slider_float: float):
         msg = Float32()
@@ -413,7 +415,7 @@ class GUI(Node):
             imgui.text(
                 "Seconds remaining until completion: " + str(self.client_.current_step)
             )
-            imgui.text("Last result: " + str(self.client_.last_result))
+            imgui.text("Last result: (" + str(self.client_.last_result) + ")")
             imgui.spacing()
 
             # if imgui.button("Calibrate IMU - KEEP IMU STILL"):
