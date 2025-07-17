@@ -324,6 +324,11 @@ class BaseNode(Node):
                 + str(self.optical_factor)
             )
 
+            self.get_logger().info(
+                    "Optical calibration angle successfully set to: "
+                    + str(self.optical_angle)
+                    )
+
             self.update_qr_codes()
             self.sendComms("qrdic")
             self.sendComms(self.scanned_codes)
@@ -336,9 +341,7 @@ class BaseNode(Node):
             entry = self.scanned_codes[key]
 
             # make sure the ofs values are up to date
-            elysium_pos_pre_correction = np.array(
-                [[entry["x-ofs"]], [entry["y-ofs"]]]
-            )
+            elysium_pos_pre_correction = np.array([[entry["x-ofs"]], [entry["y-ofs"]]])
             elysium_pos = (
                 rotate_vector2D(-self.optical_angle, elysium_pos_pre_correction)
                 * self.optical_factor
@@ -385,8 +388,16 @@ class BaseNode(Node):
         self.elysium_y_raw = msg.pose.pose.position.y
         self.elysium_z_raw = msg.pose.pose.position.z
 
-        self.elysium_x = self.elysium_x_raw * self.optical_factor
-        self.elysium_y = self.elysium_y_raw * self.optical_factor
+        elysium_pos_pre_correction = np.array(
+            [[self.elysium_x_raw], [self.elysium_y_raw]]
+        )
+        elysium_pos = (
+            rotate_vector2D(-self.optical_angle, elysium_pos_pre_correction)
+            * self.optical_factor
+        )
+
+        self.elysium_x = float(elysium_pos[0][0])
+        self.elysium_y = float(elysium_pos[1][0])
         self.elysium_z = self.elysium_z_raw * self.optical_factor
 
     def oTofCB_(self, msg: Float32):

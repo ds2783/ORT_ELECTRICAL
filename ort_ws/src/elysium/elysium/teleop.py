@@ -5,7 +5,7 @@ import rclpy.executors
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.action.server import ActionServer
 
-from std_msgs.msg import Bool, Float32
+from std_msgs.msg import Bool
 from sensor_msgs.msg import Joy
 from ort_interfaces.msg import CameraRotation, OpticalFlowCalibration
 from ort_interfaces.srv import Vec2Pos, DistanceData
@@ -34,7 +34,7 @@ from elysium.config.services import (
     CODE_CONTINUE,
     CODE_TERMINATE,
 )
-from elysium.config.network import baseQoS
+from elysium.config.network import baseQoS, stillQoS
 
 import time
 from functools import partial
@@ -83,6 +83,9 @@ class TelepresenceOperations(Node):
         self.optical_factor_pub_ = self.create_publisher(
             OpticalFlowCalibration, "/elysium/ofs_calibration", 10
         )
+        self.state_still_pub_ = self.create_publisher(
+            Bool, "/elysium/still", qos_profile=stillQoS
+        )
 
         # Services
         self.optical_client_ = self.create_client(
@@ -106,6 +109,8 @@ class TelepresenceOperations(Node):
         # State -
         self.state = twist(0, 0)
         self.target = twist(0, 0)
+
+        self.stationary = False
 
         self.z_increment = 0
         self.x_increment = 0
@@ -176,11 +181,11 @@ class TelepresenceOperations(Node):
                             self.cam_angles_.x_axis - 90 - ENCODER_OFFSET_X_AXIS
                         )
                     )
-                     
+
                     delta_y = y2 - y1
                     delta_x = x2 - x1
 
-                    ofs_dist = np.sqrt(delta_x ** 2 + delta_y ** 2) 
+                    ofs_dist = np.sqrt(delta_x**2 + delta_y**2)
                     # /delta x is actually the inverse vector of the ToF measurement
                     actual_dist = y1_tof - y2_tof
                     self.get_logger().info(
@@ -334,13 +339,28 @@ class TelepresenceOperations(Node):
 
         # publish camera rotation, note 90 degrees servo rotation -> 0 degrees around the axis
         # negative this so it aligns with the IMU
-        camera_rotation_msg = CameraRotation(
-            z_axis=float(degrees_to_rad(180 - self.cam_angles_.z_axis - 90)),
-            x_axis=float(
-                degrees_to_rad(self.cam_angles_.x_axis - 90 - ENCODER_OFFSET_X_AXIS)
-            ),
-        )
-        self.cam_angles__pub_.publish(camera_rotation_msg)
+        if self.z_increment != 0 or self.x_increment != 0:
+            camera_rotation_msg = CameraRotation(
+                z_axis=float(degrees_to_rad(180 - self.cam_angles_.z_axis - 90)),
+                x_axis=float(
+                    degrees_to_rad(self.cam_angles_.x_axis - 90 - ENCODER_OFFSET_X_AXIS)
+                ),
+            )
+            self.cam_angles__pub_.publish(camera_rotation_msg)
+
+        state = Bool()
+        if (
+            self.target.linear == 0
+            and self.target.rotation != 0
+            and not self.stationary
+        ):
+            self.stationary = True
+            state.data = True
+            self.state_still_pub_.publish(state)
+        elif self.target.linear != 0 and self.stationary:
+            self.stationary = False
+            state.data = False
+            self.state_still_pub_.publish(state)
 
     def driveCB_(self):
         self.drive()
@@ -382,7 +402,7 @@ class TelepresenceOperations(Node):
             float(self.z_increment + self.cam_angles_.z_axis)
         )
         self.cam_angles_.x_axis = self.bound_180(
-            float(-self.x_increment + self.cam_angles_.x_axis)
+            float(self.x_increment + self.cam_angles_.x_axis)
         )
         # POSITIONAL
         self.kit_.servo[CAMERA_SERVO_Z].angle = self.cam_angles_.z_axis

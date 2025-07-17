@@ -22,7 +22,7 @@ from elysium.config.sensors import (
     OPTICAL_CALIBRATION,
     tofQoS,
 )
-from elysium.config.network import DIAGNOSTIC_PERIOD
+from elysium.config.network import DIAGNOSTIC_PERIOD, stillQoS
 from elysium.config.services import GEO_BACKUP_PERIOD, SUCCESS, FAIL
 
 import numpy as np
@@ -62,6 +62,9 @@ class GeoLocator(Node):
         self.optical_calibration_sub_ = self.create_subscription(
             OpticalFlowCalibration, "/elysium/ofs_calibration", self.ofs_calCB_, 10
         )
+        self.still_state_sub_ = self.create_subscription(
+            Bool, "/elysium/still", self.stillCB_, qos_profile=stillQoS
+        )
         # ----------------------
 
         # Publishers -----------
@@ -94,6 +97,7 @@ class GeoLocator(Node):
         self.dy = 0
         # avoids division by zero error
         self.dt = 0.0001
+        self.stationary = False
 
         self.distance_sensor_dt_ = DISTANCE_SENSOR_REFRESH_PERIOD
 
@@ -165,7 +169,7 @@ class GeoLocator(Node):
 
     def backup_(self):
         # Periodically sync base with Geo_locator
-        self.publish_ofs_calibration() 
+        self.publish_ofs_calibration()
 
         backup = {
             "raw-x-pos": self.raw_x_pos,
@@ -200,7 +204,7 @@ class GeoLocator(Node):
         if req.clear_all:
             self.optical_calibration_factors = []
             self.optical_factor = 1.0
-            
+
             self.optical_calibration_angles = []
             self.optical_angle = 0.0
             response.ret_code = SUCCESS
@@ -240,7 +244,7 @@ class GeoLocator(Node):
         calibration = OpticalFlowCalibration()
         calibration.sample_factors = np.array(self.optical_calibration_factors)
         calibration.sample_angles = np.array(self.optical_calibration_angles)
-        
+
         calibration.angle = float(self.optical_angle)
         calibration.optical_factor = float(self.optical_factor)
 
@@ -276,8 +280,9 @@ class GeoLocator(Node):
 
         self.dx = rotated_increment[0][0]
         self.dy = rotated_increment[1][0]
-        self.raw_x_pos += self.dx
-        self.raw_y_pos += self.dy
+        if not self.stationary:
+            self.raw_x_pos += self.dx
+            self.raw_y_pos += self.dy
         self.dt = msg.dt
 
     def gpsCB_(self, msg):
@@ -296,6 +301,9 @@ class GeoLocator(Node):
 
         else:
             self.get_logger().info("GPS data is ignored as there is no solid fix.")
+
+    def stillCB_(self, msg):
+        self.stationary = msg.data
 
     def publish_(self):
         self.euler_angles_pub_.publish(self.euler_angles)
