@@ -171,8 +171,9 @@ class TelepresenceOperations(Node):
                     while (now - start_time) < goal_handle.request.move_time:
                         now = time.monotonic()
                         
+                        feedback_time = int(goal_handle.request.move_time - (now - start_time) + 0.5)
                         # publish feedback 
-                        feedback_msg.seconds = goal_handle.request.move_time - (now - start_time)
+                        feedback_msg.seconds = feedback_time
                         goal_handle.publish_feedback(feedback_msg)
                         
                         # request distance to stop incase of collision.

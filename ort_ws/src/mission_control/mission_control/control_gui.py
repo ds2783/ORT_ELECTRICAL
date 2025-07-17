@@ -22,6 +22,7 @@ from mission_control.config.network import (
     RetCodes,
 )
 from mission_control.config.gui import (
+    OFS_DEFAULT_MOVE_TIME,
     QR_DIRECTORY,
     WIDTH,
     HEIGHT,
@@ -250,6 +251,9 @@ class GUI(Node):
         self.comms_thread = Thread(target=self.qrComms)
         self.comms_thread.start()
 
+        # OFS
+        self.move_time = OFS_DEFAULT_MOVE_TIME
+
         # IMGUI
         imgui.get_io().font_global_scale = 1.2
         self.style = imgui.get_style()
@@ -453,8 +457,9 @@ class GUI(Node):
                 self.client_.reset_axis()
 
             elif imgui.button(
-                "Calibrate OFS - ROVER WILL TRAVEL APPROXIMATELY 0.5 METERS FORWARD"
+                "Calibrate OFS"
             ):
+                self.move_time = 0.6
                 imgui.open_popup("Set move time.")
 
             elif imgui.button(
@@ -466,18 +471,20 @@ class GUI(Node):
                 imgui.close_current_popup()
 
             if imgui.begin_popup_modal("Set move time.").opened:
-                move_time = 0.6
-                _, move_time = imgui.slider_float(
+                _, self.move_time = imgui.slider_float(
                     "move time",
-                    move_time,
+                    self.move_time,
                     min_value=0.0,
                     max_value=10.0,
                     format="%.1f",
                 )
                 imgui.same_line()
-                if imgui.button("Submit"):
-                    self.client_.send_goal(CALIBRATE_OFS, move_time)
+                if imgui.button("Submit."):
+                    self.client_.send_goal(CALIBRATE_OFS, self.move_time)
                     imgui.close_current_popup()
+                imgui.text(
+                    "0.6 seconds move time, is approximately 0.2 meters of movement on a smooth surface."
+                )
                 imgui.end_popup()
 
             imgui.end_popup()
