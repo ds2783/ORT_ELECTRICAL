@@ -18,10 +18,10 @@ from mission_control.config.network import (
     PORT_SECONDARY,
     PI_IP,
     tofQoS,
+    flagQoS,
     RetCodes,
 )
 from mission_control.config.gui import (
-    CALIBRATE_IMU,
     QR_DIRECTORY,
     WIDTH,
     HEIGHT,
@@ -35,9 +35,9 @@ import numpy as np
 import time
 
 # Messages ---
+from std_msgs.msg import Bool, Float32, Int8
 from ort_interfaces.srv import CullCalibration
 from ort_interfaces.action import Calibrate
-from std_msgs.msg import Bool, Float32
 
 
 def impl_glfw_init(window_name="Project Gorgon", width=WIDTH, height=HEIGHT):
@@ -75,8 +75,10 @@ class GuiClient(Node):
         self.current_step = 0
         self.last_result = ""
 
+        # Publishers
         self.reset_pos_pub_ = self.create_publisher(Bool, "/elysium/reset_pos", 10)
         self.led_pub_ = self.create_publisher(Float32, "/led", tofQoS)
+        self.rock_num_pub_ = self.create_publisher(Int8, "/rock_num", flagQoS)
 
         # Services
         self.reset_optical_calibration_client_ = self.create_client(
@@ -104,6 +106,14 @@ class GuiClient(Node):
         else:
             self.get_logger().warn("Optical cull calibration service is unavailable.")
 
+    def update_rock_num(self, rock_num):
+        msg = Int8()
+        if 1 <= rock_num <= 5:
+            msg.data = int(rock_num)
+            self.rock_num_pub_.publish(msg)
+        else:
+            self.get_logger().warn("Invalid rock number selected.")
+
     def complete_cullCB_(self, future):
         response = future.result()
         if response.ret_code == RetCodes.SUCCESS:
@@ -113,7 +123,7 @@ class GuiClient(Node):
             self.last_result = "Success: culled OFS Calibration"
         elif response.ret_code == RetCodes.FAIL:
             self.get_logger().error("Calibration of optical flow sensro failed.")
-            self.last_result = "Failure: could not Cull OFS Calibration." 
+            self.last_result = "Failure: could not Cull OFS Calibration."
 
     def publish_led(self, slider_float: float):
         msg = Float32()
@@ -243,6 +253,14 @@ class GUI(Node):
         self.style = imgui.get_style()
         self.style.window_rounding = 3.0
 
+        self.rock_check_boxes_ = {
+            "rock-1": False,
+            "rock-2": False,
+            "rock-3": False,
+            "rock-4": False,
+            "rock-5": False,
+        }
+
     def window_refresh_CB_(self, window):
         self.run()
         gl.glFinish()
@@ -305,6 +323,13 @@ class GUI(Node):
             image,
         )
 
+    def reset_rock_checkboxes_(self, rock):
+        for key in self.rock_check_boxes_.keys():
+            if rock != key:
+                self.rock_check_boxes_[key] = False
+
+        self.client_.update_rock_num(int(rock[-1]))
+
     def run(self):
         glfw.poll_events()
         self.impl.process_inputs()
@@ -323,7 +348,8 @@ class GUI(Node):
         imgui.end()
 
         # MAIN DASHBOARD
-        offset = self.width / 40
+        # offset = self.width / 40
+        offset = 0
         imgui.set_next_window_position(self.width / 2 + offset, 0)
         imgui.set_next_window_size(self.width / 2 - offset, self.height)
 
@@ -451,42 +477,54 @@ class GUI(Node):
         imgui.spacing()
         imgui.spacing()
 
-        # QR LIST
-        imgui.begin_child("QR-List", self.width / 2 - offset, self.height / 4, True)
-        for key in self.qr_dict_.keys():
-            expanded, visible = imgui.collapsing_header(str(key), None)
-            if expanded:
-                imgui.text("x: " + str(self.qr_dict_[key]["x"]))
-                imgui.text("y: " + str(self.qr_dict_[key]["y"]))
-                imgui.text(
-                    "distance-ofs-imu: " + str(self.qr_dict_[key]["distance-ofs-imu"])
-                )
-                imgui.text("distance-gps: " + str(self.qr_dict_[key]["distance-gps"]))
-                imgui.text("more-reliable: " + str(self.qr_dict_[key]["more-reliable"]))
-                if imgui.button("Show Image"):
-                    imgui.open_popup("Image: " + str(key))
-                    try:
-                        self.qr_image = Image.open(
-                            QR_DIRECTORY + str(self.qr_dict_[key]["filename"])
-                        )
-                        self.bind_image(self.qr_image)
-                    except:
-                        self.get_logger().warn("Issue loading required image.")
+        imgui.begin_child(
+            "Rock Select", self.width / 2.15 - offset, self.height / 16, True
+        )
+        event_box_1, self.rock_check_boxes_["rock-1"] = imgui.checkbox(
+            "Rock 1", self.rock_check_boxes_["rock-1"]
+        )
+        if event_box_1:
+            self.reset_rock_checkboxes_("rock-1")
 
-                if imgui.begin_popup_modal("Image: " + str(key)).opened:
-                    try:
-                        width = 1000
-                        aspect_ratio = self.qr_image.width / self.qr_image.height
-                        imgui.set_window_size(width + 10, width / aspect_ratio + 90)
-                        imgui.image(self.qr_texID, width, width / aspect_ratio)
-                    except Exception as e:
-                        self.get_logger().warn(
-                            "No image available. Exception: " + str(e)
-                        )
-                        imgui.close_current_popup()
-                    if imgui.button("Close Image"):
-                        imgui.close_current_popup()
-                    imgui.end_popup()
+        imgui.same_line()
+        event_box_2, self.rock_check_boxes_["rock-2"] = imgui.checkbox(
+            "Rock 2", self.rock_check_boxes_["rock-2"]
+        )
+        if event_box_2:
+            self.reset_rock_checkboxes_("rock-2")
+
+        imgui.same_line()
+        event_box_3, self.rock_check_boxes_["rock-3"] = imgui.checkbox(
+            "Rock 3", self.rock_check_boxes_["rock-3"]
+        )
+        if event_box_3:
+            self.reset_rock_checkboxes_("rock-3")
+
+        imgui.same_line()
+        event_box_4, self.rock_check_boxes_["rock-4"] = imgui.checkbox(
+            "Rock 4", self.rock_check_boxes_["rock-4"]
+        )
+        if event_box_4:
+            self.reset_rock_checkboxes_("rock-4")
+
+        imgui.same_line()
+        event_box_5, self.rock_check_boxes_["rock-5"] = imgui.checkbox(
+            "Rock 5", self.rock_check_boxes_["rock-5"]
+        )
+        if event_box_5:
+            self.reset_rock_checkboxes_("rock-5")
+        imgui.end_child()
+
+        # QR LIST
+        imgui.begin_child("QR-List", self.width / 2 - offset, self.height / 3, True)
+
+        for category in ["Rock 1", "Rock 2", "Rock 3", "Rock 4", "Rock 5"]:
+            expanded, visible = imgui.collapsing_header(category, None)
+            if expanded:
+                for key in self.qr_dict_.keys():
+                    if self.qr_dict_[key]["rock-num"] == int(category[-1]):
+                        self.display_entry(key)
+
         imgui.end_child()
 
         imgui.end()
@@ -496,6 +534,45 @@ class GUI(Node):
 
         self.impl.render(imgui.get_draw_data())
         glfw.swap_buffers(self.window)
+
+
+    def display_entry(self, key):
+        imgui.indent()
+        expanded, visible = imgui.collapsing_header(str(key), None)
+        if expanded:
+            imgui.text("x: " + str(self.qr_dict_[key]["x"]))
+            imgui.text("y: " + str(self.qr_dict_[key]["y"]))
+            imgui.text(
+                "distance-ofs-imu: " + str(self.qr_dict_[key]["distance-ofs-imu"])
+            )
+            imgui.text("distance-gps: " + str(self.qr_dict_[key]["distance-gps"]))
+            imgui.text("more-reliable: " + str(self.qr_dict_[key]["more-reliable"]))
+            imgui.text("distance-from-cam: " + str(self.qr_dict_[key]["distance-from-cam"]))
+            if imgui.button("Show Image"):
+                imgui.open_popup("Image: " + str(key))
+                try:
+                    self.qr_image = Image.open(
+                        QR_DIRECTORY + str(self.qr_dict_[key]["filename"])
+                    )
+                    self.bind_image(self.qr_image)
+                except:
+                    self.get_logger().warn("Issue loading required image.")
+            if imgui.begin_popup_modal("Image: " + str(key)).opened:
+                try:
+                    width = 1000
+                    aspect_ratio = self.qr_image.width / self.qr_image.height
+                    imgui.set_window_size(width + 10, width / aspect_ratio + 90)
+                    imgui.image(self.qr_texID, width, width / aspect_ratio)
+                except Exception as e:
+                    self.get_logger().warn(
+                        "No image available. Exception: " + str(e)
+                    )
+                    imgui.close_current_popup()
+                if imgui.button("Close Image"):
+                    imgui.close_current_popup()
+                imgui.end_popup()
+
+        imgui.unindent()
 
 
 def colour_interpolate(c1, c2, percentage_c2, interpolator):

@@ -4,9 +4,10 @@ import rclpy.utilities
 import rclpy.executors
 from rclpy.node import Node
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from rclpy.qos import qos_profile_sensor_data
 
+from std_msgs.msg import Float32, Int8
 from sensor_msgs.msg import Joy
-from std_msgs.msg import Bool, Float32
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Vector3
 from ort_interfaces.msg import CameraRotation, BatteryInfo, OpticalFlowCalibration
@@ -21,6 +22,7 @@ from mission_control.config.network import (
     CODE_CONTINUE,
     CODE_TERMINATE,
     tofQoS,
+    flagQoS,
 )
 from mission_control.config.gui import QR_DIRECTORY
 
@@ -64,7 +66,9 @@ class BaseNode(Node):
 
         # Topics ---------------------
         # Subscriptions
-        self.controller_sub_ = self.create_subscription(Joy, "joy", self.controlCB_, 10)
+        self.controller_sub_ = self.create_subscription(
+            Joy, "joy", self.controlCB_, qos_profile=qos_profile_sensor_data
+        )
 
         self.bottom_tof_sub_ = self.create_subscription(
             Float32, "/distance_sensor/optical_flow", self.oTofCB_, qos_profile=tofQoS
@@ -90,6 +94,11 @@ class BaseNode(Node):
         )
         self.optical_calibration_ = self.create_subscription(
             OpticalFlowCalibration, "/elysium/optical_factor", self.ofs_calCB_, 10
+        )
+
+        # Control GUI Subscriptions
+        self.rock_num_sub_ = self.create_subscription(
+            Int8, "/rock_num", self.num_rock_CB_, qos_profile=flagQoS
         )
 
         # Services
@@ -151,6 +160,10 @@ class BaseNode(Node):
         TIGHT_LOOP_RATE = 80
         self.rate = self.create_rate(TIGHT_LOOP_RATE)
         # ----------------------------
+
+        # GUI
+        self.rock_num_ = 0
+
         self.get_logger().info("The Base Station has been initialised.")
 
     def controlCB_(self, msg: Joy):
@@ -166,101 +179,7 @@ class BaseNode(Node):
             self.qr_button_ = True
             image = self.main_cam.get_picture(self.get_logger)
             if image is not None:
-                self.get_logger().info("Image sent for processing.")
-                qreader_out = self.qreader_.detect_and_decode(image=image)
-
-                self.last_qr = str(qreader_out)
-                self.capture_num_ += 1
-                self.sendComms("qr---:" + self.last_qr + " : " + str(self.capture_num_))
-
-                # assuming y is the forward coordinate
-                # (still to be tested)
-                # raycasted vector  ->
-                relative_elysium_pos = np.array([[0.0], [self.qr_tof_dist]])
-                # x -> yaw, which is rotation around the z_axis
-                xy_plane_rotation = self.eulerAngles.x + self.cam_rotation.z_axis
-
-                displacement = rotate_vector2D(xy_plane_rotation, relative_elysium_pos)
-
-                # Calculate the distance from the plane the rover inhabits
-                # rotation x_axis -> pitch
-                offset = displacement * np.cos(self.cam_rotation.x_axis)
-                offset_x = offset[0][0]
-                offset_y = offset[1][0]
-
-                x_ofs = self.elysium_x_raw
-                y_ofs = self.elysium_y_raw
-
-                # make sure the ofs values are up to date
-                elysium_pos_pre_correction = np.array(
-                    [[self.elysium_x_raw], [self.elysium_y_raw]]
-                )
-                elysium_pos = (
-                    rotate_vector2D(-self.optical_angle, elysium_pos_pre_correction)
-                    * self.optical_factor
-                )
-
-                self.elysium_x = elysium_pos[0][0]
-                self.elysium_y = elysium_pos[1][0]
-
-                x_dist = self.elysium_x + offset[0][0]
-                y_dist = self.elysium_y + offset[1][0]
-
-                dist = np.sqrt(x_dist**2 + y_dist**2)
-
-                elysium_dist = np.sqrt(self.elysium_x**2 + self.elysium_y**2)
-                # list comprension to filter out None's
-                qr_final = [x for x in qreader_out if x is not None]
-
-                now = time.monotonic()
-                # (if no reasonable fix is aquired, the gps_dist sub won't publish)
-                if self.last_gps_:
-                    if (now - self.last_gps_) > 2.0:
-                        gps_reliability = False
-                    else:
-                        gps_reliability = True
-                else:
-                    gps_reliability = False
-
-                reliable_sensor = self.get_more_reliable_sensor(
-                    elysium_dist, self.gps_dist_, gps_reliability
-                )
-
-                for code in qr_final:
-                    date = datetime.datetime.now()
-                    fname = f"qr_{len(self.scanned_codes)}_{date.year}_{date.month}_{date.day}.jpeg"
-                    self.scanned_codes[code] = {
-                        "x": x_dist,
-                        "y": y_dist,
-                        "x-ofs": x_ofs,
-                        "y-ofs": y_ofs,
-                        "offset-x": offset_x,
-                        "offset-y": offset_y,
-                        "distance-ofs-imu": dist,
-                        "distance-gps": self.gps_dist_,
-                        "filename": fname,
-                        "more-reliable": reliable_sensor,
-                        "gps-reliability": gps_reliability,
-                        "ofs-sample-num": self.number_of_calibration_samples,
-                    }
-
-                    # Rotate camera from mount point.
-                    im = Image.fromarray(image).rotate(270)
-
-                    if not Path(QR_DIRECTORY).is_dir():
-                        Path(QR_DIRECTORY).mkdir()
-
-                    im.save(QR_DIRECTORY + fname)
-
-                if len(qr_final) >= 1:
-                    self.get_logger().info("Sending JSON object.")
-                    self.sendComms("qrdic")
-                    self.sendComms(self.scanned_codes)
-
-                with open("qr_data.json", "w") as fp:
-                    json.dump(self.scanned_codes, fp)
-
-                self.get_logger().info("Image processed and CSV updated.")
+                self.scan_qr(image, self.rock_num_)
             else:
                 self.get_logger().warn("No image available for processing.")
 
@@ -272,6 +191,107 @@ class BaseNode(Node):
         if square:
             self.get_logger().info("Attempting to read cam distance.")
             self.get_request(self.request_tof_dist)
+
+    def scan_qr(self, image, rock_num):
+        self.get_logger().info("Image sent for processing.")
+        qreader_out = self.qreader_.detect_and_decode(image=image)
+
+        self.last_qr = str(qreader_out)
+        self.capture_num_ += 1
+        self.sendComms("qr---:" + self.last_qr + " : " + str(self.capture_num_))
+
+        # assuming y is the forward coordinate
+        # (still to be tested)
+        # raycasted vector  ->
+        relative_elysium_pos = np.array([[0.0], [self.qr_tof_dist]])
+        # x -> yaw, which is rotation around the z_axis
+        xy_plane_rotation = self.eulerAngles.x + self.cam_rotation.z_axis
+
+        displacement = rotate_vector2D(xy_plane_rotation, relative_elysium_pos)
+
+        # Calculate the distance from the plane the rover inhabits
+        # rotation x_axis -> pitch
+        offset = displacement * np.cos(self.cam_rotation.x_axis)
+        offset_x = offset[0][0]
+        offset_y = offset[1][0]
+
+        x_ofs = self.elysium_x_raw
+        y_ofs = self.elysium_y_raw
+
+        # make sure the ofs values are up to date
+        elysium_pos_pre_correction = np.array(
+            [[self.elysium_x_raw], [self.elysium_y_raw]]
+        )
+        elysium_pos = (
+            rotate_vector2D(-self.optical_angle, elysium_pos_pre_correction)
+            * self.optical_factor
+        )
+
+        self.elysium_x = elysium_pos[0][0]
+        self.elysium_y = elysium_pos[1][0]
+
+        x_dist = self.elysium_x + offset[0][0]
+        y_dist = self.elysium_y + offset[1][0]
+
+        dist = np.sqrt(x_dist**2 + y_dist**2)
+
+        elysium_dist = np.sqrt(self.elysium_x**2 + self.elysium_y**2)
+        # list comprension to filter out None's
+        qr_final = [x for x in qreader_out if x is not None]
+
+        now = time.monotonic()
+        # (if no reasonable fix is aquired, the gps_dist sub won't publish)
+        if self.last_gps_:
+            if (now - self.last_gps_) > 2.0:
+                gps_reliability = False
+            else:
+                gps_reliability = True
+        else:
+            gps_reliability = False
+
+        reliable_sensor = self.get_more_reliable_sensor(
+            elysium_dist, self.gps_dist_, gps_reliability
+        )
+
+        for code in qr_final:
+            date = datetime.datetime.now()
+            fname = (
+                f"qr_{len(self.scanned_codes)}_{date.year}_{date.month}_{date.day}.jpeg"
+            )
+            self.scanned_codes[code] = {
+                "x": x_dist,
+                "y": y_dist,
+                "x-ofs": x_ofs,
+                "y-ofs": y_ofs,
+                "offset-x": offset_x,
+                "offset-y": offset_y,
+                "distance-ofs-imu": dist,
+                "distance-gps": self.gps_dist_,
+                "filename": fname,
+                "more-reliable": reliable_sensor,
+                "gps-reliability": gps_reliability,
+                "ofs-sample-num": self.number_of_calibration_samples,
+                "rock-num": rock_num,
+                "distance-from-cam": self.qr_tof_dist,
+            }
+
+            # Rotate camera from mount point.
+            im = Image.fromarray(image).rotate(270)
+
+            if not Path(QR_DIRECTORY).is_dir():
+                Path(QR_DIRECTORY).mkdir()
+
+            im.save(QR_DIRECTORY + fname)
+
+        if len(qr_final) >= 1:
+            self.get_logger().info("Sending JSON object.")
+            self.sendComms("qrdic")
+            self.sendComms(self.scanned_codes)
+
+        with open("qr_data.json", "w") as fp:
+            json.dump(self.scanned_codes, fp)
+
+        self.get_logger().info("Image processed and CSV updated.")
 
     def commsCB_(self):
         if self.try_again == True:
@@ -325,9 +345,9 @@ class BaseNode(Node):
             )
 
             self.get_logger().info(
-                    "Optical calibration angle successfully set to: "
-                    + str(self.optical_angle)
-                    )
+                "Optical calibration angle successfully set to: "
+                + str(self.optical_angle)
+            )
 
             self.update_qr_codes()
             self.sendComms("qrdic")
@@ -464,6 +484,9 @@ class BaseNode(Node):
             self.get_logger().error("ToF could not obtain a reading.")
             self.server_unavailable = True
         self.request_complete = True
+
+    def num_rock_CB_(self, msg: Int8):
+        self.rock_num_ = msg.data
 
 
 def rad_degrees(num):

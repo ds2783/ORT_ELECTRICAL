@@ -44,3 +44,11 @@ baseQoS = QoSProfile(
         reliability=ReliabilityPolicy.RELIABLE,
         durability=DurabilityPolicy.VOLATILE,
         )
+
+flagQoS = QoSProfile(
+        history=HistoryPolicy.KEEP_LAST,
+        depth=5, 
+        reliability=ReliabilityPolicy.RELIABLE,
+        durability=DurabilityPolicy.VOLATILE,
+        liveliness_lease_duration=Duration(seconds=1000),
+        )
