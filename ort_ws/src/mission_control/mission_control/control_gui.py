@@ -184,7 +184,7 @@ class GuiClient(Node):
 
     def feedback_callback(self, feedback_msg):
         feedback = feedback_msg.feedback
-        self.current_step = feedback
+        self.current_step = feedback.seconds
         self.get_logger().info("Received feedback: {0}".format(feedback.seconds))
 
 

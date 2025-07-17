@@ -166,7 +166,7 @@ class TelepresenceOperations(Node):
                 # FEEDBACK
                 feedback_msg = Calibrate.Feedback()
 
-                if 10.0 > goal_handle.request.move_time > 0.0:
+                if 10.0 >= goal_handle.request.move_time > 0.0:
                     self.get_logger().info("Moving for time specified by request.")
                     while (now - start_time) < goal_handle.request.move_time:
                         now = time.monotonic()
