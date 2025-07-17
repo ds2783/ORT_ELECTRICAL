@@ -482,8 +482,11 @@ class GUI(Node):
                 if imgui.button("Submit."):
                     self.client_.send_goal(CALIBRATE_OFS, self.move_time)
                     imgui.close_current_popup()
+                imgui.same_line()
+                if imgui.button("Cancel."):
+                    imgui.close_current_popup()
                 imgui.text(
-                    "0.6 seconds move time, is approximately 0.2 meters of movement on a smooth surface."
+                    "0.6 seconds move time, \nis approximately 0.2 meters of movement on a smooth surface."
                 )
                 imgui.end_popup()
 

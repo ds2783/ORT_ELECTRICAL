@@ -1,3 +1,5 @@
+from os import sendfile
+from numpy.core.multiarray import array
 import rclpy
 import rclpy.utilities
 from rclpy.node import Node
@@ -231,6 +233,16 @@ class GeoLocator(Node):
         self.optical_calibration_angles = list(self.optical_calibration_angles)
         self.optical_calibration_angles.append(msg.angle)
 
+        if len(self.optical_calibration_factors) >= 5:
+            for i, element in enumerate(self.optical_calibration_factors):
+                if zscore(element, self.optical_calibration_factors) > 2:
+                    self.optical_calibration_factors.pop(i)
+                    self.optical_calibration_angles.pop(i)
+
+                    self.get_logger().warn(
+                        "Removing OFS calibration value which is more than two standard deviations away from the mean."
+                    )
+
         self.optical_factor = np.mean(self.optical_calibration_factors)
         self.optical_angle = np.mean(self.optical_calibration_angles)
         self.get_logger().info(
@@ -366,6 +378,10 @@ def rotate_vector2D(euler_angle, vector2D):
         ]
     )
     return np.matmul(rotation, vector2D)
+
+
+def zscore(v, s):
+    return abs((v - np.mean(s)) / np.std(s))
 
 
 class NPEncoder(json.JSONEncoder):
