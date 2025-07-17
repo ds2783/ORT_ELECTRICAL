@@ -87,7 +87,7 @@ class DistanceNode(Node):
                 f"I2C address is not accessible."
             )
 
-    def reset_tof(self):
+    def reset_tof(self):  # apparently the ToFs don't like sub 3V operation, and crashes when we're around 60-40%. 
         self.pin.off()  # Set the pin low to reset the ToF
         time.sleep(0.01)  # data times for wake and data transfer are on the order of us/ns, so 10ms should be more than enough for Pi latency + actual communication with the chip. 
         self.pin.on()  # Set the pin high to wake the ToF up with default settings
