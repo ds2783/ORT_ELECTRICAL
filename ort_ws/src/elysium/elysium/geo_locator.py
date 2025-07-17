@@ -242,6 +242,14 @@ class GeoLocator(Node):
                     self.get_logger().warn(
                         "Removing OFS calibration value which is more than two standard deviations away from the mean."
                     )
+            for i, element in enumerate(self.optical_calibration_angles):
+                if zscore(element, self.optical_calibration_angles) > 2:
+                    self.optical_calibration_factors.pop(i)
+                    self.optical_calibration_angles.pop(i)
+
+                    self.get_logger().warn(
+                        "Removing OFS calibration value which is more than two standard deviations away from the mean."
+                    )
 
         self.optical_factor = np.mean(self.optical_calibration_factors)
         self.optical_angle = np.mean(self.optical_calibration_angles)
