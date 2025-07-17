@@ -256,7 +256,7 @@ class BaseNode(Node):
         for code in qr_final:
             date = datetime.datetime.now()
             fname = (
-                f"qr_{len(self.scanned_codes)}_{date.year}_{date.month}_{date.day}.jpeg"
+                f"{code}_rock_{rock_num}_date_{date.year}_{date.month}_{date.day}.jpeg"
             )
             self.scanned_codes[code] = {
                 "x": x_dist,

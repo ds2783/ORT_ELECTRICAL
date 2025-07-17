@@ -72,7 +72,7 @@ class OpticalFlowPublisher(Node):
                 ("child_frame", "base_link"),
                 ("x_init", 0.0),
                 ("y_init", 0.0),
-                ("z_height", 0.025),
+                ("z_height", 0.10),
                 ("board", "paa5100"),
                 ("motion_scale", 5),
                 ("spi_nr", 0),

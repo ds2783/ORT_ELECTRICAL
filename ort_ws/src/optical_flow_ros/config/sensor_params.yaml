@@ -6,7 +6,7 @@ optical_flow:
         child_frame: base_link
         x_init: 0.0 # Initial x position in meters
         y_init: 0.0 # Initial y position in meters
-        z_height: 0.025 # Height of the sensor from the base frame in meters
+        z_height: 0.10 # Height of the sensor from the base frame in meters
         board: pmw3901 # [pmw3901, paa5100]
         motion_scale: 1 # Scale factor for motion calculation
         spi_nr: 0

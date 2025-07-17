@@ -6,6 +6,9 @@ uint8 ZERO_AXIS=1
 uint8 CALIBRATE_OFS=2 
 # Sets the Mode
 uint8 code
+
+# used for calibrating the OFS
+float32 move_time
 ---
 # Define return codes
 uint8 SUCCESS=0

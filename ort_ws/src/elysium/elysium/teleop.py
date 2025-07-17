@@ -162,10 +162,31 @@ class TelepresenceOperations(Node):
 
                 start_time = time.monotonic()
                 now = time.monotonic()
+                
+                # FEEDBACK
+                feedback_msg = Calibrate.Feedback()
 
-                while (now - start_time) < OPTICAL_MOVE_TIME:
-                    now = time.monotonic()
-                    self.rate.sleep()
+                if 10.0 > goal_handle.request.move_time > 0.0:
+                    self.get_logger().info("Moving for time specified by request.")
+                    while (now - start_time) < goal_handle.request.move_time:
+                        now = time.monotonic()
+                        
+                        # publish feedback 
+                        feedback_msg.seconds = goal_handle.request.move_time - (now - start_time)
+                        goal_handle.publish_feedback(feedback_msg)
+                        
+                        # request distance to stop incase of collision.
+                        self.request_optical_pos()
+                        if self.tof_dist < 0.2:
+                            break
+                        self.rate.sleep()
+                else:
+                    self.get_logger().info(
+                        "No valid move time set. Moving forward for default time of 0.6."
+                    )
+                    while (now - start_time) < OPTICAL_MOVE_TIME:
+                        now = time.monotonic()
+                        self.rate.sleep()
 
                 self.target.linear = 0
                 self.drive()

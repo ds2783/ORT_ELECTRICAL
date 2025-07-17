@@ -135,9 +135,11 @@ class GuiClient(Node):
         msg.data = True
         self.reset_pos_pub_.publish(msg)
 
-    def send_goal(self, code):
+    def send_goal(self, code, move_time=None):
         goal_msg = Calibrate.Goal()
         goal_msg.code = code
+        if move_time:
+            goal_msg.move_time = move_time
 
         if code == CALIBRATE_OFS:
             self._send_goal_future = self.optical_calibration_client_.send_goal_async(
@@ -453,7 +455,7 @@ class GUI(Node):
             elif imgui.button(
                 "Calibrate OFS - ROVER WILL TRAVEL APPROXIMATELY 0.5 METERS FORWARD"
             ):
-                self.client_.send_goal(CALIBRATE_OFS)
+                imgui.open_popup("Set move time.")
 
             elif imgui.button(
                 "Hard Reset OFS Calibration - To be done for new surfaces."
@@ -462,6 +464,22 @@ class GUI(Node):
 
             elif imgui.button("Close Client"):
                 imgui.close_current_popup()
+
+            if imgui.begin_popup_modal("Set move time.").opened:
+                move_time = 0.6
+                _, move_time = imgui.slider_float(
+                    "move time",
+                    move_time,
+                    min_value=0.0,
+                    max_value=10.0,
+                    format="%.1f",
+                )
+                imgui.same_line()
+                if imgui.button("Submit"):
+                    self.client_.send_goal(CALIBRATE_OFS, move_time)
+                    imgui.close_current_popup()
+                imgui.end_popup()
+
             imgui.end_popup()
         imgui.end_child()
 
@@ -535,7 +553,6 @@ class GUI(Node):
         self.impl.render(imgui.get_draw_data())
         glfw.swap_buffers(self.window)
 
-
     def display_entry(self, key):
         imgui.indent()
         expanded, visible = imgui.collapsing_header(str(key), None)
@@ -547,7 +564,9 @@ class GUI(Node):
             )
             imgui.text("distance-gps: " + str(self.qr_dict_[key]["distance-gps"]))
             imgui.text("more-reliable: " + str(self.qr_dict_[key]["more-reliable"]))
-            imgui.text("distance-from-cam: " + str(self.qr_dict_[key]["distance-from-cam"]))
+            imgui.text(
+                "distance-from-cam: " + str(self.qr_dict_[key]["distance-from-cam"])
+            )
             if imgui.button("Show Image"):
                 imgui.open_popup("Image: " + str(key))
                 try:
@@ -562,11 +581,10 @@ class GUI(Node):
                     width = 1000
                     aspect_ratio = self.qr_image.width / self.qr_image.height
                     imgui.set_window_size(width + 10, width / aspect_ratio + 90)
+                    width, height = imgui.get_window_size()
                     imgui.image(self.qr_texID, width, width / aspect_ratio)
                 except Exception as e:
-                    self.get_logger().warn(
-                        "No image available. Exception: " + str(e)
-                    )
+                    self.get_logger().warn("No image available. Exception: " + str(e))
                     imgui.close_current_popup()
                 if imgui.button("Close Image"):
                     imgui.close_current_popup()
