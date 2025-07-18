@@ -6,7 +6,6 @@ import rclpy.utilities
 import gpiozero as gpio
 import lgpio
 from gpiozero.pins.lgpio import LGPIOFactory
-import RPI.GPIO as GPIO
 
 from std_msgs.msg import Bool
 
