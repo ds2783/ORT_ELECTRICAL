@@ -73,7 +73,7 @@ class BaseNode(Node):
         )
 
         self.bottom_tof_sub_ = self.create_subscription(
-            Float32, "/distance_sensor/optical_flow", self.oTofCB_, qos_profile=tofQoS
+            Float32, "/distance_sensor/optical_flow", self.oTofCB_, qos_profile=queueToS
         )
 
         self.euler_angles_sub_ = self.create_subscription(
@@ -88,7 +88,7 @@ class BaseNode(Node):
         )
 
         self.battery_sub_ = self.create_subscription(
-            BatteryInfo, "/battery_monitor", self.battCB_, qos_profile=tofQoS
+            BatteryInfo, "/battery_monitor", self.battCB_, qos_profile=queueToS
         )
 
         self.gps_dist_sub_ = self.create_subscription(

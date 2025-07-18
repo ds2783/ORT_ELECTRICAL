@@ -57,15 +57,14 @@ flagQoS = QoSProfile(
 
 queueToS = QoSProfile(
     history=HistoryPolicy.KEEP_LAST,
-    depth=10,
+    depth=1,
     reliability=ReliabilityPolicy.BEST_EFFORT,
     durability=DurabilityPolicy.VOLATILE,
-    lifespan=Duration(seconds=1),
 )
 
 periodicQoS = QoSProfile(
     history=HistoryPolicy.KEEP_LAST,
-    depth=5,
+    depth=1,
     reliability=ReliabilityPolicy.RELIABLE,
     durability=DurabilityPolicy.TRANSIENT_LOCAL,
 )
