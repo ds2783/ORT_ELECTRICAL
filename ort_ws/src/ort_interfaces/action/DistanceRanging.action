@@ -1,12 +1,8 @@
 float32 ranging_time
 float32 cut_off_dist
-
 ---
-
 uint8 SUCCESS=0
 uint8 FAIL=1
 uint8 code
-
---- 
-
+---
 float32 distance
