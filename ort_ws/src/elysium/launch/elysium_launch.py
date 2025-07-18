@@ -29,11 +29,11 @@ def generate_launch_description():
                 executable="distance_sensor",
                 namespace="",
             ),
-            Node(
-                package="elysium",
-                executable="camera_led",
-                namespace="",
-            ),
+            # Node(
+            #     package="elysium",
+            #     executable="camera_led",
+            #     namespace="",
+            # ),
             Node(
                 package="elysium",
                 executable="geo_locator",

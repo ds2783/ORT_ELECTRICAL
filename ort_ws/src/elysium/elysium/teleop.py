@@ -171,6 +171,7 @@ class TelepresenceOperations(Node):
                 feedback_msg = Calibrate.Feedback()
 
                 if 10.0 >= goal_handle.request.move_time > 0.0:
+                    self.send_tof_goal(goal_handle.request.move_time, 0.2)
                     self.get_logger().info("Moving for time specified by request.")
                     while (now - start_time) < goal_handle.request.move_time:
                         now = time.monotonic()
@@ -181,7 +182,6 @@ class TelepresenceOperations(Node):
                         goal_handle.publish_feedback(feedback_msg)
                         
                         # request distance to stop incase of collision.
-                        self.request_tof_dist()
                         if self.tof_dist < 0.2:
                             self.get_logger().warn("Object detected within 0.2m stopping for safety.")
                             break
