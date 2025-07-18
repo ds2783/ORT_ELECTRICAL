@@ -28,7 +28,7 @@ QoS = QoSProfile(
 
 
 class LEDNode(Node):
-    def __init__(self, node_name, topic_name):
+    def __init__(self, node_name, topic_name, factory):
         """
         Node that handles the infrared LED panel for the upper camera on the rover. 
         
@@ -47,17 +47,27 @@ class LEDNode(Node):
                                                        topic=topic_name, 
                                                        callback=self._led_callback, 
                                                        qos_profile=QoS)
-        GPIO.setmode(GPIO.BOARD)
         self.led_pin = 12
+        self.pin = gpio.DigitalOutputDevice(self.led_pin, initial_value=False, pin_factory=factory)  # active low to turn off ToF
     
-        GPIO.output(self.led_pin, GPIO.LOW)
-
     def _led_callback(self, msg):
         on = msg.data  # This always will be a float since ROS2 typechecks (and complains a lot if it isn't) it before sending data
         if on:
-            GPIO.output(self.led_pin, GPIO.HIGH)
+            self.pin.on()
         elif not on:
-            GPIO.output(self.led_pin, GPIO.LOW)
+            self.pin.off()
+
+def __patched_init(self, chip=None):  
+    
+    # This is necessary because LGPIO assumes the Pi5 uses gpiochip4, but in a shadow kernel
+    # update, Team RPi has refactored it so that gpiochip0 is used like the rest of them. The issue is that LGPIO has not caught on
+    # and locks you into gpiochip4 even if you pass a param to say its 0. 
+
+    gpio.pins.lgpio.LGPIOFactory.__bases__[0].__init__(self)
+    chip = 0
+    self._handle = lgpio.gpiochip_open(chip)
+    self._chip = chip
+    self.pin_class = gpio.pins.lgpio.LGPIOPin
             
 def main(args=None):
     rclpy.init(args=args)
@@ -65,7 +75,9 @@ def main(args=None):
     topic_name = "/led"
     node_name  = "led_camera"
     
-    _led_node = LEDNode(node_name, topic_name)
+    gpio.pins.lgpio.LGPIOFactory.__init__ = __patched_init   # setup the XSHUT pin and the green LED pins. 
+    factory = LGPIOFactory()
+    _led_node = LEDNode(node_name, topic_name, factory)
 
     try:
         while rclpy.utilities.ok():
