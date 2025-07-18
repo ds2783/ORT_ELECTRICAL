@@ -353,7 +353,7 @@ class TelepresenceOperations(Node):
        self._send_goal_future.add_done_callback(self.goal_response_callback)
 
     def cam_feedback_callback_(self, feedback):
-        self.tof_dist = feedback.distance
+        self.tof_dist = feedback.feedback.distance
         self.get_logger().info("Distance set from action server.")
     
     def goal_response_callback(self, future):
