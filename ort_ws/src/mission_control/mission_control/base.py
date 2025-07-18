@@ -21,7 +21,6 @@ from mission_control.config.network import (
     PI_IP,
     CODE_CONTINUE,
     CODE_TERMINATE,
-    tofQoS,
     flagQoS,
     queueToS,
     periodicQoS,
