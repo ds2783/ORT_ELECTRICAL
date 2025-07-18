@@ -135,6 +135,7 @@ class TelepresenceOperations(Node):
         self.last_connection_ = time.monotonic()
         self.connection_timer_ = self.create_timer(0.5, self.shutdownCB_, node_cb_group)
         self.driver_timer_ = self.create_timer(0.02, self.driveCB_, node_cb_group)
+        self.publish_cam_angles_ = self.create_timer(1, self.publishCB_, service_cb_group)
 
         # Servo Offset control
         self.offset_ = OFFSET
@@ -404,6 +405,19 @@ class TelepresenceOperations(Node):
             self.target.linear = 0
             self.target.rotation = 0
             self.drive()
+    
+    def publishCB_(self):
+        # publish camera rotation, note 90 degrees servo rotation -> 0 degrees around the axis
+        # negative this so it aligns with the IMU
+        if self.z_increment != 0 or self.x_increment != 0:
+            camera_rotation_msg = CameraRotation(
+                z_axis=float(degrees_to_rad(180 - self.cam_angles_.z_axis - 90)),
+                x_axis=float(
+                    degrees_to_rad(self.cam_angles_.x_axis - 90 - ENCODER_OFFSET_X_AXIS)
+                ),
+            )
+            self.cam_angles__pub_.publish(camera_rotation_msg)
+
 
     def teleopCB_(self, msg: Joy):
         # DRIVE -----------------
@@ -418,17 +432,6 @@ class TelepresenceOperations(Node):
 
         self.z_increment = msg.axes[AXES["RIGHTX"]] * CAMERA_SENSITIVITY
         self.x_increment = msg.axes[AXES["RIGHTY"]] * CAMERA_SENSITIVITY
-
-        # publish camera rotation, note 90 degrees servo rotation -> 0 degrees around the axis
-        # negative this so it aligns with the IMU
-        if self.z_increment != 0 or self.x_increment != 0:
-            camera_rotation_msg = CameraRotation(
-                z_axis=float(degrees_to_rad(180 - self.cam_angles_.z_axis - 90)),
-                x_axis=float(
-                    degrees_to_rad(self.cam_angles_.x_axis - 90 - ENCODER_OFFSET_X_AXIS)
-                ),
-            )
-            self.cam_angles__pub_.publish(camera_rotation_msg)
 
         state = Bool()
         if (
