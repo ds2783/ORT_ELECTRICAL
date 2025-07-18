@@ -107,7 +107,7 @@ class TelepresenceOperations(Node):
             callback_group=node_cb_group,
         )
         self.distance_action_client_ = ActionClient(
-            self, DistanceRanging, "/elysium/cam/ranging_server"
+            self, DistanceRanging, "/elysium/cam/ranging_server", callback_group=service_cb_group
         )
 
         # State -
@@ -334,7 +334,7 @@ class TelepresenceOperations(Node):
         response = future.result()
         if response.data_retrieved:
             self.tof_dist = response.distance
-            self.get_logger().info("Camera distance set.")
+            self.get_logger().info(f"Camera distance set to: {self.tof_dist:2f}.")
         else:
             self.get_logger().error("ToF could not obtain a reading.")
             self.server_unavailable = True
