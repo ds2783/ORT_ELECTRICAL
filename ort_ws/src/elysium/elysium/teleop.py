@@ -135,7 +135,7 @@ class TelepresenceOperations(Node):
         self.last_connection_ = time.monotonic()
         self.connection_timer_ = self.create_timer(0.5, self.shutdownCB_, node_cb_group)
         self.driver_timer_ = self.create_timer(0.02, self.driveCB_, node_cb_group)
-        self.publish_cam_angles_ = self.create_timer(1, self.publishCB_, service_cb_group)
+        self.publish_cam_angles_ = self.create_timer(0.5, self.publishCB_, service_cb_group)
 
         # Servo Offset control
         self.offset_ = OFFSET
