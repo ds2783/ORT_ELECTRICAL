@@ -4,12 +4,13 @@ import rclpy.utilities
 import rclpy.executors
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.action.server import ActionServer
+from rclpy.action.client import ActionClient
 
 from std_msgs.msg import Bool
 from sensor_msgs.msg import Joy
 from ort_interfaces.msg import CameraRotation, OpticalFlowCalibration
 from ort_interfaces.srv import Vec2Pos, DistanceData
-from ort_interfaces.action import Calibrate
+from ort_interfaces.action import Calibrate, DistanceRanging
 
 from elysium.config.mappings import AXES
 from elysium.config.sensors import (
@@ -105,6 +106,9 @@ class TelepresenceOperations(Node):
             self.actionServerCB_,
             callback_group=node_cb_group,
         )
+        self.distance_action_client_ = ActionClient(
+            self, DistanceRanging, "/elysium/cam/ranging_server"
+        )
 
         # State -
         self.state = twist(0, 0)
@@ -179,7 +183,7 @@ class TelepresenceOperations(Node):
                         # request distance to stop incase of collision.
                         self.request_tof_dist()
                         if self.tof_dist < 0.2:
-                            self.get_logger().warn("Object detected within 0.3m stopping for safety.")
+                            self.get_logger().warn("Object detected within 0.2m stopping for safety.")
                             break
                         self.rate.sleep()
                 else:
@@ -335,6 +339,43 @@ class TelepresenceOperations(Node):
             self.get_logger().error("ToF could not obtain a reading.")
             self.server_unavailable = True
         self.request_complete = True
+
+    # CAM Action Server
+    def send_tof_goal(self, ranging_time, cut_off_dist):
+       goal_msg = DistanceRanging.Goal()
+       goal_msg.ranging_time = ranging_time
+       goal_msg.cut_off_dist = cut_off_dist
+
+       self._send_goal_future = self.distance_action_client_.send_goal_async(
+                goal_msg, feedback_callback=self.cam_feedback_callback_
+        )
+       
+       self._send_goal_future.add_done_callback(self.goal_response_callback)
+
+    def cam_feedback_callback_(self, feedback):
+        self.tof_dist = feedback.distance
+        self.get_logger().info("Distance set from action server.")
+    
+    def goal_response_callback(self, future):
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.get_logger().info("Goal rejected :(")
+            return
+
+        self.get_logger().info("Goal accepted :)")
+
+        self._get_result_future = goal_handle.get_result_async()
+        self._get_result_future.add_done_callback(self.get_result_callback)
+
+    def get_result_callback(self, future):
+        result = future.result().result
+        
+        if result.code == SUCCESS:
+            self.get_logger().info("Ranging server finished.")
+        else:
+            self.get_logger().error("Error with the distance ranging server encountered.")
+
+# -------------
 
     def confirmConnectionCB_(self, msg: Bool):
         self.last_connection_ = time.monotonic()

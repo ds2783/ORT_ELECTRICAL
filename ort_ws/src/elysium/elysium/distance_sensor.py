@@ -2,7 +2,9 @@ import rclpy
 from rclpy.node import Node
 import rclpy.utilities
 import rclpy.executors
+from rclpy.action.server import ActionServer
 
+from elysium.config.services import SUCCESS
 import smbus3 as smbus
 import gpiozero as gpio
 import lgpio
@@ -10,11 +12,11 @@ from gpiozero.pins.lgpio import LGPIOFactory
 
 from std_msgs.msg import Float32
 from ort_interfaces.srv import DistanceData
+from ort_interfaces.action import DistanceRanging
 
 import time
 import elysium.hardware.adafruit_vl53l4cd as tof
-from elysium.config.sensors import (DISTANCE_SENSOR_START_DELAY, 
-                                    DISTANCE_SENSOR_POLL_PERIOD, 
+from elysium.config.sensors import (DISTANCE_SENSOR_POLL_PERIOD, 
                                     DISTANCE_SENSOR_REFRESH_PERIOD,
                                     DISTANCE_SENSOR_SRV_AVERAGE_SIZE,
                                     DISTANCE_SENSOR_SRV_FREQUENCY,
@@ -65,6 +67,13 @@ class DistanceNode(Node):
         else:
             self.srv = self.create_service(DistanceData, "/elysium/cam/distance_service", self.data_srv_callback)
             self.polling_rate = self.create_rate(DISTANCE_SENSOR_SRV_FREQUENCY)
+
+            self.distance_ranging_action_ = ActionServer(
+                self,
+                DistanceRanging,
+                "/elysium/cam/ranging_server",
+                self.actionServerCB_,
+            )
 
         try:
             self.i2c_addr = i2c_addr
@@ -168,6 +177,42 @@ class DistanceNode(Node):
 
         return response
 
+    def actionServerCB_(self, goal_handle):
+        self.get_logger().info("Executing goal.")
+        ranging_time = goal_handle.request.ranging_time 
+        cut_off_dist = goal_handle.request.cut_off_dist 
+        
+        self.sensor.start_ranging()
+
+        start_time = time.monotonic()
+        now = time.monotonic()
+
+        distance_return = DistanceRanging.Feedback()
+        while (now - start_time) < ranging_time:
+            now = time.monotonic()
+            try:
+                data_rdy = self.sensor.data_ready
+            except OSError as err:
+                self.get_logger().warn(f"OSERROR: {err}, ADDRESS: {self.sensor.i2c_device.device_address}")
+                self.reset_tof()  # reset the ToF
+                data_rdy = False
+            
+            if data_rdy:
+                distance_return.distance = self.sensor.distance
+                self.sensor.clear_interrupt()
+                goal_handle.publish_feedback(distance_return)
+
+                if distance_return.distance < cut_off_dist:
+                    self.get_logger().warn("Reached cutoff distance, stopping rangeing.")
+                    break
+            self.polling_rate.sleep()
+
+        self.sensor.stop_ranging()
+        goal_handle.succeed()
+        result = DistanceRanging.Result()
+        result.code = SUCCESS
+        return result
+
     def _poll_data(self):
         """Poll and save the data from the ToF sensor. 
         """
@@ -230,64 +275,6 @@ def main(args=None):
     )
 
     _distance_sensor_qr.sensor.set_address(0x2C)
-
-    
-
-    # time.sleep(2)  # Let the xshut pin/ToF settle as on. 
-
-    # try:
-    #     test_tof_1 = tof.VL53L4CD(0x29)
-    #     del test_tof_1  # delete them after so they don't interfere with the initialisation later 
-    #     test_tof_2 = tof.VL53L4CD(0x2A)
-    #     del test_tof_2
-    #     both_on = True  # The i2c addresses have already been set properly and are returning correct model id 
-    #     # values. 
-    # except OSError as err:
-    #     logger_node.get_logger().info(f"""the i2c addresses have not been set yet, 
-    #                                   (to be expected after a reboot) and will be set accordingly. OSError: {err}""")
-    #     both_on = False 
-
-    # except ValueError as err:
-    #     logger_node.get_logger().info(f"""the i2c addresses have not been set yet, 
-    #                                   (to be expected after a reboot) and will be set accordingly. ValueError: {err} """)
-    #     both_on = False  # They are not both set to the correct addresses, and have to be set accordingly. 
-    
-
-    # if both_on:
-    #     _distance_sensor_1 = DistanceNode(
-    #     node_name_1, topic_name_1, i2c_addr=0x2A, srv=True
-    #     )
-    #     _distance_sensor_2 = DistanceNode(
-    #     node_name_2, topic_name_2, i2c_addr=0x29 
-    #     )
-
-    # else:
-    #     try:
-    #         shared_address = 0x29
-    #         alt_address = 0x2A
-    #         test_tof = tof.VL53L4CD(0x29)
-    #         del test_tof
-    #     except Exception as err:
-    #         shared_address = 0x2A
-    #         alt_address = 0x29
-    #         logger_node.get_logger().info(str(err))
-    
-    #     logger_node.get_logger().info("Both devices share the address: " + hex(shared_address))
-
-    #     xshut_pin.off()
-
-    #     _distance_sensor_1 = DistanceNode(
-    #         node_name_1, topic_name_1, i2c_addr=shared_address, srv=True)
-    #     # we accept the cursed for what it is. It's 300ms each on startup only anyway it's fineeee.
-    #     time.sleep(0.3) 
-
-    #     _distance_sensor_1.sensor.set_address(alt_address)
-    #     time.sleep(0.3)
-    #     xshut_pin.on()
-
-    #     _distance_sensor_2 = DistanceNode(
-    #         node_name_2, topic_name_2, i2c_addr=shared_address
-    #         )
 
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(_distance_sensor_ofs)
