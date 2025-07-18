@@ -5,6 +5,7 @@ import rclpy.executors
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.action.server import ActionServer
 from rclpy.action.client import ActionClient
+from rclpy.qos import qos_profile_sensor_data
 
 from std_msgs.msg import Bool
 from sensor_msgs.msg import Joy
@@ -34,8 +35,9 @@ from elysium.config.services import (
     CALIBRATE_OFS,
     CODE_CONTINUE,
     CODE_TERMINATE,
+    CALIBRATION_STOP_DISTANCE,
 )
-from elysium.config.network import baseQoS, stillQoS
+from elysium.config.network import baseQoS, stillQoS, calibrationQoS
 
 import time
 from functools import partial
@@ -68,7 +70,11 @@ class TelepresenceOperations(Node):
 
         # Topics
         self.controller_commands_sub_ = self.create_subscription(
-            Joy, "/joy", self.teleopCB_, 10, callback_group=node_cb_group
+            Joy,
+            "/joy",
+            self.teleopCB_,
+            qos_profile=qos_profile_sensor_data,
+            callback_group=node_cb_group,
         )
         self.base_ping_sub_ = self.create_subscription(
             Bool,
@@ -82,7 +88,7 @@ class TelepresenceOperations(Node):
             CameraRotation, "/elysium/cam_angles", 10
         )
         self.optical_factor_pub_ = self.create_publisher(
-            OpticalFlowCalibration, "/elysium/ofs_calibration", 10
+            OpticalFlowCalibration, "/elysium/ofs_calibration", qos_profile=calibrationQoS
         )
         self.state_still_pub_ = self.create_publisher(
             Bool, "/elysium/still", qos_profile=stillQoS
@@ -107,7 +113,10 @@ class TelepresenceOperations(Node):
             callback_group=node_cb_group,
         )
         self.distance_action_client_ = ActionClient(
-            self, DistanceRanging, "/elysium/cam/ranging_server", callback_group=service_cb_group
+            self,
+            DistanceRanging,
+            "/elysium/cam/ranging_server",
+            callback_group=service_cb_group,
         )
 
         # State -
@@ -166,24 +175,29 @@ class TelepresenceOperations(Node):
 
                 start_time = time.monotonic()
                 now = time.monotonic()
-                
+
                 # FEEDBACK
                 feedback_msg = Calibrate.Feedback()
-
                 if 10.0 >= goal_handle.request.move_time > 0.0:
-                    self.send_tof_goal(goal_handle.request.move_time, 0.2)
+                    self.send_tof_goal(
+                        goal_handle.request.move_time, CALIBRATION_STOP_DISTANCE
+                    )
                     self.get_logger().info("Moving for time specified by request.")
                     while (now - start_time) < goal_handle.request.move_time:
                         now = time.monotonic()
-                        
-                        feedback_time = int(goal_handle.request.move_time - (now - start_time) + 0.5)
-                        # publish feedback 
+
+                        feedback_time = int(
+                            goal_handle.request.move_time - (now - start_time) + 0.5
+                        )
+                        # publish feedback
                         feedback_msg.seconds = feedback_time
                         goal_handle.publish_feedback(feedback_msg)
-                        
+
                         # request distance to stop incase of collision.
-                        if self.tof_dist < 0.2:
-                            self.get_logger().warn("Object detected within 0.2m stopping for safety.")
+                        if self.tof_dist < CALIBRATION_STOP_DISTANCE:
+                            self.get_logger().warn(
+                                f"Object detected within {CALIBRATION_STOP_DISTANCE:2f}m stopping for safety."
+                            )
                             break
                         self.rate.sleep()
                 else:
@@ -342,20 +356,22 @@ class TelepresenceOperations(Node):
 
     # CAM Action Server
     def send_tof_goal(self, ranging_time, cut_off_dist):
-       goal_msg = DistanceRanging.Goal()
-       goal_msg.ranging_time = ranging_time
-       goal_msg.cut_off_dist = cut_off_dist
+        goal_msg = DistanceRanging.Goal()
+        goal_msg.ranging_time = ranging_time
+        goal_msg.cut_off_dist = cut_off_dist
 
-       self._send_goal_future = self.distance_action_client_.send_goal_async(
-                goal_msg, feedback_callback=self.cam_feedback_callback_
+        self._send_goal_future = self.distance_action_client_.send_goal_async(
+            goal_msg, feedback_callback=self.cam_feedback_callback_
         )
-       
-       self._send_goal_future.add_done_callback(self.goal_response_callback)
+
+        self._send_goal_future.add_done_callback(self.goal_response_callback)
 
     def cam_feedback_callback_(self, feedback):
         self.tof_dist = feedback.feedback.distance
-        self.get_logger().info(f"Distance set to: {self.tof_dist:2f} from action server.")
-    
+        self.get_logger().info(
+            f"Distance set to: {self.tof_dist:2f} from action server."
+        )
+
     def goal_response_callback(self, future):
         goal_handle = future.result()
         if not goal_handle.accepted:
@@ -369,13 +385,15 @@ class TelepresenceOperations(Node):
 
     def get_result_callback(self, future):
         result = future.result().result
-        
+
         if result.code == SUCCESS:
             self.get_logger().info("Ranging server finished.")
         else:
-            self.get_logger().error("Error with the distance ranging server encountered.")
+            self.get_logger().error(
+                "Error with the distance ranging server encountered."
+            )
 
-# -------------
+    # -------------
 
     def confirmConnectionCB_(self, msg: Bool):
         self.last_connection_ = time.monotonic()

@@ -19,6 +19,7 @@ from mission_control.config.network import (
     PI_IP,
     tofQoS,
     flagQoS,
+    baseQoS,
     RetCodes,
 )
 from mission_control.config.gui import (
@@ -77,7 +78,7 @@ class GuiClient(Node):
         self.last_result = ""
 
         # Publishers
-        self.reset_pos_pub_ = self.create_publisher(Bool, "/elysium/reset_pos", 10)
+        self.reset_pos_pub_ = self.create_publisher(Bool, "/elysium/reset_pos", baseQoS)
         self.led_pub_ = self.create_publisher(Float32, "/led", tofQoS)
         self.rock_num_pub_ = self.create_publisher(Int8, "/rock_num", flagQoS)
 

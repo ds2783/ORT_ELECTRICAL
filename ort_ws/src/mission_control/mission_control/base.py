@@ -23,6 +23,8 @@ from mission_control.config.network import (
     CODE_TERMINATE,
     tofQoS,
     flagQoS,
+    queueToS,
+    periodicQoS,
 )
 from mission_control.config.gui import QR_DIRECTORY
 
@@ -75,10 +77,10 @@ class BaseNode(Node):
         )
 
         self.euler_angles_sub_ = self.create_subscription(
-            Vector3, "/elysium/euler_angles", self.eulerCB_, 10
+            Vector3, "/elysium/euler_angles", self.eulerCB_, qos_profile=queueToS
         )
         self.odom_sub_ = self.create_subscription(
-            Odometry, "/elysium/odom", self.odomCB_, 10
+            Odometry, "/elysium/odom", self.odomCB_, qos_profile=queueToS
         )
 
         self.camera_angles_sub_ = self.create_subscription(
@@ -90,10 +92,10 @@ class BaseNode(Node):
         )
 
         self.gps_dist_sub_ = self.create_subscription(
-            Float32, "/elysium/gps_dist", self.gpsCB_, 10
+            Float32, "/elysium/gps_dist", self.gpsCB_, qos_profile=queueToS
         )
         self.optical_calibration_ = self.create_subscription(
-            OpticalFlowCalibration, "/elysium/optical_factor", self.ofs_calCB_, 10
+            OpticalFlowCalibration, "/elysium/optical_factor", self.ofs_calCB_, qos_profile=periodicQoS
         )
 
         # Control GUI Subscriptions

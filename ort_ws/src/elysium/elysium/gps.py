@@ -4,14 +4,16 @@ import serial
 
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
 
 from elysium.config.sensors import GPS_DEV_PORT, GPS_REFRESH_PERIOD
 
 from ort_interfaces.msg import GPSStatus, SatelliteInfo
 
+
 class GPS(Node):
     def __init__(self, baudrate, timeout):
-        super().__init__('gps_publisher')
+        super().__init__("gps_publisher")
 
         # RX = board.RX
         # TX = board.TX
@@ -25,7 +27,9 @@ class GPS(Node):
         self.gps.send_command(b"PMTK314,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0")
         self.gps.send_command(b"PMTK220,1000")  # 1 Hz update rate
 
-        self.publisher_ = self.create_publisher(GPSStatus, '/elysium/gps_data', 10)
+        self.publisher_ = self.create_publisher(
+            GPSStatus, "/elysium/gps_data", qos_profile=qos_profile_sensor_data
+        )
         self.timer = self.create_timer(GPS_REFRESH_PERIOD, self.gpsCB_)
         self.last_print = time.monotonic()
 
@@ -59,7 +63,7 @@ class GPS(Node):
         self.gps.update()
 
         if not self.gps.has_fix:
-            self.get_logger().info('Waiting for GPS fix...')
+            self.get_logger().info("Waiting for GPS fix...")
             return
 
         msg = GPSStatus()
@@ -78,7 +82,11 @@ class GPS(Node):
                 sat_info = SatelliteInfo()
                 sat_info.talker = self.talkers.get(s[0:2], "Unknown")
                 sat_info.prn = s[2:]
-                if self.gps.sats and s in self.gps.sats and self.gps.sats[s] is not None:
+                if (
+                    self.gps.sats
+                    and s in self.gps.sats
+                    and self.gps.sats[s] is not None
+                ):
                     sat = self.gps.sats[s]
                     sat_info.elevation = int(sat[1]) if sat[1] is not None else -1
                     sat_info.azimuth = int(sat[2]) if sat[2] is not None else -1
@@ -90,7 +98,10 @@ class GPS(Node):
                 msg.satellites_info.append(sat_info)
 
         self.publisher_.publish(msg)
-        self.get_logger().info(f"Published: {msg.latitude}, {msg.longitude} ({msg.satellites} sats)")
+        self.get_logger().info(
+            f"Published: {msg.latitude}, {msg.longitude} ({msg.satellites} sats)"
+        )
+
 
 def main(args=None):
     rclpy.init(args=args)
@@ -101,4 +112,3 @@ def main(args=None):
     except:
         node.destroy_node()
         rclpy.shutdown()
-

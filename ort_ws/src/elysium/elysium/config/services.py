@@ -17,3 +17,6 @@ CODE_CONTINUE = 1
 
 # geo_location
 GEO_BACKUP_PERIOD = 2.0
+
+# Calibration 
+CALIBRATION_STOP_DISTANCE = 0.3

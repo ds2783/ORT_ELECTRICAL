@@ -203,7 +203,7 @@ class DistanceNode(Node):
                 goal_handle.publish_feedback(distance_return)
 
                 if distance_return.distance < cut_off_dist:
-                    self.get_logger().warn("Reached cutoff distance, stopping rangeing.")
+                    self.get_logger().warn("Reached cutoff distance, stopping ranging.")
                     break
             self.polling_rate.sleep()
 

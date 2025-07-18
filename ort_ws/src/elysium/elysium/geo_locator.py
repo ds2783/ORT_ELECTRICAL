@@ -1,5 +1,3 @@
-from os import sendfile
-from numpy.core.multiarray import array
 import rclpy
 import rclpy.utilities
 from rclpy.node import Node
@@ -24,7 +22,14 @@ from elysium.config.sensors import (
     OPTICAL_CALIBRATION,
     tofQoS,
 )
-from elysium.config.network import DIAGNOSTIC_PERIOD, stillQoS
+from elysium.config.network import (
+    DIAGNOSTIC_PERIOD,
+    stillQoS,
+    baseQoS,
+    calibrationQoS,
+    queueToS,
+    periodicQoS,
+)
 from elysium.config.services import GEO_BACKUP_PERIOD, SUCCESS, FAIL
 
 import numpy as np
@@ -55,14 +60,20 @@ class GeoLocator(Node):
             qos_profile=qos_profile_sensor_data,
         )
         self.reset_pos_sub_ = self.create_subscription(
-            Bool, "/elysium/reset_pos", self.zero_resetCB_, 10
+            Bool, "/elysium/reset_pos", self.zero_resetCB_, qos_profile=baseQoS
         )
 
         self.gps_sub_ = self.create_subscription(
-            GPSStatus, "/elysium/gps_data", self.gpsCB_, 10
+            GPSStatus,
+            "/elysium/gps_data",
+            self.gpsCB_,
+            qos_profile=qos_profile_sensor_data,
         )
         self.optical_calibration_sub_ = self.create_subscription(
-            OpticalFlowCalibration, "/elysium/ofs_calibration", self.ofs_calCB_, 10
+            OpticalFlowCalibration,
+            "/elysium/ofs_calibration",
+            self.ofs_calCB_,
+            qos_profile=calibrationQoS,
         )
         self.still_state_sub_ = self.create_subscription(
             Bool, "/elysium/still", self.stillCB_, qos_profile=stillQoS
@@ -71,14 +82,16 @@ class GeoLocator(Node):
 
         # Publishers -----------
         self.euler_angles_pub_ = self.create_publisher(
-            Vector3, "/elysium/euler_angles", 10
+            Vector3, "/elysium/euler_angles", queueToS
         )
-        self.odom_pub_ = self.create_publisher(Odometry, "/elysium/odom", 10)
+        self.odom_pub_ = self.create_publisher(Odometry, "/elysium/odom", queueToS)
 
-        self.gps_dist_pub_ = self.create_publisher(Float32, "/elysium/gps_dist", 10)
+        self.gps_dist_pub_ = self.create_publisher(
+            Float32, "/elysium/gps_dist", queueToS
+        )
 
         self.optical_factor_pub_ = self.create_publisher(
-            OpticalFlowCalibration, "/elysium/optical_factor", 10
+            OpticalFlowCalibration, "/elysium/optical_factor", periodicQoS
         )
         # ----------------------
 
@@ -169,10 +182,10 @@ class GeoLocator(Node):
 
             self.inverse_offset = np.array([0.0, 0.0, 0.0, 1.0])
 
-    def backup_(self):
-        # Periodically sync base with Geo_locator
         self.publish_ofs_calibration()
+        self.get_logger().info("Finishing initilising the Geo_locator.")
 
+    def backup_(self):
         backup = {
             "raw-x-pos": self.raw_x_pos,
             "raw-y-pos": self.raw_y_pos,
