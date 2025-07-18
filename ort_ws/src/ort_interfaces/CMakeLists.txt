@@ -40,6 +40,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/DistanceData.srv"
   "srv/CullCalibration.srv"
   "action/Calibrate.action"
+  "action/DistanceRanging.action"
 )
 
 ament_package()
