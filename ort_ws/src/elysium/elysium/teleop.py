@@ -178,7 +178,8 @@ class TelepresenceOperations(Node):
                         
                         # request distance to stop incase of collision.
                         self.request_optical_pos()
-                        if self.tof_dist < 0.2:
+                        if self.tof_dist < 0.3:
+                            self.get_logger().warn("Object detected within 0.3m stopping for safety.")
                             break
                         self.rate.sleep()
                 else:
