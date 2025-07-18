@@ -198,7 +198,7 @@ class DistanceNode(Node):
                 data_rdy = False
             
             if data_rdy:
-                distance_return.distance = self.sensor.distance
+                distance_return.distance = self.sensor.distance / 100 # convert to metres
                 self.sensor.clear_interrupt()
                 goal_handle.publish_feedback(distance_return)
 
