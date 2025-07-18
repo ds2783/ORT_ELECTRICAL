@@ -6,8 +6,9 @@ import rclpy.utilities
 import gpiozero as gpio
 import lgpio
 from gpiozero.pins.lgpio import LGPIOFactory
+import RPI.GPIO as GPIO
 
-from std_msgs.msg import Float32
+from std_msgs.msg import Bool
 
 
 QoS = QoSProfile(
@@ -27,7 +28,7 @@ QoS = QoSProfile(
 
 
 class LEDNode(Node):
-    def __init__(self, node_name, topic_name, factory):
+    def __init__(self, node_name, topic_name):
         """
         Node that handles the infrared LED panel for the upper camera on the rover. 
         
@@ -41,53 +42,30 @@ class LEDNode(Node):
 
         super().__init__(node_name)
 
-        msg_type = Float32
+        msg_type = Bool
         self.led_subscriber = self.create_subscription(msg_type=msg_type, 
                                                        topic=topic_name, 
                                                        callback=self._led_callback, 
                                                        qos_profile=QoS)
-        self.led_pwm_pin = gpio.PWMOutputDevice(pin=12, initial_value=0, frequency=1000, pin_factory=factory)
+        GPIO.setmode(GPIO.BOARD)
+        self.led_pin = 12
+    
+        GPIO.output(self.led_pin, GPIO.LOW)
 
     def _led_callback(self, msg):
-        float_val = msg.data  # This always will be a float since ROS2 typechecks (and complains a lot if it isn't) it before sending data
-
-        if float_val < 0 or float_val > 1:
-            raise ValueError(f"The LED brightness value must be between 0 and 1. Given: {float_val}")
-        
-        self.set_brightness(float_val)
-    
-    def set_brightness(self, value: float):
-        """Set the brightness of the LED board, value between 0 and 1. 
-        """
-        self.led_pwm_pin.value = value
-
-    def set_frequency(self, value: int):
-        """Set the frequency of the LED board, value between 1 and 10kHz. Limited by the software PWM since the RPi5 has problems with hardware PWM. 
-        """
-        self.led_pwm_pin.frequency = value
-
-
-def __patched_init(self, chip=None):  
-    
-    # This is necessary because LGPIO assumes the Pi5 uses gpiochip4, but in a shadow kernel
-    # update, Team RPi has refactored it so that gpiochip0 is used like the rest of them. The issue is that LGPIO has not caught on
-    # and locks you into gpiochip4 even if you pass a param to say its 0. 
-
-    gpio.pins.lgpio.LGPIOFactory.__bases__[0].__init__(self)
-    chip = 0
-    self._handle = lgpio.gpiochip_open(chip)
-    self._chip = chip
-    self.pin_class = gpio.pins.lgpio.LGPIOPin
-
+        on = msg.data  # This always will be a float since ROS2 typechecks (and complains a lot if it isn't) it before sending data
+        if on:
+            GPIO.output(self.led_pin, GPIO.HIGH)
+        elif not on:
+            GPIO.output(self.led_pin, GPIO.LOW)
+            
 def main(args=None):
     rclpy.init(args=args)
 
     topic_name = "/led"
     node_name  = "led_camera"
     
-    gpio.pins.lgpio.LGPIOFactory.__init__ = __patched_init
-    factory = LGPIOFactory()    
-    _led_node = LEDNode(node_name, topic_name, factory)
+    _led_node = LEDNode(node_name, topic_name)
 
     try:
         while rclpy.utilities.ok():

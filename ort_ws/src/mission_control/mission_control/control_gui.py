@@ -79,7 +79,7 @@ class GuiClient(Node):
 
         # Publishers
         self.reset_pos_pub_ = self.create_publisher(Bool, "/elysium/reset_pos", baseQoS)
-        self.led_pub_ = self.create_publisher(Float32, "/led", tofQoS)
+        self.led_pub_ = self.create_publisher(Bool, "/led", tofQoS)
         self.rock_num_pub_ = self.create_publisher(Int8, "/rock_num", flagQoS)
 
         # Services
@@ -127,9 +127,9 @@ class GuiClient(Node):
             self.get_logger().error("Calibration of optical flow sensro failed.")
             self.last_result = "Failure: could not Cull OFS Calibration."
 
-    def publish_led(self, slider_float: float):
-        msg = Float32()
-        msg.data = slider_float
+    def publish_led(self, state: bool):
+        msg = Bool()
+        msg.data = state
         self.led_pub_.publish(msg)
 
     def reset_axis(self):
@@ -244,6 +244,7 @@ class GUI(Node):
         # IR LED
         self.led = 0.0
         self.current_value = 100.0
+        self.light_state = "OFF"
 
         self.address = ("localhost", port)  # family is deduced to be 'AF_INET'
         self.listener = Listener(self.address, authkey=b"123")
@@ -426,17 +427,28 @@ class GUI(Node):
         imgui.new_line()
 
         # IR LIGHT
+        # imgui.begin_child("IR Light", self.width / 6, self.height / 15, True)
+        # changed, self.current_value = imgui.slider_float(
+        #     "IR Light",
+        #     self.current_value,
+        #     min_value=0.0,
+        #     max_value=100.0,
+        #     format="%.1f",
+        # )
+        # if self.led != self.current_value:
+        #     self.led = self.current_value
+        #     self.client_.publish_led(self.led / 100)
+        # imgui.end_child()
+
+        # FIXED LIGHT
         imgui.begin_child("IR Light", self.width / 6, self.height / 15, True)
-        changed, self.current_value = imgui.slider_float(
-            "IR Light",
-            self.current_value,
-            min_value=0.0,
-            max_value=100.0,
-            format="%.1f",
-        )
-        if self.led != self.current_value:
-            self.led = self.current_value
-            self.client_.publish_led(self.led / 100)
+        if imgui.button(self.light_state):
+            if self.light_state == "ON":
+                self.light_state = "OFF"
+                self.client_.publish_led(True)
+            else:
+                self.light_state = "ON"
+                self.client_.publish_led(False)
         imgui.end_child()
 
         # CALIBRATION CLIENT
