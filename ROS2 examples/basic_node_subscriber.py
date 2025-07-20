@@ -1,7 +1,9 @@
 import rclpy
+import rclpy.utilities
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node 
 from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
-import rclpy.utilities
+
 from std_msgs.msg import Float32
 
 
@@ -21,44 +23,47 @@ QoS = QoSProfile(
 )
 
 
-class BasicNode(Node):
+class BasicSubscriberNode(Node):
     def __init__(self, node_name, topic_name):
         """
-        Basic node for demonstation purposess. 
+        Basic subscriber node for demonstation purposess. 
         
         :param node_name: node name
         :type node_name: str
         :param topic_name: topic name
         :type topic_name: str
-        :param factory: gpiozero pin factory for the pin 
-        :type factory: gpiozero pin factory
         """
 
-        super().__init__(node_name)
+        super().__init__(node_name)  # init the Node parent class
 
-        msg_type = Float32
-        self.subscriber_1 = self.create_subscription(msg_type=msg_type, 
-                                                       topic=topic_name, 
-                                                       callback=self.callback, 
-                                                       qos_profile=QoS)
+        msg_type = Float32  # define the topic's data type
+
+        self.subscriber_1 = self.create_subscription(
+            msg_type=msg_type, 
+            topic=topic_name, 
+            callback=self.callback, 
+            qos_profile=QoS
+            )
     
     def callback(self, msg):
-        data = msg.value
-        self.get_logger().info(f"Received a float32 value of {data:.3f}.")
+        value = msg.data
+        self.get_logger().info(f"Received a float32 value of {value:.3f}.")
         
 
 def main(args=None):
     rclpy.init(args=args)  # initialisation of the rclpy library
 
     topic_name = "/topic_example"
-    node_name  = "basic_node"
+    node_name  = "basic_subscriber_node"
 
-    basic_node = BasicNode(node_name, topic_name)  # create the node object
+    basic_node = BasicSubscriberNode(node_name, topic_name)  # create the node object
 
     try:
         rclpy.spin(basic_node)  # start the node's event loop by 'spinning' the node.
     except KeyboardInterrupt:
         basic_node.get_logger().warn(f"KeyboardInterrupt triggered.")  # if you Ctrl+C in terminal it will catch here.
+    except ExternalShutdownException as err:
+        basic_node.get_logger().warn(f"ExternalShutdownException triggered: {err}.")
     finally:
         basic_node.destroy_node()  # Don't need to do this but it is good to be explicit about destroying a node.
         rclpy.utilities.try_shutdown()  # Shutdown the rclpy thread. 
