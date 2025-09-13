@@ -20,3 +20,6 @@ Position estimation is handled using sensor fusion of two ToF sensors, an IMU, a
 - The GPS was used as a backup, to check if our position estimation is accurate or subject to drift.
 
 The ROS2 package is run on Raspbian via a Docker container. With all the networking done over a standard WiFi router, using 2.4Ghz frequency, as it is less prone to attenuation.
+
+The GUI has many features, such as camera feed, telemetry, control panel, data display of previously scanned rocks and the ability to pull up those previously scanned images.
+https://github.com/user-attachments/assets/51754eb0-200c-46de-ba2c-8e30305beb7e
