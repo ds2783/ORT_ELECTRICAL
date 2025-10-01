@@ -258,23 +258,16 @@ def main(args=None):
     green_led = gpio.DigitalOutputDevice(26, pin_factory=factory)
     green_led.on()  # indicate ROS2 is running. 
 
-    xshut_pin_ofs.on()
-    time.sleep(0.01) # let the ToF boot
 
     _distance_sensor_ofs = DistanceNode(
     node_name_1, topic_name_1, pin=xshut_pin_ofs, i2c_addr=0x29
     )
 
-    _distance_sensor_ofs.sensor.set_address(0x2B)
-
-    xshut_pin_qr.on()
-    time.sleep(0.01) # let the ToF boot
 
     _distance_sensor_qr = DistanceNode(
-    node_name_2, topic_name_2, i2c_addr=0x29, pin=xshut_pin_qr, srv=True
+    node_name_2, topic_name_2, i2c_addr=0x59, pin=xshut_pin_qr, srv=True
     )
 
-    _distance_sensor_qr.sensor.set_address(0x2C)
 
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(_distance_sensor_ofs)

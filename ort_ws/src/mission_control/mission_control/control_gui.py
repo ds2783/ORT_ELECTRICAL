@@ -244,7 +244,7 @@ class GUI(Node):
         # IR LED
         self.led = 0.0
         self.current_value = 100.0
-        self.light_state = "OFF"
+        self.light_state = "ON"
 
         self.address = ("localhost", port)  # family is deduced to be 'AF_INET'
         self.listener = Listener(self.address, authkey=b"123")
@@ -442,7 +442,8 @@ class GUI(Node):
 
         # FIXED LIGHT
         imgui.begin_child("IR Light", self.width / 6, self.height / 15, True)
-        if imgui.button(self.light_state):
+        imgui.text("Toggle IR Light:")
+        if imgui.button(self.light_state, self.width/12, self.height/ 40):
             if self.light_state == "ON":
                 self.light_state = "OFF"
                 self.client_.publish_led(True)
@@ -472,7 +473,7 @@ class GUI(Node):
             elif imgui.button(
                 "Calibrate OFS"
             ):
-                self.move_time = 0.6
+                self.move_time = 2.0
                 imgui.open_popup("Set move time.")
 
             elif imgui.button(

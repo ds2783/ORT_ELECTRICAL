@@ -171,7 +171,7 @@ class BaseNode(Node):
         circle = msg.buttons[BUTTONS["CIRCLE"]]
         if circle and not self.qr_button_:
             # CAPTURE QR-CODE
-            resp = self.get_request(self.request_tof_dist)
+            resp = CODE_TERMINATE
             if resp == CODE_TERMINATE:
                 self.get_logger().error(
                     "Distance measured from ToF not available. Measurement not updated."
