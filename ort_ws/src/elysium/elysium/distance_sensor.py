@@ -253,32 +253,32 @@ def main(args=None):
 
     gpio.pins.lgpio.LGPIOFactory.__init__ = __patched_init   # setup the XSHUT pin and the green LED pins. 
     factory = LGPIOFactory()
-    xshut_pin_ofs = gpio.DigitalOutputDevice(17, initial_value=False, pin_factory=factory)  # active low to turn off ToF
+    # xshut_pin_ofs = gpio.DigitalOutputDevice(17, initial_value=False, pin_factory=factory)  # active low to turn off ToF
     xshut_pin_qr = gpio.DigitalOutputDevice(27, initial_value=False, pin_factory=factory)
     green_led = gpio.DigitalOutputDevice(26, pin_factory=factory)
     green_led.on()  # indicate ROS2 is running. 
 
 
-    _distance_sensor_ofs = DistanceNode(
-    node_name_1, topic_name_1, pin=xshut_pin_ofs, i2c_addr=0x29
-    )
+    # _distance_sensor_ofs = DistanceNode(
+    # node_name_1, topic_name_1, pin=xshut_pin_ofs, i2c_addr=0x29
+    # )
 
 
     _distance_sensor_qr = DistanceNode(
-    node_name_2, topic_name_2, i2c_addr=0x59, pin=xshut_pin_qr, srv=True
+    node_name_2, topic_name_2, i2c_addr=0x69, pin=xshut_pin_qr, srv=True
     )
 
 
     executor = rclpy.executors.MultiThreadedExecutor()
-    executor.add_node(_distance_sensor_ofs)
+    # executor.add_node(_distance_sensor_ofs)
     executor.add_node(_distance_sensor_qr)
     
     try:
         executor.spin()
     except KeyboardInterrupt:
-        _distance_sensor_ofs.get_logger().warn(f"KeyboardInterrupt triggered.")
+        # _distance_sensor_ofs.get_logger().warn(f"KeyboardInterrupt triggered.")
         _distance_sensor_qr.get_logger().warn(f"KeyboardInterrupt triggered.")
     finally:
-        _distance_sensor_ofs.destroy_node()
+        # _distance_sensor_ofs.destroy_node()
         _distance_sensor_qr.destroy_node()
         rclpy.utilities.try_shutdown()
