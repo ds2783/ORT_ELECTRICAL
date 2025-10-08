@@ -27,10 +27,11 @@ class StreamServer:
     cam_list = None
     active_cams = []
 
-    def __init__(self, output: Output, model: str, name: str):
+    def __init__(self, output: Output, model: str, name: str, port: int):
         self.output = output
         self.name = name
         self.model = model
+        self.stream_port = port
         # List available devices
         self.usb = False
         self.cam = None
@@ -56,7 +57,7 @@ class StreamServer:
         if self.cam is None:
             output.write("ERROR", f"Failed to find camera {model}", True)
 
-    def handle_client(self, client_socket):
+    def handle_client(self, client_socket, addr):
         self.output.write("INFO", "Requested received.", True)
         pieces = [b""]
         total = 0
@@ -95,6 +96,14 @@ class StreamServer:
         elif self.cam is None:
             self.output.write("ERROR", "No camera to return image is detected.", True)
             data = b"data_end\n"
+
+        elif self.data.decode("utf-8") == "IP\n":
+            self.output.write("INFO", "IP received, starting video feed to that IP.", True)
+            # Try setting multicast to True and False.
+            self.udp_sock.close()
+            self.start_stream(addr, False)
+            data = b"Starting stream.\n"
+
         else:
             self.output.write("ERROR", "No valid request was received.", True)
             data = b"data_end\n"
@@ -128,7 +137,7 @@ class StreamServer:
             self.cam.configure(self.video_config)
             self.output.write("INFO", f"Applied config to camera {self.model}", True)
 
-    def start_stream(self, connection_ip, connection_port, multicast=True):
+    def start_stream(self, connection_ip, multicast=True):
         if not self.cam is None:
             if not self.usb:
                 self.encoder = H264Encoder(100000, repeat=True, iperiod=5)
@@ -142,7 +151,7 @@ class StreamServer:
                 self.udp_sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 32)
             else:
                 self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.udp_sock.connect((connection_ip, connection_port))
+            self.udp_sock.connect((connection_ip, self.stream_port))
             self.stream = self.udp_sock.makefile("wb")
             if self.usb:
                 self.cam.camera_ctrl_info["FrameDurationLimits"] = [
@@ -152,7 +161,7 @@ class StreamServer:
             self.cam.start_recording(self.encoder, FileOutput(self.stream))
             self.output.write(
                 "INFO",
-                f'Started UDP stream "{self.name}" from camera {self.model} to {connection_ip}:{connection_port}',
+                f'Started UDP stream "{self.name}" from camera {self.model} to {connection_ip}:{self.stream_port}',
                 True,
             )
 
@@ -227,4 +236,4 @@ class StreamServer:
         client, addr = self.tcp_sock.accept()
         print(f"[+] Accepted connection from: {addr[0]}:{addr[1]}")
         # spin up our client thread to handle the incoming data
-        self.handle_client(client)
+        self.handle_client(client, addr)

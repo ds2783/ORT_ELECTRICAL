@@ -17,10 +17,11 @@ from mission_control.stream.stream_client import ServerClient
 from mission_control.config.mappings import BUTTONS
 from mission_control.config.network import (
     COMM_PORT,
-    PORT_MAIN_BASE,
     PI_IP,
     CODE_CONTINUE,
     CODE_TERMINATE,
+    PORT_MAIN_SERVER,
+    PORT_SECONDARY_SERVER,
     flagQoS,
     queueToS,
     periodicQoS,
@@ -47,7 +48,11 @@ class BaseNode(Node):
         service_group = MutuallyExclusiveCallbackGroup()
         # ---------------
         # STATE OBJECTS
-        self.main_cam = ServerClient(PI_IP, PORT_MAIN_BASE)
+        self.main_cam = ServerClient(PI_IP, PORT_MAIN_SERVER)
+        self.secondar_cam = ServerClient(PI_IP, PORT_SECONDARY_SERVER)
+        self.main_cam.start_stream()
+        self.secondar_cam.start_stream()
+
         self.qreader_ = QReader()
 
         self.address = ("localhost", port)

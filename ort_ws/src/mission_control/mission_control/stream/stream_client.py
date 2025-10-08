@@ -17,6 +17,11 @@ class ServerClient:
         self.server_host = server_host
         self.server_port = server_port
 
+    def start_stream(self):
+        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client.connect((self.server_host, self.server_port))
+        client.send("IP\n".encode())
+
     def get_picture(self, logger):
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
