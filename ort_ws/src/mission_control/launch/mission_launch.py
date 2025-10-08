@@ -8,14 +8,14 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    node1 = Node(package="mission_control", executable="base")
+    node1 = Node(package="mission_control", executable="control_gui")
     node2 = Node(
         package="joy",
         executable="joy_node",
         name="joy_node",
         parameters=[{"autorepeat_rate": 0.0, "coalesce_interval_ms": 5, "deadzone": 0.1}],
     )
-    node3 = Node(package="mission_control", executable="control_gui")
+    node3 = Node(package="mission_control", executable="base")
     node4 = Node(package="mission_control", executable="connection_server")
 
     already_started_nodes = set()
@@ -49,7 +49,6 @@ def generate_launch_description():
             node4,
         ]
     )
-
 
 if __name__ == "__main__":
     ls = LaunchService()
