@@ -1,6 +1,3 @@
-from modified_streaming.ortStreaming import PORT_SECONDARY_SERVER
-
-
 PI_IP = "192.168.0.101"
 
 COMM_PORT = 43931

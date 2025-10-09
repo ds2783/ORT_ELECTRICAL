@@ -19,8 +19,12 @@ class ServerClient:
 
     def start_stream(self):
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client.connect((self.server_host, self.server_port))
-        client.send("IP\n".encode())
+        try:
+            client.connect((self.server_host, self.server_port))
+            client.send("IP\n".encode())
+            resp = client.recv(2000)
+        except:
+            pass
 
     def get_picture(self, logger):
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

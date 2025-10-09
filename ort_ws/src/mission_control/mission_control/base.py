@@ -30,6 +30,7 @@ from mission_control.config.gui import QR_DIRECTORY
 
 from qreader import QReader
 from multiprocessing.connection import Client
+from threading import Thread
 
 import numpy as np
 import datetime
@@ -49,10 +50,11 @@ class BaseNode(Node):
         # ---------------
         # STATE OBJECTS
         self.main_cam = ServerClient(PI_IP, PORT_MAIN_SERVER)
-        self.secondar_cam = ServerClient(PI_IP, PORT_SECONDARY_SERVER)
-        self.main_cam.start_stream()
-        self.secondar_cam.start_stream()
+        self.secondary_cam = ServerClient(PI_IP, PORT_SECONDARY_SERVER)
 
+        self.stream_thread = Thread(target=self.start_stream)
+        self.stream_thread.start() 
+        
         self.qreader_ = QReader()
 
         self.address = ("localhost", port)
@@ -493,6 +495,10 @@ class BaseNode(Node):
 
     def num_rock_CB_(self, msg: Int8):
         self.rock_num_ = msg.data
+
+    def start_stream(self):
+        self.main_cam.start_stream()
+        self.secondar_cam.start_stream()
 
 
 def rad_degrees(num):
