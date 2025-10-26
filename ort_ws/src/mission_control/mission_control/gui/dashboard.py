@@ -108,6 +108,7 @@ class Dashboard:
         self.indices = formatted_indices
 
     def draw_main(self):
+		# This should be optimised with a PBO or another streamed buffer object for ERC 2026
         for index, cam in enumerate(self.cams):
             temp = cam.fetch_frame()
             # Optimise this shit
